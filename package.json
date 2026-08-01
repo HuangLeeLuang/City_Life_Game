@@ -1,0 +1,9 @@
+{
+  "name": "cyber-world-five-fates",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "serve": "node server.mjs"
+  }
+}
