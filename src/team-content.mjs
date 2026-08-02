@@ -1,4 +1,4 @@
-export const TEAM_LIMIT = 4;
+export const TEAM_LIMIT = 5;
 
 export const TEAM_MEMBERS = [
   {id:"steel_jaw",name:"鋼牙",role:"近戰手",unlockDay:1,cost:16,ability:"physique",summary:"前地下拳手，能在混戰中撕開缺口並替隊伍承受火力。",bonuses:{brawl:4,hp:4}},
@@ -12,4 +12,3 @@ export const TEAM_MEMBERS = [
 ];
 
 export const teamMemberById = id => TEAM_MEMBERS.find(member => member.id === id);
-

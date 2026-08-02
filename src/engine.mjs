@@ -1,9 +1,9 @@
-import { EVENTS, STAGES } from "./content.mjs?v=18";
-import { LIFE_CARDS, LEISURE_CARDS, TRAINING_CARDS, CONTACTS, JOBS, SIDE_QUESTS } from "./life-content.mjs?v=18";
-import { NIGHT_CARDS } from "./night-content.mjs?v=18";
-import { CHAPTER_EVENTS, chapterForDay } from "./chapter-content.mjs?v=18";
-import { FACTIONS, TERRITORIES, factionById, territoryById } from "./faction-content.mjs?v=18";
-import { TEAM_MEMBERS, TEAM_LIMIT, teamMemberById } from "./team-content.mjs?v=18";
+import { EVENTS, STAGES } from "./content.mjs?v=19";
+import { LIFE_CARDS, LEISURE_CARDS, TRAINING_CARDS, CONTACTS, JOBS, SIDE_QUESTS } from "./life-content.mjs?v=19";
+import { NIGHT_CARDS } from "./night-content.mjs?v=19";
+import { CHAPTER_EVENTS, chapterForDay } from "./chapter-content.mjs?v=19";
+import { FACTIONS, TERRITORIES, factionById, territoryById } from "./faction-content.mjs?v=19";
+import { TEAM_MEMBERS, TEAM_LIMIT, teamMemberById } from "./team-content.mjs?v=19";
 
 const LIMITS = { health:[0,100], fatigue:[0,100], stress:[0,100], resource:[0,999], ability:[0,100], relation:[-100,100], world:[0,100] };
 const MAINLINE_SCHEDULE={signal:1,runner:3,ch1_burner:5,checkpoint:6,ambush:8,vault:10,ch3_escape:11,ch3_container:13,ch3_broadcast:15,ch4_election:16,ch4_betrayal:18,ch4_truth:20,ch5_siege:21,ch5_tower:23,ch5_finale:25};
@@ -32,7 +32,7 @@ export const crewPower=state=>(state.crew?.members||0)*2+Math.floor((state.crew?
 
 export function newGame(gender="不公開",seed=2026){
   return {
-    version:1, contentVersion:"0.8.0-team-arsenal", seed:seed>>>0, gender, day:1, stage:0, chapter:1, phase:"cards", candidates:[], selected:null, battle:null, finished:false,
+    version:1, contentVersion:"0.8.1-five-person-team", seed:seed>>>0, gender, day:1, stage:0, chapter:1, phase:"cards", candidates:[], selected:null, battle:null, finished:false,
     player:{health:100,fatigue:10,stress:8,resource:24,abilities:{physique:28,reflex:28,hacking:28,engineering:28,social:28,perception:28,will:28,management:28}},
     assets:{properties:[],vehicles:[],weapons:[],items:[],luxuries:[],industries:[]}, buffs:[], activeSideQuest:null, completedSideQuests:[], metContacts:{},
     factions:freshFactions(),territories:freshTerritories(),crew:{members:2,morale:50},team:{roster:[],active:[]},pendingRetaliation:null,

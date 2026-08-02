@@ -165,11 +165,11 @@ test("隊伍可招募並強化戰鬥支援，舊存檔會自動補上勢力資�
   const old=newGame();old.assets.weapons=[{id:"weapon_sawed_shotgun",name:"短管霰彈槍"}];delete old.factions;delete old.territories;delete old.crew;delete old.team;delete old.assets.items;delete old.pendingRetaliation;const restored=validateSave(old);assert.equal(Object.keys(restored.factions).length,9);assert.equal(Object.keys(restored.territories).length,15);assert.equal(restored.crew.members,2);assert.deepEqual(restored.team,{roster:[],active:[]});assert.deepEqual(restored.assets.items,[]);assert.equal(restored.assets.weapons[0].combatPower,6);
 });
 
-test("可招募八名命名專家、編制四人出勤團隊並訓練",()=>{
+test("可招募八名命名專家、編制五人出勤團隊並訓練",()=>{
   assert.equal(TEAM_MEMBERS.length,8);let state=newGame("x",1);state.day=20;state.player.resource=999;
-  for(const member of TEAM_MEMBERS.slice(0,5)){state.phase="factionBoard";state.selected="life_conflict";state=recruitTeamMember(state,member.id);}
-  assert.equal(state.team.roster.length,5);assert.equal(activeTeamMembers(state).length,TEAM_LIMIT);assert.throws(()=>{const board={...state,phase:"factionBoard",selected:"life_conflict"};toggleTeamMember(board,TEAM_MEMBERS[4].id);},error=>error.code==="ACTIVE_TEAM_FULL");
-  state.phase="factionBoard";state.selected="life_conflict";state=toggleTeamMember(state,TEAM_MEMBERS[0].id);state=toggleTeamMember(state,TEAM_MEMBERS[4].id);assert.equal(state.team.active.length,4);assert.ok(state.team.active.includes(TEAM_MEMBERS[4].id));
+  for(const member of TEAM_MEMBERS.slice(0,6)){state.phase="factionBoard";state.selected="life_conflict";state=recruitTeamMember(state,member.id);}
+  assert.equal(state.team.roster.length,6);assert.equal(activeTeamMembers(state).length,TEAM_LIMIT);assert.throws(()=>{const board={...state,phase:"factionBoard",selected:"life_conflict"};toggleTeamMember(board,TEAM_MEMBERS[5].id);},error=>error.code==="ACTIVE_TEAM_FULL");
+  state.phase="factionBoard";state.selected="life_conflict";state=toggleTeamMember(state,TEAM_MEMBERS[0].id);state=toggleTeamMember(state,TEAM_MEMBERS[5].id);assert.equal(state.team.active.length,5);assert.ok(state.team.active.includes(TEAM_MEMBERS[5].id));
   state.phase="factionBoard";state.selected="life_conflict";const beforeCash=state.player.resource;state.seed=1;state=trainTeamMember(state,TEAM_MEMBERS[1].id);assert.ok(state.player.resource<beforeCash);assert.equal(state.team.roster.find(item=>item.id===TEAM_MEMBERS[1].id).level,2);
 });
 
