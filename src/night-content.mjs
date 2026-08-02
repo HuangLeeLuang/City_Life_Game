@@ -28,5 +28,14 @@ export const NIGHT_CARDS = [
 
   {id:"night_industry_patrol",kind:"industry",tag:"產業",title:"巡視自己的產業",summary:"免費／選擇持有產業；中等恢復並增加今晚收入。",cost:0,hub:"industry",requires:"industry"},
   {id:"night_industry_host",kind:"industry",tag:"產業",title:"在自家場所招待人物",summary:"現金 4／選擇產業與人物；同時恢復、經營並提升關係。",cost:4,hub:"industryContact",requires:"industry"},
-  {id:"night_industry_problem",kind:"industry",tag:"產業",title:"處理打烊前的突發狀況",summary:"免費／選擇持有產業；自動以生意、口才或觀察檢定處理。",cost:0,hub:"industryRisk",requires:"industry"}
+  {id:"night_industry_problem",kind:"industry",tag:"產業",title:"處理打烊前的突發狀況",summary:"免費／選擇持有產業；自動以生意、口才或觀察檢定處理。",cost:0,hub:"industryRisk",requires:"industry"},
+
+  {id:"combat_dock_brawl",kind:"combat",tag:"格鬥",title:"接受碼頭工人的擂台挑戰",summary:"免費／進入回合格鬥；勝利現金 +32、體能 +2，失敗仍可撤離。",cost:0,combat:true,unlockDay:3,enemy:"碼頭擂台冠軍",enemyHp:58,reward:32,rewardAbility:"physique",rewardAbilityValue:2,result:"你在貨櫃圍成的擂台站到最後，工人們把下注金與尊敬一起交給你。"},
+  {id:"combat_debt_collectors",kind:"combat",tag:"街頭格鬥",title:"擊退堵門的地下討債人",summary:"現金 2／進入近身戰；勝利現金 +36、街坊 +4，失敗會受傷。",cost:2,combat:true,unlockDay:4,enemy:"持棍討債人",enemyHp:64,reward:36,rewardWorld:"people",rewardWorldValue:4,result:"最後一根球棒落地後，整條街的人都記住你替誰守住了門。"},
+  {id:"combat_warehouse",kind:"combat",tag:"槍戰",title:"突襲藏有黑錢的港區倉庫",summary:"現金 4／進入槍戰；勝利現金 +42、槍法 +2，警方戒備可能提高。",cost:4,combat:true,unlockDay:6,enemy:"倉庫武裝守衛",enemyHp:72,reward:42,rewardAbility:"reflex",rewardAbilityValue:2,securityOnWin:3,result:"你踢開保險櫃，裡面的鈔票比情報說的更多；警笛也比預計來得更快。"},
+  {id:"combat_convoy",kind:"combat",tag:"護送槍戰",title:"護送黑市醫師穿過封鎖區",summary:"現金 5／進入護送戰；勝利現金 +48、健康 +10，失敗仍能救出醫師。",cost:5,combat:true,unlockDay:8,enemy:"封鎖區攔截小隊",enemyHp:78,reward:48,rewardHealth:10,result:"醫師平安抵達安全屋，除了報酬，還替你處理了幾處一直沒時間照顧的舊傷。"},
+  {id:"combat_hostage",kind:"combat",tag:"救援",title:"闖進汽車旅館救出被綁人質",summary:"現金 3／格鬥與槍戰；勝利現金 +44、街坊 +7、膽識 +1。",cost:3,combat:true,unlockDay:10,enemy:"旅館綁架集團",enemyHp:82,reward:44,rewardAbility:"will",rewardAbilityValue:1,rewardWorld:"people",rewardWorldValue:7,result:"人質從消防梯離開時，街坊已經替你封住警車最可能進來的路。"},
+  {id:"combat_bounty",kind:"combat",tag:"懸賞槍戰",title:"追捕躲在夜市的懸賞槍手",summary:"現金 6／高難度槍戰；勝利現金 +55、觀察 +2，失敗會付出醫療費。",cost:6,combat:true,unlockDay:12,enemy:"被懸賞的職業槍手",enemyHp:90,reward:55,rewardAbility:"perception",rewardAbilityValue:2,result:"你在收攤的人潮裡逼他放下槍，兩個不同買家同時把賞金匯進你的空殼帳戶。"},
+  {id:"combat_arena_final",kind:"combat",tag:"地下格鬥",title:"參加地下拳館冠軍賽",summary:"現金 8／高難度格鬥；勝利現金 +60、體能 +3、膽識 +2。",cost:8,combat:true,unlockDay:15,enemy:"地下拳館不敗冠軍",enemyHp:98,reward:60,rewardAbility:"physique",rewardAbilityValue:3,bonusWill:2,result:"冠軍倒在讀秒結束前。觀眾高喊的不是你的名字，而是你在街頭留下的綽號。"},
+  {id:"combat_gang_vault",kind:"combat",tag:"大型槍戰",title:"攻下幫派藏金庫的廢棄酒店",summary:"現金 10／最高風險大型槍戰；勝利現金 +75、生意 +3、幫派勢力 -6。",cost:10,combat:true,unlockDay:18,enemy:"酒店金庫守衛隊",enemyHp:112,reward:75,rewardAbility:"management",rewardAbilityValue:3,rewardWorld:"gangs",rewardWorldValue:-6,result:"金庫門打開時，裡面是成捆現金、空白護照，以及足以讓另一個幫派開戰的帳冊。"}
 ];

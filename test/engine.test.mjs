@@ -17,10 +17,10 @@ function playCard(state,id){
 
 test("相同 seed 產生相同卡牌",()=>{
   const a=generateCards(newGame("x",42)); const b=generateCards(newGame("x",42));
-  assert.equal(a.candidates.length,1); assert.equal(a.deckType,"mainline"); assert.deepEqual(a.candidates,b.candidates); assert.equal(a.seed,b.seed);
+  assert.equal(a.candidates.length,5); assert.equal(a.deckType,"morning"); assert.ok(a.candidates.includes("signal"));assert.deepEqual(a.candidates,b.candidates); assert.equal(a.seed,b.seed);
 });
 test("上午沒有主線時改抽五張生活卡牌",()=>{
-  const input=newGame("x",42); input.day=2;
+  const input=newGame("x",42); input.day=2;input.seen.signal=true;
   const state=generateCards(input);
   assert.equal(state.deckType,"life"); assert.equal(state.candidates.length,5);
   assert.ok(state.candidates.every(id=>LIFE_CARDS.some(card=>card.id===id)));
@@ -45,11 +45,11 @@ test("可由固定策略完整通關，風險失敗也不中斷主線",()=>{
   assert.equal(state.finished,true); assert.equal(state.day,26); assert.ok(state.flags.ending_free||state.flags.ending_restore||state.flags.ending_destroy);
   assert.ok(state.log.length>20);
 });
-test("兩百個種子與忽略主線策略皆不會卡死",()=>{
+test("兩百個種子的主線優先策略皆不會卡死",()=>{
   for(let seed=1;seed<=200;seed++){
     let state=generateCards(newGame("x",seed)); let guard=0;
     while(!state.finished&&guard++<80){
-      const selected=state.candidates.find(id=>!["signal","checkpoint","ambush","vault"].includes(id)&&(getEvent(id,state).cost||0)<=state.player.resource)??state.candidates.find(id=>(getEvent(id,state).cost||0)<=state.player.resource)??state.candidates[0];
+      const selected=state.candidates.find(id=>getEvent(id,state).main)??state.candidates.find(id=>(getEvent(id,state).cost||0)<=state.player.resource)??state.candidates[0];
       state=playCard(state,selected);
       while(state.phase==="battle") state=battleAction(state,"guard");
       state=continueStage(state);
@@ -127,16 +127,28 @@ test("資產可無上限升級，初次必定成功且正確扣款",()=>{
   state=upgradeAsset(state,"weapons",asset.id);assert.equal(state.assets.weapons[0].level,1);assert.equal(state.player.resource,before-Math.ceil(14*.25));
 });
 
-test("夜生活牌堆共24張，每晚抽5張且保證免費與兩張恢復",()=>{
-  assert.equal(NIGHT_CARDS.length,24);
+test("夜生活牌堆包含32張，每晚抽5張且保證免費與兩張恢復",()=>{
+  assert.equal(NIGHT_CARDS.length,32);
   let state=newGame("x",77);state.stage=2;state.day=4;state=generateCards(state);
   assert.equal(state.deckType,"night");assert.equal(state.candidates.length,5);
   const cards=state.candidates.map(id=>getEvent(id,state));
   assert.ok(cards.some(card=>card.cost===0));assert.ok(cards.filter(card=>card.kind==="recovery").length>=2);
 });
 
+test("玩家可延後主線，待辦主線會在下一個上午保留",()=>{
+  let state=generateCards(newGame("x",19));assert.ok(state.candidates.includes("signal"));
+  const lifeId=state.candidates.find(id=>!getEvent(id,state).main);state=playCard(state,lifeId);state=continueStage(state);
+  state=playCard(state,state.candidates.find(id=>(getEvent(id,state).cost||0)<=state.player.resource));state=continueStage(state);
+  state=playCard(state,state.candidates.find(id=>(getEvent(id,state).cost||0)<=state.player.resource));state=continueStage(state);
+  assert.equal(state.day,2);assert.equal(state.stage,0);assert.ok(state.candidates.includes("signal"));
+});
+
+test("高報酬戰鬥卡會進入回合戰鬥並結算獎勵",()=>{
+  let state=newGame("x",88);state.day=20;state.stage=2;state.player.resource=100;state=generateCards(state);state.candidates=["combat_dock_brawl"];state=selectCard(state,"combat_dock_brawl");assert.equal(state.phase,"battle");const before=state.player.resource;let guard=0;while(state.phase==="battle"&&guard++<30)state=battleAction(state,"brawl");assert.equal(state.phase,"result");if(state.lastResult.success)assert.ok(state.player.resource>=before+32);
+});
+
 test("每章五天，五章主線延伸至第25天",()=>{
-  const state=newGame();state.day=25;const cards=generateCards(state);
+  const state=newGame();state.day=25;for(const id of ["signal","runner","ch1_burner","checkpoint","ambush","vault","ch3_escape","ch3_container","ch3_broadcast","ch4_election","ch4_betrayal","ch4_truth","ch5_siege","ch5_tower"])state.seen[id]=true;const cards=generateCards(state);
   assert.equal(cards.chapter,5);assert.ok(cards.candidates.includes("ch5_finale"));
 });
 

@@ -1,11 +1,10 @@
-import { EVENTS, STAGES } from "./content.mjs?v=14";
-import { LIFE_CARDS, LEISURE_CARDS, TRAINING_CARDS, CONTACTS, JOBS, SIDE_QUESTS } from "./life-content.mjs?v=14";
-import { NIGHT_CARDS } from "./night-content.mjs?v=14";
-import { CHAPTER_EVENTS, chapterForDay } from "./chapter-content.mjs?v=14";
+import { EVENTS, STAGES } from "./content.mjs?v=15";
+import { LIFE_CARDS, LEISURE_CARDS, TRAINING_CARDS, CONTACTS, JOBS, SIDE_QUESTS } from "./life-content.mjs?v=15";
+import { NIGHT_CARDS } from "./night-content.mjs?v=15";
+import { CHAPTER_EVENTS, chapterForDay } from "./chapter-content.mjs?v=15";
 
 const LIMITS = { health:[0,100], fatigue:[0,100], stress:[0,100], resource:[0,999], ability:[0,100], relation:[-100,100], world:[0,100] };
 const MAINLINE_SCHEDULE={signal:1,runner:3,ch1_burner:5,checkpoint:6,ambush:8,vault:10,ch3_escape:11,ch3_container:13,ch3_broadcast:15,ch4_election:16,ch4_betrayal:18,ch4_truth:20,ch5_siege:21,ch5_tower:23,ch5_finale:25};
-const MAINLINE_DAYS = new Set(Object.values(MAINLINE_SCHEDULE));
 const ASSET_BASE_PRICES={property_riverside_flat:40,property_suburban_safehouse:28,vehicle_grey_sport:22,vehicle_black_suv:18,weapon_sawed_shotgun:14,weapon_silenced_pistol:18,luxury_gold_watch:10,luxury_black_bag:12,industry_bay_diner:18,industry_east_garage:28,industry_blue_nightclub:36,industry_old_apartments:50};
 export class GameError extends Error { constructor(code,message){ super(message); this.code=code; } }
 export function rngNext(seed){ let x=seed|0; x^=x<<13; x^=x>>>17; x^=x<<5; return {seed:x>>>0,value:(x>>>0)/4294967296}; }
@@ -36,17 +35,16 @@ export function generateCards(input){
   const custom=(state.customCards||[]).filter(card=>card.enabled!==false);
   const storyEvents=[...EVENTS,...CHAPTER_EVENTS,...custom.filter(card=>card.deck==="main")].map(event=>MAINLINE_SCHEDULE[event.id]?{...event,chapter:Math.ceil(MAINLINE_SCHEDULE[event.id]/5),requirements:{...(event.requirements||{}),dayMin:MAINLINE_SCHEDULE[event.id],dayMax:MAINLINE_SCHEDULE[event.id]}}:event);
   const stageEligible=storyEvents.filter(e=>e.stage===state.stage&&requirementMet(state,e));
-  const morningMain=state.stage===0&&MAINLINE_DAYS.has(state.day)?stageEligible.filter(e=>e.main):[];
-  if(state.stage===0&&morningMain.length){
-    state.deckType="mainline";
-    state.candidates=morningMain.map(e=>e.id);
-  }else{
+  const pendingScheduled=storyEvents.filter(event=>event.main&&MAINLINE_SCHEDULE[event.id]&&MAINLINE_SCHEDULE[event.id]<=state.day&&!state.seen[event.id]).sort((a,b)=>MAINLINE_SCHEDULE[a.id]-MAINLINE_SCHEDULE[b.id]);
+  const pendingCustom=stageEligible.filter(event=>event.main&&!MAINLINE_SCHEDULE[event.id]);
+  const morningMain=state.stage===0?(pendingScheduled[0]||pendingCustom[0]||null):null;
+  {
     const sourceStage=state.stage===0?1:state.stage;
     let eligible;
     if(sourceStage===1) eligible=[...LIFE_CARDS.filter(card=>card.id!=="life_purchase"||marketAvailable(state)),...custom.filter(card=>card.deck==="life")];
     else eligible=[...NIGHT_CARDS.filter(card=>nightUnlocked(state,card)),...custom.filter(card=>card.deck==="night")];
-    state.deckType=sourceStage===1?"life":"night";
-    let selected=shuffledWeighted(state,eligible).slice(0,5);
+    state.deckType=sourceStage===1?(state.stage===0&&morningMain?"morning":"life"):"night";
+    let selected=shuffledWeighted(state,eligible).slice(0,state.stage===0&&morningMain?4:5);
     if(sourceStage===1){
       const reserved=[];
       if(state.activeSideQuest) reserved.push("life_sidequest");
@@ -63,7 +61,7 @@ export function generateCards(input){
       const guaranteed=[...new Map(force.filter(Boolean).map(card=>[card.id,card])).values()];
       selected=[...selected.filter(card=>!guaranteed.some(item=>item.id===card.id)).slice(0,5-guaranteed.length),...guaranteed];
     }
-    state.candidates=selected.map(e=>e.id);
+    state.candidates=[...(morningMain?[morningMain.id]:[]),...selected.map(e=>e.id)];
     if(state.candidates.length<5) throw new GameError("INSUFFICIENT_CARDS",`第 ${state.day} 天「${STAGES[state.stage]}」只有 ${state.candidates.length} 張合法卡片`);
   }
   state.phase="cards"; state.selected=null;
@@ -98,7 +96,7 @@ export function applyEffects(input,effects,source="system"){
         case "buff.add": { const incoming={...effect,remaining:effect.duration}; const current=state.buffs.find(buff=>buff.id===effect.id); const before=current?`${current.label} ${current.value}/${current.remaining}`:null; if(!current) state.buffs.push(incoming); else if(effect.value>=current.value) Object.assign(current,incoming); logEffect(state,source,effect.type,effect.id,before,`${incoming.label} ${incoming.value}/${incoming.duration}`,null); break; }
         case "asset.grant": { const list=state.assets?.[effect.category]; if(!Array.isArray(list)) throw new GameError("INVALID_ASSET_CATEGORY",`未知資產類別：${effect.category}`); if(list.some(asset=>asset.id===effect.assetId)) throw new GameError("ASSET_OWNED",`已經持有：${effect.name}`); list.push({id:effect.assetId,name:effect.name,acquiredDay:state.day,dailyIncome:effect.dailyIncome||0,basePrice:effect.basePrice||1,level:0}); logEffect(state,source,effect.type,effect.category,null,effect.name,null); break; }
         case "asset.upgrade": { const asset=state.assets?.[effect.category]?.find(item=>item.id===effect.assetId); if(!asset) throw new GameError("UNKNOWN_ASSET",`找不到資產：${effect.assetId}`); const before=asset.level||0; if(effect.success){asset.level=before+1;if(asset.dailyIncome)asset.dailyIncome+=1+({3:2,5:3,10:5}[asset.level]||0);} logEffect(state,source,effect.type,effect.assetId,before,asset.level,effect.success?1:0); break; }
-        case "battle.start": { const armed=state.assets?.weapons?.length>0;const weaponPower=(state.assets?.weapons||[]).reduce((sum,asset)=>sum+(asset.level||0)*2+((asset.level||0)>=3?5:0)+((asset.level||0)>=5?8:0)+((asset.level||0)>=10?15:0),0);const vehicleArmor=(state.assets?.vehicles||[]).reduce((sum,asset)=>sum+(asset.level||0)*2,0); state.battle={enemy:effect.enemy,playerHp:45+Math.floor(state.player.abilities.physique/2)+vehicleArmor,enemyHp:Math.max(25,(armed?64:72)-weaponPower),guard:false,turn:1,message:armed?"黑色休旅車急煞。你搶先抽出準備好的武器，逼第一批槍手尋找掩護。":"黑色休旅車急煞，便衣槍手從兩側包圍。"}; state.phase="battle"; break; }
+        case "battle.start": { const armed=state.assets?.weapons?.length>0;const weaponPower=(state.assets?.weapons||[]).reduce((sum,asset)=>sum+(asset.level||0)*2+((asset.level||0)>=3?5:0)+((asset.level||0)>=5?8:0)+((asset.level||0)>=10?15:0),0);const vehicleArmor=(state.assets?.vehicles||[]).reduce((sum,asset)=>sum+(asset.level||0)*2,0); state.battle={enemy:effect.enemy,title:effect.title||"高架橋伏擊",result:effect.result||"你撐過了這場戰鬥，從現場帶走報酬與新的名聲。",reward:effect.reward||16,rewardAbility:effect.rewardAbility||"reflex",rewardAbilityValue:effect.rewardAbilityValue||2,rewardWorld:effect.rewardWorld,rewardWorldValue:effect.rewardWorldValue||0,rewardHealth:effect.rewardHealth||0,securityOnWin:effect.securityOnWin||0,bonusWill:effect.bonusWill||0,playerHp:45+Math.floor(state.player.abilities.physique/2)+vehicleArmor,enemyHp:Math.max(25,(effect.enemyHp||72)-weaponPower),guard:false,turn:1,message:effect.opening||(armed?"你搶先拔出準備好的武器，逼第一批敵人尋找掩護。":"敵人從兩側逼近，你只能利用身邊的一切反擊。")}; state.phase="battle"; break; }
         default: throw new GameError("UNKNOWN_EFFECT",`不支援的效果：${effect.type}`);
       }
     }
@@ -144,6 +142,10 @@ function openNightCard(input,card){
     else if(card.hub==="industryContact")state.activityOptions=state.assets.industries.flatMap(asset=>CONTACTS.map(contact=>`${asset.id}|${contact.id}`));
     else if(card.hub==="industryRisk")state.activityOptions=state.assets.industries.map(asset=>asset.id);
     state.phase="activity";return state;
+  }
+  if(card.combat){
+    const effects=[...(card.cost?[{type:"resource.add",value:-card.cost}]:[]),{type:"battle.start",enemy:card.enemy,title:card.title,result:card.result,reward:card.reward,enemyHp:card.enemyHp,rewardAbility:card.rewardAbility,rewardAbilityValue:card.rewardAbilityValue,rewardWorld:card.rewardWorld,rewardWorldValue:card.rewardWorldValue,rewardHealth:card.rewardHealth,securityOnWin:card.securityOnWin,bonusWill:card.bonusWill}];
+    return applyEffects(input,effects,`night:${card.id}:battle`);
   }
   if(card.risk){
     let state=applyEffects(input,[{type:"resource.add",value:-card.cost}],`night:${card.id}:entry`);const ability=card.abilities.slice().sort((a,b)=>abilityValue(state,b)-abilityValue(state,a))[0];const n=rngNext(state.seed);state.seed=n.seed;const roll=Math.floor(n.value*41)+20;const success=abilityValue(state,ability)+roll>=card.difficulty+28;
@@ -240,13 +242,14 @@ export function battleAction(input,action){
   if(input.phase!=="battle"||!input.battle) throw new GameError("WRONG_PHASE","目前不在戰鬥中");
   let state=clone(input), b=state.battle; let message=""; b.guard=false;
   const n=rngNext(state.seed); state.seed=n.seed;
-  if(action==="attack"){ const damage=8+Math.floor(state.player.abilities.reflex/9)+Math.floor(n.value*7); b.enemyHp-=damage; message=`你命中獵犬，造成 ${damage} 傷害。`; }
-  else if(action==="hack"){ const damage=5+Math.floor(state.player.abilities.hacking/6); b.enemyHp-=damage; b.enemyHp=Math.max(0,b.enemyHp); message=`干擾脈衝造成 ${damage} 傷害。`; }
+  if(action==="attack"){ const damage=8+Math.floor(state.player.abilities.reflex/9)+Math.floor(n.value*7); b.enemyHp-=damage; message=`你抓住空隙射擊，造成 ${damage} 傷害。`; }
+  else if(action==="brawl"){const damage=7+Math.floor(state.player.abilities.physique/8)+Math.floor(n.value*9);b.enemyHp-=damage;message=`你貼近敵人施展格鬥，造成 ${damage} 傷害。`;}
+  else if(action==="hack"){ const damage=5+Math.floor(state.player.abilities.hacking/6); b.enemyHp-=damage; b.enemyHp=Math.max(0,b.enemyHp); message=`你利用燈光、警報與設備干擾戰場，造成 ${damage} 傷害。`; }
   else if(action==="guard"){ b.guard=true; message="你壓低身體，準備卸開衝擊。"; }
   else throw new GameError("UNKNOWN_ACTION",`未知戰鬥動作：${action}`);
-  if(b.enemyHp<=0){ state=applyEffects(state,[{type:"resource.add",value:16},{type:"ability.add",key:"reflex",value:2},{type:"flag.set",key:"battle_won",value:true}],"battle:win"); state.battle=null; state.phase="result"; state.lastResult={title:"高架橋伏擊",choice:"殺出包圍",success:true,summary:"最後一名槍手倒下。阿哲從警長車裡翻出市府金庫的門禁卡，卻不敢直視你。"}; return state; }
-  const enemyRoll=rngNext(state.seed); state.seed=enemyRoll.seed; let hurt=7+Math.floor(enemyRoll.value*7); if(b.guard) hurt=Math.floor(hurt/2); b.playerHp-=hurt; message+=` 獵犬反擊，造成 ${hurt} 傷害。`; b.turn++;
-  if(b.playerHp<=0){ state=applyEffects(state,[{type:"stat.add",key:"health",value:-22},{type:"resource.add",value:-8},{type:"flag.set",key:"battle_lost",value:true}],"battle:loss"); state.battle=null; state.phase="result"; state.lastResult={title:"高架橋伏擊",choice:"中槍撤離",success:false,summary:"若琳開著拖吊車撞開路障，把你拖離現場。小凱付出一輛車的代價，搶到了警長掉落的門禁卡。"}; return state; }
+  if(b.enemyHp<=0){const rewards=[{type:"resource.add",value:b.reward},{type:"ability.add",key:b.rewardAbility,value:b.rewardAbilityValue},{type:"flag.set",key:"battle_won",value:true}];if(b.rewardWorld)rewards.push({type:"world.add",key:b.rewardWorld,value:b.rewardWorldValue});if(b.rewardHealth)rewards.push({type:"stat.add",key:"health",value:b.rewardHealth});if(b.securityOnWin)rewards.push({type:"world.add",key:"security",value:b.securityOnWin});if(b.bonusWill)rewards.push({type:"ability.add",key:"will",value:b.bonusWill});state=applyEffects(state,rewards,"battle:win");const title=b.title,result=b.result,reward=b.reward; state.battle=null; state.phase="result"; state.lastResult={title,choice:"贏下戰鬥",success:true,summary:`${result} 本次取得現金 ${reward}，所有獎勵已結算。`}; return state; }
+  const enemyRoll=rngNext(state.seed); state.seed=enemyRoll.seed; let hurt=7+Math.floor(enemyRoll.value*7); if(b.guard) hurt=Math.floor(hurt/2); b.playerHp-=hurt; message+=` ${b.enemy}反擊，造成 ${hurt} 傷害。`; b.turn++;
+  if(b.playerHp<=0){const medicalLoss=Math.min(state.player.resource,Math.max(6,Math.ceil(b.reward*.15)));state=applyEffects(state,[{type:"stat.add",key:"health",value:-22},{type:"resource.add",value:-medicalLoss},{type:"flag.set",key:"battle_lost",value:true}],"battle:loss");if(state.player.health<=0)state.player.health=1;const title=b.title,enemy=b.enemy; state.battle=null; state.phase="result"; state.lastResult={title,choice:"負傷撤離",success:false,summary:`你沒能擊敗${enemy}，但同伴把你送出戰場。支付醫療與撤離費 ${medicalLoss}，故事仍會繼續。`}; return state; }
   b.message=message; return state;
 }
 export function continueStage(input){
@@ -262,11 +265,7 @@ export function continueStage(input){
     state.lastSettlement={industryIncome,vehicleMaintenance:ownsCar&&!ownsGarage&&!vehicleSelfMaintained?1:0,day:state.day-1};
     if(state.activeSideQuest?.deadlineDay&&state.day>state.activeSideQuest.deadlineDay){const expired=SIDE_QUESTS.find(quest=>quest.id===state.activeSideQuest.id);state=applyEffects(state,[{type:"stat.add",key:"stress",value:7},{type:"world.add",key:"people",value:-4}],`sidequest:${expired.id}:expired`);state.flags[`expired.${expired.id}`]=true;state.activeSideQuest=null;}
   }
-  if(state.day>25){
-    if(!state.flags.ending_free&&!state.flags.ending_restore&&!state.flags.ending_destroy){
-      state=applyEffects(state,[{type:"flag.set",key:"ending_destroy",value:true},{type:"world.add",key:"security",value:-6}],"mainline:fallback");
-      state.lastResult={title:"未介入的終局",choice:"金庫爆炸",success:false,summary:"你沒有趕上最後窗口。阿哲獨自引爆金庫，真相和贓款一起被火吞沒。"};
-    }
+  if(state.day>25&&(state.flags.ending_free||state.flags.ending_restore||state.flags.ending_destroy)){
     state.finished=true; state.phase="ending"; state.candidates=[]; return state;
   }
   return generateCards(state);
