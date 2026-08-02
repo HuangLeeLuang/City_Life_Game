@@ -1,8 +1,8 @@
-import { ABILITY_LABELS, STAGES } from "./content.mjs";
-import { LIFE_CARDS, LEISURE_CARDS, TRAINING_CARDS, CONTACTS, SIDE_QUESTS } from "./life-content.mjs";
-import { NIGHT_CARDS } from "./night-content.mjs";
-import { CHAPTER_EVENTS } from "./chapter-content.mjs";
-import { GameError, newGame, generateCards, getEvent, selectCard, resolveChoice, resolveActivity, resolveNightOption, acceptSideQuest, declineSideQuests, resolveSideQuestChoice, abandonSideQuest, upgradeAsset, battleAction, continueStage, validateSave, endingText, modifyValue, saveCardDefinition, deleteCustomCard } from "./engine.mjs";
+import { ABILITY_LABELS, STAGES } from "./content.mjs?v=14";
+import { LIFE_CARDS, LEISURE_CARDS, TRAINING_CARDS, CONTACTS, SIDE_QUESTS } from "./life-content.mjs?v=14";
+import { NIGHT_CARDS } from "./night-content.mjs?v=14";
+import { CHAPTER_EVENTS } from "./chapter-content.mjs?v=14";
+import { GameError, newGame, generateCards, getEvent, selectCard, resolveChoice, resolveActivity, resolveNightOption, acceptSideQuest, declineSideQuests, resolveSideQuestChoice, abandonSideQuest, upgradeAsset, battleAction, continueStage, validateSave, endingText, modifyValue, saveCardDefinition, deleteCustomCard } from "./engine.mjs?v=14";
 
 const SAVE_KEY="crime-five-roads-save-v2"; const app=document.querySelector("#app"); let state=null; let error="";let modifierOpen=false;
 const esc=value=>String(value??"").replace(/[&<>\"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -35,6 +35,7 @@ function modifierView(){const baseCards=[...LIFE_CARDS,...NIGHT_CARDS,...CHAPTER
 function render(){if(!state){start();return;} const view=modifierOpen?modifierView():state.phase==="cards"?cards():state.phase==="event"?eventView():state.phase==="activity"?activityView():state.phase==="sidequestPick"?sideQuestPick():state.phase==="sidequestNode"?sideQuestNode():state.phase==="battle"?battle():state.phase==="result"?result():ending();app.innerHTML=`<main class="shell">${header()}${error?`<p class="danger">${esc(error)}</p>`:""}${view}${!modifierOpen&&state.phase!=="battle"?log():""}</main>`; bind();}
 function start(){const saved=localStorage.getItem(SAVE_KEY);app.innerHTML=`<main class="shell"><section class="panel"><div class="tag">海港市／現代</div><h1>罪城：五路亡命</h1><p>三年前，一場運鈔車爆炸案讓你入獄，也讓搭檔阿哲葬身火海。今天，死人打來電話，說那筆消失的錢從未離開這座城市。</p><p class="muted">五章、十五天的現代犯罪故事。上午追查真相、下午安排城市生活、晚上從夜生活牌堆恢復或冒險；全程自動離線存檔。</p><div class="actions"><button class="primary" data-start>開始第一章</button>${saved?`<button class="secondary" data-load>繼續遊戲</button>`:""}</div></section></main>`;bind();}
 function bind(){
+  if(!state&&!document.querySelector("[data-start-modifier]")){const button=document.createElement("button");button.className="secondary";button.dataset.startModifier="";button.textContent="開啟遊戲修改器";document.querySelector(".actions")?.append(button);button.addEventListener("click",()=>{state=generateCards(newGame("不公開",Date.now()>>>0));modifierOpen=true;persist();render();});}
   document.querySelectorAll("p").forEach(node=>{if(node.textContent.includes("五章、十五天"))node.textContent=node.textContent.replace("五章、十五天","五章、二十五天").replace("上午追查真相、","上午追查真相或自由生活、");if(node.textContent.includes("日數範圍為1～15"))node.textContent=node.textContent.replace("1～15","1～25");});
   document.querySelector("[data-modifier]")?.addEventListener("click",()=>{modifierOpen=!modifierOpen;error="";render();});
   document.querySelector("[data-start]")?.addEventListener("click",()=>{const seed=(Date.now()>>>0);state=generateCards(newGame("不公開",seed));persist();render();});

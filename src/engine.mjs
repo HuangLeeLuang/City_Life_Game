@@ -1,7 +1,7 @@
-import { EVENTS, STAGES } from "./content.mjs";
-import { LIFE_CARDS, LEISURE_CARDS, TRAINING_CARDS, CONTACTS, JOBS, SIDE_QUESTS } from "./life-content.mjs";
-import { NIGHT_CARDS } from "./night-content.mjs";
-import { CHAPTER_EVENTS, chapterForDay } from "./chapter-content.mjs";
+import { EVENTS, STAGES } from "./content.mjs?v=14";
+import { LIFE_CARDS, LEISURE_CARDS, TRAINING_CARDS, CONTACTS, JOBS, SIDE_QUESTS } from "./life-content.mjs?v=14";
+import { NIGHT_CARDS } from "./night-content.mjs?v=14";
+import { CHAPTER_EVENTS, chapterForDay } from "./chapter-content.mjs?v=14";
 
 const LIMITS = { health:[0,100], fatigue:[0,100], stress:[0,100], resource:[0,999], ability:[0,100], relation:[-100,100], world:[0,100] };
 const MAINLINE_SCHEDULE={signal:1,runner:3,ch1_burner:5,checkpoint:6,ambush:8,vault:10,ch3_escape:11,ch3_container:13,ch3_broadcast:15,ch4_election:16,ch4_betrayal:18,ch4_truth:20,ch5_siege:21,ch5_tower:23,ch5_finale:25};
