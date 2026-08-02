@@ -1,11 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { newGame, generateCards, getEvent, selectCard, resolveChoice, resolveActivity, resolveNightOption, acceptSideQuest, declineSideQuests, resolveSideQuestChoice, upgradeAsset, startFactionFight, startTerritoryFight, fortifyTerritory, recruitCrew, controlledTerritories, territoryIncome, battleAction, continueStage, applyEffects, modifyValue, saveCardDefinition, validateSave, GameError } from "../src/engine.mjs";
+import { newGame, generateCards, getEvent, selectCard, resolveChoice, resolveActivity, resolveNightOption, acceptSideQuest, declineSideQuests, resolveSideQuestChoice, upgradeAsset, startFactionFight, startTerritoryFight, fortifyTerritory, recruitCrew, recruitTeamMember, toggleTeamMember, trainTeamMember, activeTeamMembers, teamBonuses, assetBonuses, controlledTerritories, territoryIncome, crewPower, battleAction, continueStage, applyEffects, modifyValue, saveCardDefinition, validateSave, GameError } from "../src/engine.mjs";
 import { EVENTS } from "../src/content.mjs";
 import { LIFE_CARDS, LEISURE_CARDS, TRAINING_CARDS, CONTACTS, SIDE_QUESTS } from "../src/life-content.mjs";
 import { NIGHT_CARDS } from "../src/night-content.mjs";
 import { CHAPTER_EVENTS } from "../src/chapter-content.mjs";
 import { FACTIONS, TERRITORIES } from "../src/faction-content.mjs";
+import { TEAM_MEMBERS, TEAM_LIMIT } from "../src/team-content.mjs";
 
 function playCard(state,id){
   state=selectCard(state,id);
@@ -98,10 +99,10 @@ test("生活卡牌標題以玩家行為命名",()=>{
     assert.ok(actionPrefixes.some(prefix=>event.title.startsWith(prefix)),`${event.id} 的標題不是玩家行為：${event.title}`);
   }
 });
-test("房產、車輛、武器、奢侈品與產業集中於同一張購買卡牌",()=>{
+test("房產、車輛、武器、物品、奢侈品與產業集中於同一張購買卡牌",()=>{
   const purchase=EVENTS.find(event=>event.id==="asset_market");
   const categories=new Set(purchase.choices.flatMap(choice=>choice.effects.filter(effect=>effect.type==="asset.grant").map(effect=>effect.category)));
-  assert.deepEqual([...categories].sort(),["industries","luxuries","properties","vehicles","weapons"]);
+  assert.deepEqual([...categories].sort(),["industries","items","luxuries","properties","vehicles","weapons"]);
   assert.equal(EVENTS.filter(event=>event.stage===1&&event.tag==="功能卡").length,1);
 });
 test("生活牌堆固定七張核心行為，勢力卡必定出現且休閒保證可負擔",()=>{
@@ -161,7 +162,26 @@ test("攻佔地盤後產生每日收益，並可花錢強化",()=>{
 
 test("隊伍可招募並強化戰鬥支援，舊存檔會自動補上勢力資料",()=>{
   let state=newGame();state.phase="factionBoard";state.selected="life_conflict";state.player.resource=100;const before=state.player.resource;state=recruitCrew(state);assert.equal(state.crew.members,3);assert.equal(state.player.resource,before-12);assert.equal(state.phase,"result");
-  const old=newGame();delete old.factions;delete old.territories;delete old.crew;delete old.pendingRetaliation;const restored=validateSave(old);assert.equal(Object.keys(restored.factions).length,9);assert.equal(Object.keys(restored.territories).length,15);assert.equal(restored.crew.members,2);
+  const old=newGame();old.assets.weapons=[{id:"weapon_sawed_shotgun",name:"短管霰彈槍"}];delete old.factions;delete old.territories;delete old.crew;delete old.team;delete old.assets.items;delete old.pendingRetaliation;const restored=validateSave(old);assert.equal(Object.keys(restored.factions).length,9);assert.equal(Object.keys(restored.territories).length,15);assert.equal(restored.crew.members,2);assert.deepEqual(restored.team,{roster:[],active:[]});assert.deepEqual(restored.assets.items,[]);assert.equal(restored.assets.weapons[0].combatPower,6);
+});
+
+test("可招募八名命名專家、編制四人出勤團隊並訓練",()=>{
+  assert.equal(TEAM_MEMBERS.length,8);let state=newGame("x",1);state.day=20;state.player.resource=999;
+  for(const member of TEAM_MEMBERS.slice(0,5)){state.phase="factionBoard";state.selected="life_conflict";state=recruitTeamMember(state,member.id);}
+  assert.equal(state.team.roster.length,5);assert.equal(activeTeamMembers(state).length,TEAM_LIMIT);assert.throws(()=>{const board={...state,phase:"factionBoard",selected:"life_conflict"};toggleTeamMember(board,TEAM_MEMBERS[4].id);},error=>error.code==="ACTIVE_TEAM_FULL");
+  state.phase="factionBoard";state.selected="life_conflict";state=toggleTeamMember(state,TEAM_MEMBERS[0].id);state=toggleTeamMember(state,TEAM_MEMBERS[4].id);assert.equal(state.team.active.length,4);assert.ok(state.team.active.includes(TEAM_MEMBERS[4].id));
+  state.phase="factionBoard";state.selected="life_conflict";const beforeCash=state.player.resource;state.seed=1;state=trainTeamMember(state,TEAM_MEMBERS[1].id);assert.ok(state.player.resource<beforeCash);assert.equal(state.team.roster.find(item=>item.id===TEAM_MEMBERS[1].id).level,2);
+});
+
+test("核心隊員、武器與戰術物品會實際改變戰鬥",()=>{
+  const base=applyEffects(newGame(),[{type:"battle.start",enemy:"測試敵人",enemyHp:100,reward:20}],"test:base");let armed=newGame();armed.team={roster:[{id:"grey_fox",level:2},{id:"dove",level:1},{id:"counsel",level:1}],active:["grey_fox","dove","counsel"]};armed.player.resource=999;armed.phase="event";armed.selected="asset_market";armed=resolveChoice(armed,"marksman");armed.phase="event";armed.selected="asset_market";armed=resolveChoice(armed,"vest");armed.phase="event";armed.selected="asset_market";armed=applyEffects(armed,[{type:"battle.start",enemy:"測試敵人",enemyHp:100,reward:20}],"test:armed");
+  assert.ok(teamBonuses(armed).attack>0);assert.ok(assetBonuses(armed).weapon>0);assert.ok(armed.battle.playerHp>base.battle.playerHp);assert.ok(armed.battle.enemyHp<base.battle.enemyHp);assert.ok(armed.battle.reward>base.battle.reward);
+});
+
+test("豐富市場包含多種武器、物品與功能產業",()=>{
+  const purchase=getEvent("asset_market"),assets=purchase.choices.flatMap(choice=>choice.effects.filter(effect=>effect.type==="asset.grant"));assert.ok(assets.filter(asset=>asset.category==="weapons").length>=7);assert.ok(assets.filter(asset=>asset.category==="items").length>=6);assert.ok(assets.filter(asset=>asset.category==="industries").length>=9);
+  let state=newGame();state.player.resource=999;state.phase="event";state.selected="asset_market";state=resolveChoice(state,"trauma_kit");assert.equal(state.assets.items[0].name,"戰術急救箱");assert.ok(state.assets.items[0].bonuses.medical>=7);
+  state.phase="event";state.selected="asset_market";state=resolveChoice(state,"media_studio");assert.equal(state.assets.industries[0].dailyIncome,10);assert.ok(state.assets.industries[0].bonuses.reward>=8);
 });
 
 test("敵方反攻時可主動防守，勝利後保留地盤並解除警報",()=>{

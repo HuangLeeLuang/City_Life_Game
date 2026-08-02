@@ -2,10 +2,10 @@ export const LIFE_CARDS = [
   {id:"life_leisure",stage:1,tag:"日常",title:"處理日常需求",summary:"抽取5張日常卡牌，選擇吃飯、短暫休息、基礎療傷、整理裝備或蒐集情報。",hub:"leisure",repeatable:true},
   {id:"life_training",stage:1,tag:"成長",title:"進行訓練",summary:"從8種訓練中自由選擇，支付各自的現金與狀態代價。",hub:"training",repeatable:true},
   {id:"life_social",stage:1,tag:"社交",title:"與人見面",summary:"聯絡目前認識的人物，發展關係並交換消息。",hub:"social",repeatable:true},
-  {id:"life_purchase",stage:1,tag:"資產",title:"購買",summary:"查看全部商品，購買或升級房產、車輛、武器、奢侈品及產業。",hub:"purchase",repeatable:true},
+  {id:"life_purchase",stage:1,tag:"資產",title:"購買",summary:"查看分類市場，購買或升級房產、車輛、武器、戰術物品、奢侈品及產業。",hub:"purchase",repeatable:true},
   {id:"life_work",stage:1,tag:"收入",title:"賺錢",summary:"系統依你的最高合理能力安排工作並自動結算。",hub:"work",repeatable:true},
   {id:"life_sidequest",stage:1,tag:"支線",title:"進行支線任務",summary:"從3張支線任務選1張，或繼續目前進行中的支線。",hub:"sidequest",repeatable:true},
-  {id:"life_conflict",stage:1,tag:"勢力",title:"尋找對手",summary:"主動選擇幫派交戰、搶奪或防守地盤、招募隊伍並強化控制區。",hub:"factions",repeatable:true}
+  {id:"life_conflict",stage:1,tag:"勢力",title:"尋找對手",summary:"招募並編制核心團隊，或主動挑戰幫派、搶奪與防守地盤。",hub:"factions",repeatable:true}
 ];
 
 export const LEISURE_CARDS = [
