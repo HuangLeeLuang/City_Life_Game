@@ -20,7 +20,7 @@ test("相同 seed 產生相同卡牌",()=>{
   assert.equal(a.candidates.length,1); assert.equal(a.deckType,"mainline"); assert.deepEqual(a.candidates,b.candidates); assert.equal(a.seed,b.seed);
 });
 test("上午沒有主線時改抽五張生活卡牌",()=>{
-  const input=newGame("x",42); input.day=2; input.seen.runner=true;
+  const input=newGame("x",42); input.day=2;
   const state=generateCards(input);
   assert.equal(state.deckType,"life"); assert.equal(state.candidates.length,5);
   assert.ok(state.candidates.every(id=>LIFE_CARDS.some(card=>card.id===id)));
@@ -34,7 +34,7 @@ test("數值集中 clamp",()=>{
   const state=applyEffects(newGame(),[{type:"stat.add",key:"health",value:999},{type:"resource.add",value:-999}]);
   assert.equal(state.player.health,100); assert.equal(state.player.resource,0); assert.equal(state.log.length,2);
 });
-test("可由固定策略完整通關，戰敗也不中斷主線",()=>{
+test("可由固定策略完整通關，風險失敗也不中斷主線",()=>{
   let state=generateCards(newGame("x",12345)); let guard=0;
   while(!state.finished&&guard++<100){
     const preferred=state.candidates.find(id=>["signal","checkpoint","ambush","vault","ch5_finale"].includes(id))??state.candidates.find(id=>(getEvent(id,state).cost||0)<=state.player.resource)??state.candidates[0];

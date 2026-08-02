@@ -4,6 +4,7 @@ import { NIGHT_CARDS } from "./night-content.mjs";
 import { CHAPTER_EVENTS, chapterForDay } from "./chapter-content.mjs";
 
 const LIMITS = { health:[0,100], fatigue:[0,100], stress:[0,100], resource:[0,999], ability:[0,100], relation:[-100,100], world:[0,100] };
+const MAINLINE_DAYS = new Set([1,3,4,6,7,9,10,12,13,15]);
 const ASSET_BASE_PRICES={property_riverside_flat:40,property_suburban_safehouse:28,vehicle_grey_sport:22,vehicle_black_suv:18,weapon_sawed_shotgun:14,weapon_silenced_pistol:18,luxury_gold_watch:10,luxury_black_bag:12,industry_bay_diner:18,industry_east_garage:28,industry_blue_nightclub:36,industry_old_apartments:50};
 export class GameError extends Error { constructor(code,message){ super(message); this.code=code; } }
 export function rngNext(seed){ let x=seed|0; x^=x<<13; x^=x>>>17; x^=x<<5; return {seed:x>>>0,value:(x>>>0)/4294967296}; }
@@ -34,7 +35,7 @@ export function generateCards(input){
   const custom=(state.customCards||[]).filter(card=>card.enabled!==false);
   const storyEvents=[...EVENTS,...CHAPTER_EVENTS,...custom.filter(card=>card.deck==="main")];
   const stageEligible=storyEvents.filter(e=>e.stage===state.stage&&requirementMet(state,e));
-  const morningMain=state.stage===0?stageEligible.filter(e=>e.main):[];
+  const morningMain=state.stage===0&&MAINLINE_DAYS.has(state.day)?stageEligible.filter(e=>e.main):[];
   if(state.stage===0&&morningMain.length){
     state.deckType="mainline";
     state.candidates=morningMain.map(e=>e.id);

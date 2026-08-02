@@ -47,5 +47,11 @@ export const CHAPTER_EVENTS = [
 
 const CHAPTER_TITLES={ch3_escape:"第三章：逃亡名單",ch4_election:"第四章：一座待價而沽的城市",ch5_siege:"第五章：海港封鎖線",ch5_finale:"第五章終局：五路亡命"};
 for(const event of CHAPTER_EVENTS)if(CHAPTER_TITLES[event.id])event.title=CHAPTER_TITLES[event.id];
+const STORY_BRIDGES={
+  ch3_broadcast:"逃亡空檔裡，老六與小凱偷走海關的離線伺服器；它只能在市府緊急網路解密。阿哲提議讓整座城市斷訊九十秒。",
+  ch4_truth:"若琳在你處理城市生活時查清阿哲的藏身處。阿哲承認運鈔車裡沒有錢，只有能控制市府金流的主密鑰。",
+  ch5_finale:"若琳與小凱利用你爭取的空檔，從高萬城大樓取回主密鑰。阿哲在跨海資料中心啟動最後程序，五股勢力同時抵達。"
+};
+for(const event of CHAPTER_EVENTS)if(STORY_BRIDGES[event.id])event.summary=STORY_BRIDGES[event.id];
 
 export function chapterForDay(day){return Math.min(5,Math.floor((day-1)/3)+1);}
