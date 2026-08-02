@@ -1,5 +1,5 @@
 export const LIFE_CARDS = [
-  {id:"life_leisure",stage:1,tag:"生活",title:"安排吃喝玩樂與休息",summary:"抽取5張休閒卡牌，選擇吃飯、飲品、娛樂、睡眠或療傷。",hub:"leisure",repeatable:true},
+  {id:"life_leisure",stage:1,tag:"日常",title:"處理日常需求",summary:"抽取5張日常卡牌，選擇吃飯、短暫休息、基礎療傷、整理裝備或蒐集情報。",hub:"leisure",repeatable:true},
   {id:"life_training",stage:1,tag:"成長",title:"進行訓練",summary:"從8種訓練中自由選擇，支付各自的現金與狀態代價。",hub:"training",repeatable:true},
   {id:"life_social",stage:1,tag:"社交",title:"與人見面",summary:"聯絡目前認識的人物，發展關係並交換消息。",hub:"social",repeatable:true},
   {id:"life_purchase",stage:1,tag:"資產",title:"購買",summary:"查看全部商品，購買或升級房產、車輛、武器、奢侈品及產業。",hub:"purchase",repeatable:true},
@@ -17,6 +17,18 @@ export const LEISURE_CARDS = [
   {id:"leisure_sleep",title:"租房睡個好覺",cost:8,detail:"現金 8／健康 +8、疲勞 -20、壓力 -10；5階段內體能 +2。",effects:[{type:"resource.add",value:-8},{type:"stat.add",key:"health",value:8},{type:"stat.add",key:"fatigue",value:-20},{type:"stat.add",key:"stress",value:-10},{type:"ability.add",key:"physique",value:1},{type:"buff.add",id:"rested_body",label:"充分睡眠",ability:"physique",value:2,duration:5}],result:"你鎖門、關機，連續睡了幾個小時。醒來時城市沒有變好，但你的身體準備好了。"},
   {id:"leisure_treatment",title:"前往診所療傷",cost:10,detail:"現金 10／健康 +18、壓力 -4；5階段內膽識 +1。",effects:[{type:"resource.add",value:-10},{type:"stat.add",key:"health",value:18},{type:"stat.add",key:"stress",value:-4},{type:"ability.add",key:"will",value:1},{type:"buff.add",id:"treated",label:"妥善包紮",ability:"will",value:1,duration:5}],result:"醫師沒有問傷口來源，只留下乾淨縫線與一張沒有名字的收據。"}
 ];
+
+const DAILY_TEXT={
+  leisure_free_rest:["找地方短暫午休","免費／疲勞 -8、精神壓力 -3；5階段內膽識 +1。","你關掉手機短暫補眠，讓身體撐過下午，真正的完整休息仍要等到晚上。"],
+  leisure_street_food:["吃份簡單午餐","現金 2／健康 +3、疲勞 -6；5階段內體能 +1。","你快速吃完一份熱食，至少不會在下一次行動中因飢餓分心。"],
+  leisure_nutrition:["吃頓正式午餐","現金 6／健康 +7、疲勞 -8、精神 -4；5階段內體能 +2。","你坐下來完整吃完一餐，讓傷口與體力都有恢復的材料。"],
+  leisure_coffee:["整理當日情報","現金 3／疲勞 -5、精神 -5；5階段內觀察 +2。","你在安靜角落整理照片、車牌和時間線，混亂的線索終於排出順序。"],
+  leisure_bar:["聯絡城市中間人","現金 6／精神 -12、疲勞 +5、街坊 +1；5階段內口才 +2。","中間人收下聯絡費，替你確認幾條不能公開查詢的城市消息。"],
+  leisure_movie:["檢查下一段行動路線","現金 5／精神 -10、疲勞 -3；5階段內膽識 +2。","你實際走過出口、死角與替代道路，知道出事時該往哪裡撤。"],
+  leisure_sleep:["租用空間整理裝備","現金 8／健康 +8、疲勞 -20、精神 -10；5階段內體能 +2。","你租下不受打擾的工作空間，整理裝備並趁空檔補足短暫睡眠。"],
+  leisure_treatment:["處理基礎傷勢","現金 10／健康 +18、精神 -4；5階段內膽識 +1。","你買齊藥品並重新包紮傷口，避免小傷在晚上變成大問題。"]
+};
+for(const card of LEISURE_CARDS){const text=DAILY_TEXT[card.id];if(text)[card.title,card.detail,card.result]=text;}
 
 const training=(id,title,cost,ability,value,extra,detail,result)=>({id,title,cost,detail,effects:[{type:"resource.add",value:-cost},{type:"ability.add",key:ability,value},...extra],result});
 export const TRAINING_CARDS = [

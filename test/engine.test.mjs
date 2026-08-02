@@ -1,13 +1,15 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { newGame, generateCards, getEvent, selectCard, resolveChoice, resolveActivity, acceptSideQuest, declineSideQuests, resolveSideQuestChoice, upgradeAsset, battleAction, continueStage, applyEffects, GameError } from "../src/engine.mjs";
+import { newGame, generateCards, getEvent, selectCard, resolveChoice, resolveActivity, resolveNightOption, acceptSideQuest, declineSideQuests, resolveSideQuestChoice, upgradeAsset, battleAction, continueStage, applyEffects, modifyValue, saveCardDefinition, GameError } from "../src/engine.mjs";
 import { EVENTS } from "../src/content.mjs";
 import { LIFE_CARDS, LEISURE_CARDS, TRAINING_CARDS, CONTACTS, SIDE_QUESTS } from "../src/life-content.mjs";
+import { NIGHT_CARDS } from "../src/night-content.mjs";
+import { CHAPTER_EVENTS } from "../src/chapter-content.mjs";
 
 function playCard(state,id){
   state=selectCard(state,id);
   if(state.phase==="event"){const event=getEvent(id);return resolveChoice(state,event.choices[0].id);}
-  if(state.phase==="activity"){const source=state.activityKind==="leisure"?LEISURE_CARDS:state.activityKind==="training"?TRAINING_CARDS:state.activityKind==="social"?CONTACTS:getEvent("asset_market").choices;const usable=state.activityOptions.find(optionId=>{const option=source.find(x=>x.id===optionId);const asset=option.effects.find(effect=>effect.type==="asset.grant");return (!option.cost||option.cost<=state.player.resource)&&(!asset||!state.assets[asset.category].some(item=>item.id===asset.assetId));});return resolveActivity(state,usable||"cancel");}
+  if(state.phase==="activity"){if(state.activityKind.startsWith("night:"))return resolveNightOption(state,state.activityOptions[0]||"cancel");const source=state.activityKind==="leisure"?LEISURE_CARDS:state.activityKind==="training"?TRAINING_CARDS:state.activityKind==="social"?CONTACTS:getEvent("asset_market").choices;const usable=state.activityOptions.find(optionId=>{const option=source.find(x=>x.id===optionId);const asset=option.effects.find(effect=>effect.type==="asset.grant");return (!option.cost||option.cost<=state.player.resource)&&(!asset||!state.assets[asset.category].some(item=>item.id===asset.assetId));});return resolveActivity(state,usable||"cancel");}
   if(state.phase==="sidequestPick")return declineSideQuests(state);
   if(state.phase==="sidequestNode"){const quest=SIDE_QUESTS.find(x=>x.id===state.activeSideQuest.id);return resolveSideQuestChoice(state,quest.nodes[state.activeSideQuest.nodeIndex].choices[0].id);}
   return state;
@@ -18,7 +20,7 @@ test("相同 seed 產生相同卡牌",()=>{
   assert.equal(a.candidates.length,1); assert.equal(a.deckType,"mainline"); assert.deepEqual(a.candidates,b.candidates); assert.equal(a.seed,b.seed);
 });
 test("上午沒有主線時改抽五張生活卡牌",()=>{
-  const input=newGame("x",42); input.day=2;
+  const input=newGame("x",42); input.day=2; input.seen.runner=true;
   const state=generateCards(input);
   assert.equal(state.deckType,"life"); assert.equal(state.candidates.length,5);
   assert.ok(state.candidates.every(id=>LIFE_CARDS.some(card=>card.id===id)));
@@ -35,19 +37,19 @@ test("數值集中 clamp",()=>{
 test("可由固定策略完整通關，戰敗也不中斷主線",()=>{
   let state=generateCards(newGame("x",12345)); let guard=0;
   while(!state.finished&&guard++<100){
-    const preferred=state.candidates.find(id=>["signal","checkpoint","ambush","vault"].includes(id))??state.candidates[0];
+    const preferred=state.candidates.find(id=>["signal","checkpoint","ambush","vault","ch5_finale"].includes(id))??state.candidates.find(id=>(getEvent(id,state).cost||0)<=state.player.resource)??state.candidates[0];
     state=playCard(state,preferred);
     while(state.phase==="battle") state=battleAction(state,"attack");
     state=continueStage(state);
   }
-  assert.equal(state.finished,true); assert.equal(state.day,7); assert.ok(state.flags.ending_free||state.flags.ending_restore||state.flags.ending_destroy);
+  assert.equal(state.finished,true); assert.equal(state.day,16); assert.ok(state.flags.ending_free||state.flags.ending_restore||state.flags.ending_destroy);
   assert.ok(state.log.length>20);
 });
 test("兩百個種子與忽略主線策略皆不會卡死",()=>{
   for(let seed=1;seed<=200;seed++){
     let state=generateCards(newGame("x",seed)); let guard=0;
     while(!state.finished&&guard++<80){
-      const selected=state.candidates.find(id=>!["signal","checkpoint","ambush","vault"].includes(id))??state.candidates[0];
+      const selected=state.candidates.find(id=>!["signal","checkpoint","ambush","vault"].includes(id)&&(getEvent(id,state).cost||0)<=state.player.resource)??state.candidates.find(id=>(getEvent(id,state).cost||0)<=state.player.resource)??state.candidates[0];
       state=playCard(state,selected);
       while(state.phase==="battle") state=battleAction(state,"guard");
       state=continueStage(state);
@@ -103,7 +105,7 @@ test("房產、車輛、武器、奢侈品與產業集中於同一張購買卡�
 });
 test("生活牌堆固定六張核心行為，休閒抽五張且保證可負擔",()=>{
   assert.equal(LIFE_CARDS.length,6);
-  let state=newGame();state.player.resource=0;state.day=2;state=generateCards(state);
+  let state=newGame();state.player.resource=0;state.day=2;state.stage=1;state=generateCards(state);
   assert.equal(state.candidates.length,5);assert.ok(!state.candidates.includes("life_purchase"));
   state=selectCard(state,"life_leisure");assert.equal(state.activityOptions.length,5);
   assert.ok(state.activityOptions.some(id=>LEISURE_CARDS.find(card=>card.id===id).cost<=0));
@@ -123,4 +125,24 @@ test("支線牌堆九條、初次三選一，進行中時保證出現並繼續�
 test("資產可無上限升級，初次必定成功且正確扣款",()=>{
   let state=newGame();state.player.resource=50;state.phase="event";state.selected="asset_market";state=resolveChoice(state,"weapon");const asset=state.assets.weapons[0];const before=state.player.resource;state.phase="activity";state.activityKind="purchase";
   state=upgradeAsset(state,"weapons",asset.id);assert.equal(state.assets.weapons[0].level,1);assert.equal(state.player.resource,before-Math.ceil(14*.25));
+});
+
+test("夜生活牌堆共24張，每晚抽5張且保證免費與兩張恢復",()=>{
+  assert.equal(NIGHT_CARDS.length,24);
+  let state=newGame("x",77);state.stage=2;state.day=4;state=generateCards(state);
+  assert.equal(state.deckType,"night");assert.equal(state.candidates.length,5);
+  const cards=state.candidates.map(id=>getEvent(id,state));
+  assert.ok(cards.some(card=>card.cost===0));assert.ok(cards.filter(card=>card.kind==="recovery").length>=2);
+});
+
+test("五章主線延伸至第15天",()=>{
+  assert.ok(CHAPTER_EVENTS.some(event=>event.chapter===5&&event.requirements.dayMin===15));
+  const state=newGame();state.day=15;const cards=generateCards(state);
+  assert.equal(cards.chapter,5);assert.ok(cards.candidates.includes("ch5_finale"));
+});
+
+test("修改器可改數值並新增離線自訂卡",()=>{
+  let state=modifyValue(newGame(),"ability.hacking",91);assert.equal(state.player.abilities.hacking,91);
+  state=saveCardDefinition(state,{deck:"night",title:"在屋頂看夜景",summary:"免費／精神 -5。",cost:0,effects:[{type:"stat.add",key:"stress",value:-5}]});
+  assert.equal(state.customCards.length,1);assert.equal(state.customCards[0].deck,"night");
 });

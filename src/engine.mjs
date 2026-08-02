@@ -1,5 +1,7 @@
 import { EVENTS, STAGES } from "./content.mjs";
 import { LIFE_CARDS, LEISURE_CARDS, TRAINING_CARDS, CONTACTS, JOBS, SIDE_QUESTS } from "./life-content.mjs";
+import { NIGHT_CARDS } from "./night-content.mjs";
+import { CHAPTER_EVENTS, chapterForDay } from "./chapter-content.mjs";
 
 const LIMITS = { health:[0,100], fatigue:[0,100], stress:[0,100], resource:[0,999], ability:[0,100], relation:[-100,100], world:[0,100] };
 const ASSET_BASE_PRICES={property_riverside_flat:40,property_suburban_safehouse:28,vehicle_grey_sport:22,vehicle_black_suv:18,weapon_sawed_shotgun:14,weapon_silenced_pistol:18,luxury_gold_watch:10,luxury_black_bag:12,industry_bay_diner:18,industry_east_garage:28,industry_blue_nightclub:36,industry_old_apartments:50};
@@ -10,10 +12,10 @@ const clamp = (value,[min,max]) => Math.max(min,Math.min(max,value));
 
 export function newGame(gender="不公開",seed=2026){
   return {
-    version:1, contentVersion:"0.4.0-life-sidequests", seed:seed>>>0, gender, day:1, stage:0, phase:"cards", candidates:[], selected:null, battle:null, finished:false,
+    version:1, contentVersion:"0.5.0-five-chapters", seed:seed>>>0, gender, day:1, stage:0, chapter:1, phase:"cards", candidates:[], selected:null, battle:null, finished:false,
     player:{health:100,fatigue:10,stress:8,resource:24,abilities:{physique:28,reflex:28,hacking:28,engineering:28,social:28,perception:28,will:28,management:28}},
     assets:{properties:[],vehicles:[],weapons:[],luxuries:[],industries:[]}, buffs:[], activeSideQuest:null, completedSideQuests:[], metContacts:{},
-    relations:{mira:0,kael:0,zero:0}, world:{corporate:55,gangs:45,security:58,people:42,ai:35}, flags:{}, seen:{}, cooldown:{}, log:[], sequence:0
+    relations:{mira:0,kael:0,zero:0}, world:{corporate:55,gangs:45,security:58,people:42,ai:35}, flags:{}, seen:{}, cooldown:{}, customCards:[], cardOverrides:{}, unlockedSideQuests:[], log:[], sequence:0
   };
 }
 
@@ -28,15 +30,20 @@ function shuffledWeighted(state,list){
 export function generateCards(input){
   const state=clone(input);
   if(state.finished) return state;
-  const stageEligible=EVENTS.filter(e=>e.stage===state.stage&&requirementMet(state,e));
+  state.chapter=chapterForDay(state.day);
+  const custom=(state.customCards||[]).filter(card=>card.enabled!==false);
+  const storyEvents=[...EVENTS,...CHAPTER_EVENTS,...custom.filter(card=>card.deck==="main")];
+  const stageEligible=storyEvents.filter(e=>e.stage===state.stage&&requirementMet(state,e));
   const morningMain=state.stage===0?stageEligible.filter(e=>e.main):[];
   if(state.stage===0&&morningMain.length){
     state.deckType="mainline";
     state.candidates=morningMain.map(e=>e.id);
   }else{
     const sourceStage=state.stage===0?1:state.stage;
-    let eligible=sourceStage===1?LIFE_CARDS.filter(card=>card.id!=="life_purchase"||marketAvailable(state)):EVENTS.filter(e=>e.stage===sourceStage&&!e.main&&requirementMet(state,e));
-    state.deckType=sourceStage===1?"life":"action";
+    let eligible;
+    if(sourceStage===1) eligible=[...LIFE_CARDS.filter(card=>card.id!=="life_purchase"||marketAvailable(state)),...custom.filter(card=>card.deck==="life")];
+    else eligible=[...NIGHT_CARDS.filter(card=>nightUnlocked(state,card)),...custom.filter(card=>card.deck==="night")];
+    state.deckType=sourceStage===1?"life":"night";
     let selected=shuffledWeighted(state,eligible).slice(0,5);
     if(sourceStage===1){
       const reserved=[];
@@ -44,6 +51,15 @@ export function generateCards(input){
       if(state.player.resource<10) reserved.push("life_work");
       if(state.player.health<50||state.player.fatigue>65||state.player.stress>65) reserved.push("life_leisure");
       for(const id of [...new Set(reserved)]) if(!selected.some(card=>card.id===id)){selected.pop();selected.push(LIFE_CARDS.find(card=>card.id===id));}
+    }else{
+      const force=[NIGHT_CARDS.find(card=>card.id==="night_shelter")];
+      const recovery=eligible.filter(card=>card.kind==="recovery"&&card.id!=="night_shelter");
+      if(state.player.health<35) force.push(NIGHT_CARDS.find(card=>card.id==="night_clinic"));
+      else if(state.player.fatigue>70) force.push(NIGHT_CARDS.find(card=>card.id==="night_hotel"));
+      else if(state.player.stress>70) force.push(NIGHT_CARDS.find(card=>card.id==="night_movie"));
+      else force.push(shuffledWeighted(state,recovery)[0]);
+      const guaranteed=[...new Map(force.filter(Boolean).map(card=>[card.id,card])).values()];
+      selected=[...selected.filter(card=>!guaranteed.some(item=>item.id===card.id)).slice(0,5-guaranteed.length),...guaranteed];
     }
     state.candidates=selected.map(e=>e.id);
     if(state.candidates.length<5) throw new GameError("INSUFFICIENT_CARDS",`第 ${state.day} 天「${STAGES[state.stage]}」只有 ${state.candidates.length} 張合法卡片`);
@@ -51,12 +67,19 @@ export function generateCards(input){
   state.phase="cards"; state.selected=null;
   return state;
 }
+function nightUnlocked(state,card){
+  if(card.unlockDay&&state.day<card.unlockDay)return false;
+  if(card.unlockCash&&state.player.resource<card.unlockCash)return false;
+  if(card.requires==="property"&&!state.assets.properties.length)return false;
+  if(card.requires==="industry"&&!state.assets.industries.length)return false;
+  return true;
+}
 function marketAvailable(state){
   const choices=getEvent("asset_market").choices.filter(choice=>choice.effects.some(effect=>effect.type==="asset.grant"));
   if(choices.some(choice=>choice.cost<=state.player.resource&&!choice.effects.some(effect=>effect.type==="asset.grant"&&state.assets[effect.category].some(asset=>asset.id===effect.assetId))))return true;
   return Object.values(state.assets).flat().some(asset=>state.player.resource>=Math.max(1,Math.ceil((asset.basePrice||ASSET_BASE_PRICES[asset.id]||1)*.25*((asset.level||0)+1))));
 }
-export function getEvent(id){ const found=[...EVENTS,...LIFE_CARDS].find(e=>e.id===id); if(!found) throw new GameError("UNKNOWN_EVENT",`未知事件：${id}`); return found; }
+export function getEvent(id,state=null){ const found=[...EVENTS,...CHAPTER_EVENTS,...LIFE_CARDS,...NIGHT_CARDS,...(state?.customCards||[])].find(e=>e.id===id); if(!found) throw new GameError("UNKNOWN_EVENT",`未知事件：${id}`); return state?.cardOverrides?.[id]?{...found,...state.cardOverrides[id],id:found.id}:found; }
 function logEffect(state,source,type,target,before,after,delta){ state.log.push({sequence:++state.sequence,day:state.day,stage:state.stage,source,type,target,before,after,delta}); }
 function add(state,container,key,value,limit,source,type){ const before=container[key]??0; const after=clamp(before+value,limit); container[key]=after; logEffect(state,source,type,key,before,after,after-before); }
 export function applyEffects(input,effects,source="system"){
@@ -84,7 +107,9 @@ export function selectCard(input,eventId){
   if(input.phase!=="cards") throw new GameError("WRONG_PHASE","現在不能選卡");
   if(!input.candidates.includes(eventId)) throw new GameError("INVALID_CARD","卡片不在候選清單中");
   let state=clone(input); state.selected=eventId;
-  const card=getEvent(eventId);
+  const card=getEvent(eventId,state);
+  if(card.customDirect||card.deck==="life"||card.deck==="night") return resolveDirectCard(state,card);
+  if(state.deckType==="night") return openNightCard(state,card);
   if(!card.hub){state.phase="event";return state;}
   state.candidates=[];
   if(card.hub==="leisure"){
@@ -103,6 +128,47 @@ export function selectCard(input,eventId){
   }
   throw new GameError("UNKNOWN_HUB",`未知生活卡牌：${card.hub}`);
 }
+function resolveDirectCard(input,card){
+  if(card.cost&&input.player.resource<card.cost)throw new GameError("INSUFFICIENT_CASH",`現金不足，需要 ${card.cost}`);
+  const effects=[...(card.cost?[{type:"resource.add",value:-card.cost}]:[]),...(card.effects||[])];let state=applyEffects(input,effects,`custom:${card.id}`);state.phase="result";state.lastResult={title:card.title,choice:card.title,success:true,summary:card.result||card.summary||"自訂卡牌已結算。"};return state;
+}
+function openNightCard(input,card){
+  if(card.cost&&input.player.resource<card.cost)throw new GameError("INSUFFICIENT_CASH",`現金不足，需要 ${card.cost}`);
+  if(card.hub){
+    const state=clone(input);state.activityKind=`night:${card.hub}`;
+    if(card.hub==="property")state.activityOptions=state.assets.properties.map(asset=>asset.id);
+    else if(card.hub==="contact")state.activityOptions=CONTACTS.map(contact=>contact.id);
+    else if(card.hub==="industry")state.activityOptions=state.assets.industries.map(asset=>asset.id);
+    else if(card.hub==="industryContact")state.activityOptions=state.assets.industries.flatMap(asset=>CONTACTS.map(contact=>`${asset.id}|${contact.id}`));
+    else if(card.hub==="industryRisk")state.activityOptions=state.assets.industries.map(asset=>asset.id);
+    state.phase="activity";return state;
+  }
+  if(card.risk){
+    let state=applyEffects(input,[{type:"resource.add",value:-card.cost}],`night:${card.id}:entry`);const ability=card.abilities.slice().sort((a,b)=>abilityValue(state,b)-abilityValue(state,a))[0];const n=rngNext(state.seed);state.seed=n.seed;const roll=Math.floor(n.value*41)+20;const success=abilityValue(state,ability)+roll>=card.difficulty+28;
+    const effects=success?[{type:"resource.add",value:card.reward},...card.effects]:card.failure;state=applyEffects(state,effects,`night:${card.id}:${success?"success":"failure"}`);if(state.player.health<=0){state.player.health=1;state.flags.hospitalDebt=(state.flags.hospitalDebt||0)+10;state.unlockedSideQuests=[...new Set([...(state.unlockedSideQuests||[]),"sq_hospital_debt"])];}
+    state.phase="result";state.lastResult={title:card.title,choice:success?"把握刺激":"承受代價",success,roll,check:{ability,difficulty:card.difficulty},summary:success?`你從危險中全身而退，獲得現金 ${card.reward}，也暫時忘了白天的壓力。`:`事情失控了。你沒有被故事淘汰，但傷勢、疲勞或警方注意會跟到明天。${state.flags.hospitalDebt?" 地下診所替你保住性命，也記下了一筆欠款。":""}`};return state;
+  }
+  let state=applyEffects(input,card.effects||[],`night:${card.id}`);let extra="";if(card.random){const n=rngNext(state.seed);state.seed=n.seed;if(n.value<.3){state=applyEffects(state,[{type:"ability.add",key:"perception",value:1}],`night:${card.id}:random`);extra=" 隨機插曲：你無意間聽到一條可疑交易消息，觀察永久 +1。";}}
+  state.phase="result";state.lastResult={title:card.title,choice:card.title,success:true,summary:(card.result||card.summary)+extra};return state;
+}
+export function resolveNightOption(input,id){
+  if(input.phase!=="activity"||!input.activityKind?.startsWith("night:"))throw new GameError("WRONG_PHASE","目前不在夜生活選單");
+  const card=getEvent(input.selected,input);if(id==="cancel"){const state=clone(input);state.phase="result";state.lastResult={title:card.title,choice:"取消安排",success:true,summary:"你沒有進行活動，但尋找場所仍花掉了整晚。"};return state;}
+  if(!input.activityOptions.includes(id))throw new GameError("UNKNOWN_ACTIVITY",`未知夜生活選項：${id}`);
+  let state=clone(input),effects=[],label="",summary="";
+  if(input.activityKind==="night:property"){
+    const asset=state.assets.properties.find(item=>item.id===id),level=asset.level||0,milestone=(level>=10?10:level>=5?5:level>=3?3:0);effects=[{type:"stat.add",key:"fatigue",value:-(18+level*2)},{type:"stat.add",key:"stress",value:-(6+level+milestone)},{type:"stat.add",key:"health",value:3+level+milestone},buffEffect("property_sleep",`${asset.name}的好眠`,"physique",1+Math.floor(level/3))];label=asset.name;summary=`你回到 ${asset.name}，升級 +${level} 的設備讓這晚恢復得更完整。`;
+  }else if(input.activityKind==="night:contact"){
+    const contact=CONTACTS.find(item=>item.id===id),second=!!state.metContacts[`${state.day}:${id}`],gain=second?3:6;effects=[{type:"resource.add",value:-card.cost},{type:"relation.add",key:id,value:gain},{type:"stat.add",key:"fatigue",value:card.id.includes("drive")?3:-5},{type:"stat.add",key:"stress",value:-12},...(card.id.includes("drive")?[buffEffect("social_drive","有人同行","engineering",2)]:[buffEffect("social_night","有人陪伴","social",2)])];state.metContacts[`${state.day}:${id}`]=true;label=contact.name;summary=`你和${contact.name}一起度過晚上。${second?"這是今天第二次見面，關係提升效果減半。":"你們之間多了一段不必向別人解釋的共同記憶。"}`;
+  }else{
+    const [assetId,contactId]=id.split("|"),asset=state.assets.industries.find(item=>item.id===assetId);const level=asset.level||0;if(!asset)throw new GameError("UNKNOWN_ASSET","找不到產業");label=asset.name;
+    if(input.activityKind==="night:industry"){effects=[{type:"resource.add",value:Math.max(2,(asset.dailyIncome||0)+level)},{type:"stat.add",key:"stress",value:-7},{type:"stat.add",key:"fatigue",value:-4}];summary=`你親自巡視 ${asset.name}，解決小問題並拿到今晚額外收入。`;}
+    else if(input.activityKind==="night:industryContact"){const contact=CONTACTS.find(item=>item.id===contactId),second=!!state.metContacts[`${state.day}:${contactId}`];effects=[{type:"resource.add",value:-card.cost},{type:"relation.add",key:contactId,value:second?3:6},{type:"resource.add",value:Math.max(1,Math.floor((asset.dailyIncome||0)/2))},{type:"stat.add",key:"stress",value:-10}];state.metContacts[`${state.day}:${contactId}`]=true;label=`${asset.name}／${contact.name}`;summary=`你在 ${asset.name} 招待${contact.name}，談感情也談生意。`;}
+    else{const ability=["management","social","perception"].sort((a,b)=>abilityValue(state,b)-abilityValue(state,a))[0],n=rngNext(state.seed);state.seed=n.seed;const roll=Math.floor(n.value*41)+20,success=abilityValue(state,ability)+roll>=70;effects=success?[{type:"resource.add",value:5+level},{type:"stat.add",key:"stress",value:-5}]:[{type:"resource.add",value:-Math.min(state.player.resource,4+level)},{type:"stat.add",key:"stress",value:6}];state=applyEffects(state,effects,`night:industryRisk:${asset.id}`);state.phase="result";state.lastResult={title:card.title,choice:asset.name,success,roll,check:{ability,difficulty:42},summary:success?"你在打烊前找出問題源頭，保住收入與員工信心。":"問題沒有完全解決，你付出一筆損失，但產業仍能繼續營業。"};return state;}
+  }
+  state=applyEffects(state,effects,`night:${card.id}:${id}`);state.phase="result";state.lastResult={title:card.title,choice:label,success:true,summary};return state;
+}
+function buffEffect(id,label,ability,value){return {type:"buff.add",id,label,ability,value,duration:5};}
 function abilityValue(state,key){return (state.player.abilities[key]||0)+state.buffs.filter(buff=>buff.ability===key).reduce((sum,buff)=>sum+buff.value,0);}
 function activityOption(state,id){
   if(state.activityKind==="leisure") return LEISURE_CARDS.find(option=>option.id===id);
@@ -154,7 +220,7 @@ export function upgradeAsset(input,category,assetId){
 }
 export function resolveChoice(input,choiceId){
   if(input.phase!=="event") throw new GameError("WRONG_PHASE","現在不能選擇事件選項");
-  const event=getEvent(input.selected); const choice=event.choices.find(c=>c.id===choiceId);
+  const event=getEvent(input.selected,input); const choice=event.choices.find(c=>c.id===choiceId);
   if(!choice) throw new GameError("UNKNOWN_CHOICE",`未知選項：${choiceId}`);
   if(choice.cost&&input.player.resource<choice.cost) throw new GameError("INSUFFICIENT_CASH",`現金不足，需要 ${choice.cost}`);
   const assetEffect=choice.effects.find(effect=>effect.type==="asset.grant");
@@ -186,19 +252,15 @@ export function continueStage(input){
   let state=clone(input); state.buffs=(state.buffs||[]).map(buff=>({...buff,remaining:buff.remaining-1})).filter(buff=>buff.remaining>0);state.stage++;
   if(state.stage>=STAGES.length){
     state.stage=0; state.day++;
-    const ownsFlat=state.assets?.properties?.some(asset=>asset.id==="property_riverside_flat");
-    const propertyLevels=(state.assets?.properties||[]).reduce((sum,asset)=>sum+(asset.level||0)+((asset.level||0)>=3?2:0)+((asset.level||0)>=5?3:0)+((asset.level||0)>=10?5:0),0);
-    const luxuryLevels=(state.assets?.luxuries||[]).reduce((sum,asset)=>sum+(asset.level||0),0);
     const ownsCar=state.assets?.vehicles?.some(asset=>asset.id==="vehicle_grey_sport");
     const ownsGarage=state.assets?.industries?.some(asset=>asset.id==="industry_east_garage");
     const vehicleSelfMaintained=(state.assets?.vehicles||[]).some(asset=>(asset.level||0)>=3);
     const industryIncome=(state.assets?.industries||[]).reduce((sum,asset)=>sum+(asset.dailyIncome||0),0);
-    const recovery=(state.flags.safehouse?12:6)+(ownsFlat?5:0);
-    state=applyEffects(state,[{type:"stat.add",key:"fatigue",value:-recovery-propertyLevels},{type:"stat.add",key:"stress",value:(ownsFlat?-8:-4)-luxuryLevels},{type:"stat.add",key:"health",value:(state.flags.safehouse?5:2)+(ownsFlat?3:0)+propertyLevels},{type:"resource.add",value:(state.flags.safehouse?3:0)+industryIncome-(ownsCar&&!ownsGarage&&!vehicleSelfMaintained?1:0)}],"day:end");
+    state=applyEffects(state,[{type:"resource.add",value:(state.flags.safehouse?3:0)+industryIncome-(ownsCar&&!ownsGarage&&!vehicleSelfMaintained?1:0)}],"day:end");
     state.lastSettlement={industryIncome,vehicleMaintenance:ownsCar&&!ownsGarage&&!vehicleSelfMaintained?1:0,day:state.day-1};
     if(state.activeSideQuest?.deadlineDay&&state.day>state.activeSideQuest.deadlineDay){const expired=SIDE_QUESTS.find(quest=>quest.id===state.activeSideQuest.id);state=applyEffects(state,[{type:"stat.add",key:"stress",value:7},{type:"world.add",key:"people",value:-4}],`sidequest:${expired.id}:expired`);state.flags[`expired.${expired.id}`]=true;state.activeSideQuest=null;}
   }
-  if(state.day>6){
+  if(state.day>15){
     if(!state.flags.ending_free&&!state.flags.ending_restore&&!state.flags.ending_destroy){
       state=applyEffects(state,[{type:"flag.set",key:"ending_destroy",value:true},{type:"world.add",key:"security",value:-6}],"mainline:fallback");
       state.lastResult={title:"未介入的終局",choice:"金庫爆炸",success:false,summary:"你沒有趕上最後窗口。阿哲獨自引爆金庫，真相和贓款一起被火吞沒。"};
@@ -209,8 +271,24 @@ export function continueStage(input){
 }
 export function validateSave(data){
   if(!data||data.version!==1||!Number.isInteger(data.day)||!data.player?.abilities||!data.world||!Array.isArray(data.log)) throw new GameError("INVALID_SAVE","存檔格式無效或版本不相容");
-  const state=clone(data); state.assets??={}; for(const category of ["properties","vehicles","weapons","luxuries","industries"]){state.assets[category]??=[];for(const asset of state.assets[category]){asset.level??=0;asset.basePrice??=ASSET_BASE_PRICES[asset.id]||1;}}state.buffs??=[];state.activeSideQuest??=null;state.completedSideQuests??=[];state.metContacts??={};return state;
+  const state=clone(data); state.assets??={}; for(const category of ["properties","vehicles","weapons","luxuries","industries"]){state.assets[category]??=[];for(const asset of state.assets[category]){asset.level??=0;asset.basePrice??=ASSET_BASE_PRICES[asset.id]||1;}}state.buffs??=[];state.activeSideQuest??=null;state.completedSideQuests??=[];state.metContacts??={};state.customCards??=[];state.cardOverrides??={};state.unlockedSideQuests??=[];state.chapter=chapterForDay(state.day);return state;
 }
+export function modifyValue(input,path,value){
+  const state=clone(input),number=Number(value);if(!Number.isFinite(number))throw new GameError("INVALID_VALUE","修改值必須是數字");
+  const direct={health:[state.player,"health",LIMITS.health],fatigue:[state.player,"fatigue",LIMITS.fatigue],stress:[state.player,"stress",LIMITS.stress],resource:[state.player,"resource",LIMITS.resource],mira:[state.relations,"mira",LIMITS.relation],kael:[state.relations,"kael",LIMITS.relation],zero:[state.relations,"zero",LIMITS.relation],corporate:[state.world,"corporate",LIMITS.world],gangs:[state.world,"gangs",LIMITS.world],security:[state.world,"security",LIMITS.world],people:[state.world,"people",LIMITS.world],ai:[state.world,"ai",LIMITS.world]};
+  if(path.startsWith("ability.")){const key=path.slice(8);if(!(key in state.player.abilities))throw new GameError("INVALID_VALUE","未知能力");state.player.abilities[key]=clamp(Math.round(number),LIMITS.ability);}
+  else if(direct[path]){const [target,key,limit]=direct[path];target[key]=clamp(Math.round(number),limit);}
+  else if(path==="day"){state.day=clamp(Math.round(number),[1,15]);state.chapter=chapterForDay(state.day);state.stage=0;state.phase="result";state.lastResult={title:"修改器",choice:"變更日期",success:true,summary:`日期已修改為第 ${state.day} 日、第 ${state.chapter} 章。按繼續重新抽牌。`};}
+  else throw new GameError("INVALID_VALUE","不允許修改這個欄位");return state;
+}
+export function saveCardDefinition(input,definition){
+  const state=clone(input);const title=String(definition.title||"").trim(),summary=String(definition.summary||"").trim();if(!title||!summary)throw new GameError("INVALID_CARD","卡牌名稱與說明不能空白");
+  const effects=(definition.effects||[]).filter(effect=>Number(effect.value)!==0).map(effect=>({...effect,value:Number(effect.value)}));
+  if(definition.baseId){const base=getEvent(definition.baseId,state);state.cardOverrides[base.id]={title,summary,tag:String(definition.tag||base.tag||"自訂"),cost:Math.max(0,Number(definition.cost)||0),effects,customDirect:true,result:String(definition.result||summary)};}
+  else{const id=`custom_${Date.now()}_${Math.floor(state.seed%10000)}`,deck=["life","night","main"].includes(definition.deck)?definition.deck:"night";state.customCards.push({id,deck,stage:deck==="main"?0:deck==="life"?1:2,main:deck==="main",repeatable:true,customDirect:true,title,summary,tag:String(definition.tag||"自訂"),cost:Math.max(0,Number(definition.cost)||0),effects,result:String(definition.result||summary)});}
+  return state;
+}
+export function deleteCustomCard(input,id){const state=clone(input);state.customCards=state.customCards.filter(card=>card.id!==id);delete state.cardOverrides[id];return state;}
 export function endingText(state){
   if(state.flags.ending_free) return "證據在全國新聞同步播出。警長被捕、高萬城潛逃，而你成了揭露真相的罪犯。阿哲趁混亂消失，只留下三年前欠你的那一份錢。";
   if(state.flags.ending_restore) return "你救出若琳，帶著現金離開海港市。新聞把一切歸咎於阿哲；你知道這不是正義，但家人第一次擁有選擇未來的本錢。";

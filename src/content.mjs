@@ -1,4 +1,4 @@
-export const STAGES = ["上午・故事", "下午・生活", "夜晚・經營"];
+export const STAGES = ["上午・故事", "下午・生活", "晚上・夜生活"];
 export const ABILITY_LABELS = { physique:"體能", reflex:"槍法", hacking:"科技", engineering:"駕駛", social:"口才", perception:"觀察", will:"膽識", management:"生意" };
 
 const choice = (id, text, detail, effects, check, result, cost) => ({ id, text, detail, effects, check, result, cost });
@@ -48,7 +48,7 @@ export const EVENTS = [
   event("runner",0,"中槍的菜鳥","年輕車手小凱倒在你家門前，手裡緊握阿哲失蹤前寄出的保險箱鑰匙。","危機",[
     choice("hide","藏起小凱","冒著警方搜索風險救下一名盟友。",[{type:"relation.add",key:"kael",value:8},{type:"flag.set",key:"saved_runner",value:true},{type:"stat.add",key:"health",value:-4}],{ability:"will",difficulty:32}),
     choice("take_chip","拿走鑰匙","把他丟在急診門口，自己去追那筆錢。",[{type:"resource.add",value:12},{type:"flag.set",key:"took_chip",value:true},{type:"world.add",key:"people",value:-3}])
-  ],{requirements:{dayMin:2}}),
+  ],{main:true,requirements:{dayMin:2,dayMax:2}}),
   event("gym",1,"進行體能訓練","前往健身房或戶外場地鍛鍊，改善體能並消耗疲勞。","訓練",[
     choice("sprint","進行耐力訓練","跑步與負重訓練，提高體能。",[{type:"ability.add",key:"physique",value:3},{type:"stat.add",key:"fatigue",value:12},{type:"stat.add",key:"health",value:3},{type:"resource.add",value:-2}],undefined,"你完成一整套負重與間歇跑。肌肉開始發酸，但呼吸比上一次更快恢復平穩。"),
     choice("dodge","進行反應訓練","利用拳擊沙包與閃避球訓練反應。",[{type:"ability.add",key:"reflex",value:2},{type:"ability.add",key:"physique",value:1},{type:"stat.add",key:"fatigue",value:10},{type:"stat.add",key:"stress",value:-4}],undefined,"教練把節奏拉到你幾乎跟不上。離開時雙腿仍在發抖，腦袋卻比進門前清醒。")
@@ -105,9 +105,9 @@ export const EVENTS = [
     choice("fight","殺出包圍","和背叛你的舊搭檔並肩撐過這一分鐘。",[{type:"battle.start",enemy:"警長的便衣槍手"}])
   ],{main:true,requirements:{dayMin:5,dayMax:5}}),
   event("vault",0,"市府金庫","真相終於完整：高萬城、警長與阿哲合謀吞掉賑災基金，再把爆炸案嫁禍給你。金庫裡有錢，也有全部證據。","終局",[
-    choice("free","公開證據","放棄大部分贓款，把帳本與錄音交給全國媒體。",[{type:"flag.set",key:"ending_free",value:true},{type:"world.add",key:"ai",value:12},{type:"world.add",key:"corporate",value:-8}]),
-    choice("restore","帶錢回家","拿走足以改變家人命運的現金，並救出被警長抓走的若琳。",[{type:"flag.set",key:"ending_restore",value:true},{type:"relation.add",key:"mira",value:15},{type:"world.add",key:"people",value:7}]),
-    choice("destroy","燒掉一切","把金庫、證據與追進來的仇人一起送進火海。",[{type:"flag.set",key:"ending_destroy",value:true},{type:"world.add",key:"security",value:-10},{type:"ability.add",key:"will",value:3}])
+    choice("free","公開部分證據","保留核心帳本，把足以動搖市府的錄音交給全國媒體。",[{type:"flag.set",key:"chapter1_public",value:true},{type:"world.add",key:"ai",value:12},{type:"world.add",key:"corporate",value:-8}]),
+    choice("restore","先帶錢救人","拿走能救出若琳的現金，暫時保留真正證據。",[{type:"flag.set",key:"chapter1_family",value:true},{type:"relation.add",key:"mira",value:15},{type:"world.add",key:"people",value:7}]),
+    choice("destroy","炸掉警長的金庫","摧毀贓款與追兵，但阿哲帶著核心帳本逃出火場。",[{type:"flag.set",key:"chapter1_fire",value:true},{type:"world.add",key:"security",value:-10},{type:"ability.add",key:"will",value:3}])
   ],{main:true,requirements:{dayMin:6,dayMax:6}}),
   event("rumor",0,"晨間政論秀","名嘴一面痛罵犯罪，一面替高萬城的新賭場宣傳；電話背景卻傳出阿哲的聲音。","媒體",[
     choice("call","打進直播","用一句話讓全城開始懷疑官方版本。",[{type:"ability.add",key:"social",value:2},{type:"world.add",key:"people",value:4}]),
