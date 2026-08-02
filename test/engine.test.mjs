@@ -128,8 +128,8 @@ test("資產可無上限升級，初次必定成功且正確扣款",()=>{
   state=upgradeAsset(state,"weapons",asset.id);assert.equal(state.assets.weapons[0].level,1);assert.equal(state.player.resource,before-Math.ceil(14*.25));
 });
 
-test("夜生活牌堆包含32張，每晚抽5張且保證免費與兩張恢復",()=>{
-  assert.equal(NIGHT_CARDS.length,32);
+test("夜生活牌堆包含40張，每晚抽5張且保證免費與兩張恢復",()=>{
+  assert.equal(NIGHT_CARDS.length,40);
   let state=newGame("x",77);state.stage=2;state.day=4;state=generateCards(state);
   assert.equal(state.deckType,"night");assert.equal(state.candidates.length,5);
   const cards=state.candidates.map(id=>getEvent(id,state));
@@ -148,8 +148,8 @@ test("高報酬戰鬥卡會進入回合戰鬥並結算獎勵",()=>{
   let state=newGame("x",88);state.day=20;state.stage=2;state.player.resource=100;state=generateCards(state);state.candidates=["combat_dock_brawl"];state=selectCard(state,"combat_dock_brawl");assert.equal(state.phase,"battle");const before=state.player.resource;let guard=0;while(state.phase==="battle"&&guard++<30)state=battleAction(state,"brawl");assert.equal(state.phase,"result");if(state.lastResult.success)assert.ok(state.player.resource>=before+32);
 });
 
-test("城市勢力包含六個幫派與九塊地盤，玩家可主動挑戰",()=>{
-  assert.equal(FACTIONS.length,6);assert.equal(TERRITORIES.length,9);
+test("城市勢力包含九個幫派與十五塊地盤，玩家可主動挑戰",()=>{
+  assert.equal(FACTIONS.length,9);assert.equal(TERRITORIES.length,15);
   let state=newGame("x",101);state.day=5;state.stage=1;state.player.resource=100;state.player.abilities.physique=100;state.crew={members:20,morale:100};state=generateCards(state);assert.ok(state.candidates.includes("life_conflict"));state=selectCard(state,"life_conflict");assert.equal(state.phase,"factionBoard");state=startFactionFight(state,"red_tide");assert.equal(state.phase,"battle");let guard=0;while(state.phase==="battle"&&guard++<20)state=battleAction(state,"brawl");assert.equal(state.lastResult.success,true);assert.equal(state.factions.red_tide.wins,1);assert.ok(state.factions.red_tide.respect>0);
 });
 
@@ -161,7 +161,7 @@ test("攻佔地盤後產生每日收益，並可花錢強化",()=>{
 
 test("隊伍可招募並強化戰鬥支援，舊存檔會自動補上勢力資料",()=>{
   let state=newGame();state.phase="factionBoard";state.selected="life_conflict";state.player.resource=100;const before=state.player.resource;state=recruitCrew(state);assert.equal(state.crew.members,3);assert.equal(state.player.resource,before-12);assert.equal(state.phase,"result");
-  const old=newGame();delete old.factions;delete old.territories;delete old.crew;delete old.pendingRetaliation;const restored=validateSave(old);assert.equal(Object.keys(restored.factions).length,6);assert.equal(Object.keys(restored.territories).length,9);assert.equal(restored.crew.members,2);
+  const old=newGame();delete old.factions;delete old.territories;delete old.crew;delete old.pendingRetaliation;const restored=validateSave(old);assert.equal(Object.keys(restored.factions).length,9);assert.equal(Object.keys(restored.territories).length,15);assert.equal(restored.crew.members,2);
 });
 
 test("敵方反攻時可主動防守，勝利後保留地盤並解除警報",()=>{
