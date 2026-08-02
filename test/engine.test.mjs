@@ -1,10 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { newGame, generateCards, getEvent, selectCard, resolveChoice, resolveActivity, resolveNightOption, acceptSideQuest, declineSideQuests, resolveSideQuestChoice, upgradeAsset, battleAction, continueStage, applyEffects, modifyValue, saveCardDefinition, GameError } from "../src/engine.mjs";
+import { newGame, generateCards, getEvent, selectCard, resolveChoice, resolveActivity, resolveNightOption, acceptSideQuest, declineSideQuests, resolveSideQuestChoice, upgradeAsset, startFactionFight, startTerritoryFight, fortifyTerritory, recruitCrew, controlledTerritories, territoryIncome, battleAction, continueStage, applyEffects, modifyValue, saveCardDefinition, validateSave, GameError } from "../src/engine.mjs";
 import { EVENTS } from "../src/content.mjs";
 import { LIFE_CARDS, LEISURE_CARDS, TRAINING_CARDS, CONTACTS, SIDE_QUESTS } from "../src/life-content.mjs";
 import { NIGHT_CARDS } from "../src/night-content.mjs";
 import { CHAPTER_EVENTS } from "../src/chapter-content.mjs";
+import { FACTIONS, TERRITORIES } from "../src/faction-content.mjs";
 
 function playCard(state,id){
   state=selectCard(state,id);
@@ -103,10 +104,10 @@ test("房產、車輛、武器、奢侈品與產業集中於同一張購買卡�
   assert.deepEqual([...categories].sort(),["industries","luxuries","properties","vehicles","weapons"]);
   assert.equal(EVENTS.filter(event=>event.stage===1&&event.tag==="功能卡").length,1);
 });
-test("生活牌堆固定六張核心行為，休閒抽五張且保證可負擔",()=>{
-  assert.equal(LIFE_CARDS.length,6);
-  let state=newGame();state.player.resource=0;state.day=2;state.stage=1;state=generateCards(state);
-  assert.equal(state.candidates.length,5);assert.ok(!state.candidates.includes("life_purchase"));
+test("生活牌堆固定七張核心行為，勢力卡必定出現且休閒保證可負擔",()=>{
+  assert.equal(LIFE_CARDS.length,7);
+  let state=newGame();state.player.resource=0;state.player.fatigue=70;state.day=2;state.stage=1;state=generateCards(state);
+  assert.equal(state.candidates.length,5);assert.ok(!state.candidates.includes("life_purchase"));assert.ok(state.candidates.includes("life_conflict"));
   state=selectCard(state,"life_leisure");assert.equal(state.activityOptions.length,5);
   assert.ok(state.activityOptions.some(id=>LEISURE_CARDS.find(card=>card.id===id).cost<=0));
 });
@@ -145,6 +146,26 @@ test("玩家可延後主線，待辦主線會在下一個上午保留",()=>{
 
 test("高報酬戰鬥卡會進入回合戰鬥並結算獎勵",()=>{
   let state=newGame("x",88);state.day=20;state.stage=2;state.player.resource=100;state=generateCards(state);state.candidates=["combat_dock_brawl"];state=selectCard(state,"combat_dock_brawl");assert.equal(state.phase,"battle");const before=state.player.resource;let guard=0;while(state.phase==="battle"&&guard++<30)state=battleAction(state,"brawl");assert.equal(state.phase,"result");if(state.lastResult.success)assert.ok(state.player.resource>=before+32);
+});
+
+test("城市勢力包含六個幫派與九塊地盤，玩家可主動挑戰",()=>{
+  assert.equal(FACTIONS.length,6);assert.equal(TERRITORIES.length,9);
+  let state=newGame("x",101);state.day=5;state.stage=1;state.player.resource=100;state.player.abilities.physique=100;state.crew={members:20,morale:100};state=generateCards(state);assert.ok(state.candidates.includes("life_conflict"));state=selectCard(state,"life_conflict");assert.equal(state.phase,"factionBoard");state=startFactionFight(state,"red_tide");assert.equal(state.phase,"battle");let guard=0;while(state.phase==="battle"&&guard++<20)state=battleAction(state,"brawl");assert.equal(state.lastResult.success,true);assert.equal(state.factions.red_tide.wins,1);assert.ok(state.factions.red_tide.respect>0);
+});
+
+test("攻佔地盤後產生每日收益，並可花錢強化",()=>{
+  let state=newGame("x",202);state.day=5;state.stage=1;state.player.resource=100;state.player.abilities.physique=100;state.crew={members:20,morale:100};state.candidates=["life_conflict"];state=selectCard(state,"life_conflict");state=startTerritoryFight(state,"south_docks");let guard=0;while(state.phase==="battle"&&guard++<20)state=battleAction(state,"brawl");assert.equal(state.lastResult.success,true);assert.equal(state.territories.south_docks.owner,"player");assert.equal(controlledTerritories(state).length,1);assert.equal(territoryIncome(state),4);
+  state.phase="factionBoard";state.selected="life_conflict";const before=state.player.resource;state=fortifyTerritory(state,"south_docks");assert.equal(state.territories.south_docks.level,1);assert.equal(state.player.resource,before-11);assert.equal(territoryIncome(state),6);
+  state.phase="result";state.stage=2;const beforeSettlement=state.player.resource;state=continueStage(state);assert.equal(state.lastSettlement.turfIncome,6);assert.ok(state.player.resource>=beforeSettlement+6);
+});
+
+test("隊伍可招募並強化戰鬥支援，舊存檔會自動補上勢力資料",()=>{
+  let state=newGame();state.phase="factionBoard";state.selected="life_conflict";state.player.resource=100;const before=state.player.resource;state=recruitCrew(state);assert.equal(state.crew.members,3);assert.equal(state.player.resource,before-12);assert.equal(state.phase,"result");
+  const old=newGame();delete old.factions;delete old.territories;delete old.crew;delete old.pendingRetaliation;const restored=validateSave(old);assert.equal(Object.keys(restored.factions).length,6);assert.equal(Object.keys(restored.territories).length,9);assert.equal(restored.crew.members,2);
+});
+
+test("敵方反攻時可主動防守，勝利後保留地盤並解除警報",()=>{
+  let state=newGame("x",303);state.day=12;state.stage=1;state.player.resource=100;state.player.abilities.physique=100;state.crew={members:20,morale:100};state.territories.south_docks.owner="player";state.territories.south_docks.level=3;state.pendingRetaliation={territoryId:"south_docks",factionId:"red_tide",sinceDay:12};state.phase="factionBoard";state.selected="life_conflict";state=startTerritoryFight(state,"south_docks");assert.equal(state.battle.battleType,"defend");let guard=0;while(state.phase==="battle"&&guard++<20)state=battleAction(state,"brawl");assert.equal(state.lastResult.success,true);assert.equal(state.territories.south_docks.owner,"player");assert.equal(state.pendingRetaliation,null);
 });
 
 test("每章五天，五章主線延伸至第25天",()=>{

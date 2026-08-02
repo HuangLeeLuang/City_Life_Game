@@ -4,7 +4,8 @@ export const LIFE_CARDS = [
   {id:"life_social",stage:1,tag:"社交",title:"與人見面",summary:"聯絡目前認識的人物，發展關係並交換消息。",hub:"social",repeatable:true},
   {id:"life_purchase",stage:1,tag:"資產",title:"購買",summary:"查看全部商品，購買或升級房產、車輛、武器、奢侈品及產業。",hub:"purchase",repeatable:true},
   {id:"life_work",stage:1,tag:"收入",title:"賺錢",summary:"系統依你的最高合理能力安排工作並自動結算。",hub:"work",repeatable:true},
-  {id:"life_sidequest",stage:1,tag:"支線",title:"進行支線任務",summary:"從3張支線任務選1張，或繼續目前進行中的支線。",hub:"sidequest",repeatable:true}
+  {id:"life_sidequest",stage:1,tag:"支線",title:"進行支線任務",summary:"從3張支線任務選1張，或繼續目前進行中的支線。",hub:"sidequest",repeatable:true},
+  {id:"life_conflict",stage:1,tag:"勢力",title:"尋找對手",summary:"主動選擇幫派交戰、搶奪或防守地盤、招募隊伍並強化控制區。",hub:"factions",repeatable:true}
 ];
 
 export const LEISURE_CARDS = [
