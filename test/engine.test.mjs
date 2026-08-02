@@ -42,7 +42,7 @@ test("可由固定策略完整通關，風險失敗也不中斷主線",()=>{
     while(state.phase==="battle") state=battleAction(state,"attack");
     state=continueStage(state);
   }
-  assert.equal(state.finished,true); assert.equal(state.day,16); assert.ok(state.flags.ending_free||state.flags.ending_restore||state.flags.ending_destroy);
+  assert.equal(state.finished,true); assert.equal(state.day,26); assert.ok(state.flags.ending_free||state.flags.ending_restore||state.flags.ending_destroy);
   assert.ok(state.log.length>20);
 });
 test("兩百個種子與忽略主線策略皆不會卡死",()=>{
@@ -135,9 +135,8 @@ test("夜生活牌堆共24張，每晚抽5張且保證免費與兩張恢復",()=
   assert.ok(cards.some(card=>card.cost===0));assert.ok(cards.filter(card=>card.kind==="recovery").length>=2);
 });
 
-test("五章主線延伸至第15天",()=>{
-  assert.ok(CHAPTER_EVENTS.some(event=>event.chapter===5&&event.requirements.dayMin===15));
-  const state=newGame();state.day=15;const cards=generateCards(state);
+test("每章五天，五章主線延伸至第25天",()=>{
+  const state=newGame();state.day=25;const cards=generateCards(state);
   assert.equal(cards.chapter,5);assert.ok(cards.candidates.includes("ch5_finale"));
 });
 

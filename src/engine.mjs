@@ -4,7 +4,8 @@ import { NIGHT_CARDS } from "./night-content.mjs";
 import { CHAPTER_EVENTS, chapterForDay } from "./chapter-content.mjs";
 
 const LIMITS = { health:[0,100], fatigue:[0,100], stress:[0,100], resource:[0,999], ability:[0,100], relation:[-100,100], world:[0,100] };
-const MAINLINE_DAYS = new Set([1,3,4,6,7,9,10,12,13,15]);
+const MAINLINE_SCHEDULE={signal:1,runner:3,ch1_burner:5,checkpoint:6,ambush:8,vault:10,ch3_escape:11,ch3_container:13,ch3_broadcast:15,ch4_election:16,ch4_betrayal:18,ch4_truth:20,ch5_siege:21,ch5_tower:23,ch5_finale:25};
+const MAINLINE_DAYS = new Set(Object.values(MAINLINE_SCHEDULE));
 const ASSET_BASE_PRICES={property_riverside_flat:40,property_suburban_safehouse:28,vehicle_grey_sport:22,vehicle_black_suv:18,weapon_sawed_shotgun:14,weapon_silenced_pistol:18,luxury_gold_watch:10,luxury_black_bag:12,industry_bay_diner:18,industry_east_garage:28,industry_blue_nightclub:36,industry_old_apartments:50};
 export class GameError extends Error { constructor(code,message){ super(message); this.code=code; } }
 export function rngNext(seed){ let x=seed|0; x^=x<<13; x^=x>>>17; x^=x<<5; return {seed:x>>>0,value:(x>>>0)/4294967296}; }
@@ -33,7 +34,7 @@ export function generateCards(input){
   if(state.finished) return state;
   state.chapter=chapterForDay(state.day);
   const custom=(state.customCards||[]).filter(card=>card.enabled!==false);
-  const storyEvents=[...EVENTS,...CHAPTER_EVENTS,...custom.filter(card=>card.deck==="main")];
+  const storyEvents=[...EVENTS,...CHAPTER_EVENTS,...custom.filter(card=>card.deck==="main")].map(event=>MAINLINE_SCHEDULE[event.id]?{...event,chapter:Math.ceil(MAINLINE_SCHEDULE[event.id]/5),requirements:{...(event.requirements||{}),dayMin:MAINLINE_SCHEDULE[event.id],dayMax:MAINLINE_SCHEDULE[event.id]}}:event);
   const stageEligible=storyEvents.filter(e=>e.stage===state.stage&&requirementMet(state,e));
   const morningMain=state.stage===0&&MAINLINE_DAYS.has(state.day)?stageEligible.filter(e=>e.main):[];
   if(state.stage===0&&morningMain.length){
@@ -261,7 +262,7 @@ export function continueStage(input){
     state.lastSettlement={industryIncome,vehicleMaintenance:ownsCar&&!ownsGarage&&!vehicleSelfMaintained?1:0,day:state.day-1};
     if(state.activeSideQuest?.deadlineDay&&state.day>state.activeSideQuest.deadlineDay){const expired=SIDE_QUESTS.find(quest=>quest.id===state.activeSideQuest.id);state=applyEffects(state,[{type:"stat.add",key:"stress",value:7},{type:"world.add",key:"people",value:-4}],`sidequest:${expired.id}:expired`);state.flags[`expired.${expired.id}`]=true;state.activeSideQuest=null;}
   }
-  if(state.day>15){
+  if(state.day>25){
     if(!state.flags.ending_free&&!state.flags.ending_restore&&!state.flags.ending_destroy){
       state=applyEffects(state,[{type:"flag.set",key:"ending_destroy",value:true},{type:"world.add",key:"security",value:-6}],"mainline:fallback");
       state.lastResult={title:"未介入的終局",choice:"金庫爆炸",success:false,summary:"你沒有趕上最後窗口。阿哲獨自引爆金庫，真相和贓款一起被火吞沒。"};
@@ -279,7 +280,7 @@ export function modifyValue(input,path,value){
   const direct={health:[state.player,"health",LIMITS.health],fatigue:[state.player,"fatigue",LIMITS.fatigue],stress:[state.player,"stress",LIMITS.stress],resource:[state.player,"resource",LIMITS.resource],mira:[state.relations,"mira",LIMITS.relation],kael:[state.relations,"kael",LIMITS.relation],zero:[state.relations,"zero",LIMITS.relation],corporate:[state.world,"corporate",LIMITS.world],gangs:[state.world,"gangs",LIMITS.world],security:[state.world,"security",LIMITS.world],people:[state.world,"people",LIMITS.world],ai:[state.world,"ai",LIMITS.world]};
   if(path.startsWith("ability.")){const key=path.slice(8);if(!(key in state.player.abilities))throw new GameError("INVALID_VALUE","未知能力");state.player.abilities[key]=clamp(Math.round(number),LIMITS.ability);}
   else if(direct[path]){const [target,key,limit]=direct[path];target[key]=clamp(Math.round(number),limit);}
-  else if(path==="day"){state.day=clamp(Math.round(number),[1,15]);state.chapter=chapterForDay(state.day);state.stage=0;state.phase="result";state.lastResult={title:"修改器",choice:"變更日期",success:true,summary:`日期已修改為第 ${state.day} 日、第 ${state.chapter} 章。按繼續重新抽牌。`};}
+  else if(path==="day"){state.day=clamp(Math.round(number),[1,25]);state.chapter=chapterForDay(state.day);state.stage=0;state.phase="result";state.lastResult={title:"修改器",choice:"變更日期",success:true,summary:`日期已修改為第 ${state.day} 日、第 ${state.chapter} 章。按繼續重新抽牌。`};}
   else throw new GameError("INVALID_VALUE","不允許修改這個欄位");return state;
 }
 export function saveCardDefinition(input,definition){

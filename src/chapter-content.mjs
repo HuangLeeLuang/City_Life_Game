@@ -54,4 +54,4 @@ const STORY_BRIDGES={
 };
 for(const event of CHAPTER_EVENTS)if(STORY_BRIDGES[event.id])event.summary=STORY_BRIDGES[event.id];
 
-export function chapterForDay(day){return Math.min(5,Math.floor((day-1)/3)+1);}
+export function chapterForDay(day){return Math.min(5,Math.floor((day-1)/5)+1);}
