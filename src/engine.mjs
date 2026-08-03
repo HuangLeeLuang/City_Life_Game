@@ -1,9 +1,9 @@
-import { EVENTS, STAGES } from "./content.mjs?v=19";
-import { LIFE_CARDS, LEISURE_CARDS, TRAINING_CARDS, CONTACTS, JOBS, SIDE_QUESTS } from "./life-content.mjs?v=19";
-import { NIGHT_CARDS } from "./night-content.mjs?v=19";
-import { CHAPTER_EVENTS, chapterForDay } from "./chapter-content.mjs?v=19";
-import { FACTIONS, TERRITORIES, factionById, territoryById } from "./faction-content.mjs?v=19";
-import { TEAM_MEMBERS, TEAM_LIMIT, teamMemberById } from "./team-content.mjs?v=19";
+import { EVENTS, STAGES } from "./content.mjs?v=20";
+import { LIFE_CARDS, LEISURE_CARDS, TRAINING_CARDS, CONTACTS, JOBS, SIDE_QUESTS } from "./life-content.mjs?v=20";
+import { NIGHT_CARDS } from "./night-content.mjs?v=20";
+import { CHAPTER_EVENTS, chapterForDay } from "./chapter-content.mjs?v=20";
+import { FACTIONS, TERRITORIES, factionById, territoryById } from "./faction-content.mjs?v=20";
+import { TEAM_MEMBERS, TEAM_LIMIT, teamMemberById } from "./team-content.mjs?v=20";
 
 const LIMITS = { health:[0,100], fatigue:[0,100], stress:[0,100], resource:[0,999], ability:[0,100], relation:[-100,100], world:[0,100] };
 const MAINLINE_SCHEDULE={signal:1,runner:3,ch1_burner:5,checkpoint:6,ambush:8,vault:10,ch3_escape:11,ch3_container:13,ch3_broadcast:15,ch4_election:16,ch4_betrayal:18,ch4_truth:20,ch5_siege:21,ch5_tower:23,ch5_finale:25};
@@ -40,9 +40,11 @@ export function newGame(gender="不公開",seed=2026){
   };
 }
 
-function requirementMet(state,event){
-  const r=event.requirements||{};
-  return (!r.dayMin||state.day>=r.dayMin)&&(!r.dayMax||state.day<=r.dayMax)&&(!state.seen[event.id]||event.repeatable)&&(!event.blocker||!state.flags[event.blocker]);
+const mainlineAvailableDay=event=>MAINLINE_SCHEDULE[event.id]??event.requirements?.dayMin??1;
+function pendingMainlineEvents(state,events){
+  return events
+    .filter(event=>event.main&&!state.seen[event.id]&&mainlineAvailableDay(event)<=state.day&&(!event.blocker||!state.flags[event.blocker]))
+    .sort((a,b)=>mainlineAvailableDay(a)-mainlineAvailableDay(b));
 }
 function shuffledWeighted(state,list){
   const scored=list.map(item=>{ const n=rngNext(state.seed); state.seed=n.seed; return {item,score:-Math.log(Math.max(n.value,1e-9))/(item.weight||1)}; });
@@ -53,11 +55,8 @@ export function generateCards(input){
   if(state.finished) return state;
   state.chapter=chapterForDay(state.day);
   const custom=(state.customCards||[]).filter(card=>card.enabled!==false);
-  const storyEvents=[...EVENTS,...CHAPTER_EVENTS,...custom.filter(card=>card.deck==="main")].map(event=>MAINLINE_SCHEDULE[event.id]?{...event,chapter:Math.ceil(MAINLINE_SCHEDULE[event.id]/5),requirements:{...(event.requirements||{}),dayMin:MAINLINE_SCHEDULE[event.id],dayMax:MAINLINE_SCHEDULE[event.id]}}:event);
-  const stageEligible=storyEvents.filter(e=>e.stage===state.stage&&requirementMet(state,e));
-  const pendingScheduled=storyEvents.filter(event=>event.main&&MAINLINE_SCHEDULE[event.id]&&MAINLINE_SCHEDULE[event.id]<=state.day&&!state.seen[event.id]).sort((a,b)=>MAINLINE_SCHEDULE[a.id]-MAINLINE_SCHEDULE[b.id]);
-  const pendingCustom=stageEligible.filter(event=>event.main&&!MAINLINE_SCHEDULE[event.id]);
-  const morningMain=state.stage===0?(pendingScheduled[0]||pendingCustom[0]||null):null;
+  const storyEvents=[...EVENTS,...CHAPTER_EVENTS,...custom.filter(card=>card.deck==="main")].map(event=>MAINLINE_SCHEDULE[event.id]?{...event,chapter:Math.ceil(MAINLINE_SCHEDULE[event.id]/5)}:event);
+  const morningMain=state.stage===0?(pendingMainlineEvents(state,storyEvents)[0]||null):null;
   {
     const sourceStage=state.stage===0?1:state.stage;
     let eligible;
@@ -153,7 +152,7 @@ export function selectCard(input,eventId){
 }
 function resolveDirectCard(input,card){
   if(card.cost&&input.player.resource<card.cost)throw new GameError("INSUFFICIENT_CASH",`現金不足，需要 ${card.cost}`);
-  const effects=[...(card.cost?[{type:"resource.add",value:-card.cost}]:[]),...(card.effects||[])];let state=applyEffects(input,effects,`custom:${card.id}`);state.phase="result";state.lastResult={title:card.title,choice:card.title,success:true,summary:card.result||card.summary||"自訂卡牌已結算。"};return state;
+  const effects=[...(card.cost?[{type:"resource.add",value:-card.cost}]:[]),...(card.effects||[])];let state=applyEffects(input,effects,`custom:${card.id}`);if(card.main)state.seen[card.id]=true;state.phase="result";state.lastResult={title:card.title,choice:card.title,success:true,summary:card.result||card.summary||"自訂卡牌已結算。"};return state;
 }
 function openNightCard(input,card){
   if(card.cost&&input.player.resource<card.cost)throw new GameError("INSUFFICIENT_CASH",`現金不足，需要 ${card.cost}`);
@@ -351,7 +350,7 @@ export function saveCardDefinition(input,definition){
   const state=clone(input);const title=String(definition.title||"").trim(),summary=String(definition.summary||"").trim();if(!title||!summary)throw new GameError("INVALID_CARD","卡牌名稱與說明不能空白");
   const effects=(definition.effects||[]).filter(effect=>Number(effect.value)!==0).map(effect=>({...effect,value:Number(effect.value)}));
   if(definition.baseId){const base=getEvent(definition.baseId,state);state.cardOverrides[base.id]={title,summary,tag:String(definition.tag||base.tag||"自訂"),cost:Math.max(0,Number(definition.cost)||0),effects,customDirect:true,result:String(definition.result||summary)};}
-  else{const id=`custom_${Date.now()}_${Math.floor(state.seed%10000)}`,deck=["life","night","main"].includes(definition.deck)?definition.deck:"night";state.customCards.push({id,deck,stage:deck==="main"?0:deck==="life"?1:2,main:deck==="main",repeatable:true,customDirect:true,title,summary,tag:String(definition.tag||"自訂"),cost:Math.max(0,Number(definition.cost)||0),effects,result:String(definition.result||summary)});}
+  else{const id=`custom_${Date.now()}_${Math.floor(state.seed%10000)}`,deck=["life","night","main"].includes(definition.deck)?definition.deck:"night";state.customCards.push({id,deck,stage:deck==="main"?0:deck==="life"?1:2,main:deck==="main",repeatable:deck!=="main",customDirect:true,title,summary,tag:String(definition.tag||"自訂"),cost:Math.max(0,Number(definition.cost)||0),effects,result:String(definition.result||summary)});}
   return state;
 }
 export function deleteCustomCard(input,id){const state=clone(input);state.customCards=state.customCards.filter(card=>card.id!==id);delete state.cardOverrides[id];return state;}

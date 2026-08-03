@@ -1,4 +1,4 @@
-const CACHE = "crime-five-roads-v19";
+const CACHE = "crime-five-roads-v20";
 const FILES = ["./", "./index.html", "./play.html", "./styles.css", "./manifest.webmanifest", "./src/app.mjs", "./src/engine.mjs", "./src/content.mjs", "./src/life-content.mjs", "./src/night-content.mjs", "./src/chapter-content.mjs", "./src/faction-content.mjs", "./src/team-content.mjs", "./src/market-content.mjs"];
 self.addEventListener("install", event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(FILES)).then(()=>self.skipWaiting())));
 self.addEventListener("activate", event => event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key)))).then(()=>self.clients.claim())));
