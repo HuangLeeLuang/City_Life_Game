@@ -137,12 +137,18 @@ test("夜生活牌堆包含40張，每晚抽5張且保證免費與兩張恢復",
   assert.ok(cards.some(card=>card.cost===0));assert.ok(cards.filter(card=>card.kind==="recovery").length>=2);
 });
 
-test("玩家可延後主線，待辦主線會在下一個上午保留",()=>{
-  let state=generateCards(newGame("x",19));assert.ok(state.candidates.includes("signal"));
-  const lifeId=state.candidates.find(id=>!getEvent(id,state).main);state=playCard(state,lifeId);state=continueStage(state);
-  state=playCard(state,state.candidates.find(id=>(getEvent(id,state).cost||0)<=state.player.resource));state=continueStage(state);
-  state=playCard(state,state.candidates.find(id=>(getEvent(id,state).cost||0)<=state.player.resource));state=continueStage(state);
-  assert.equal(state.day,2);assert.equal(state.stage,0);assert.ok(state.candidates.includes("signal"));
+test("玩家未選的主線會永久保留，直到完成選取",()=>{
+  let state=newGame("x",19);
+  for(const day of [1,2,5,10,25,40]){state.day=day;state.stage=0;state=generateCards(state);assert.ok(state.candidates.includes("signal"),`第 ${day} 日應保留未選主線`);}
+  state=selectCard(state,"signal");state=resolveChoice(state,getEvent("signal",state).choices[0].id);assert.equal(state.seen.signal,true);
+  state.stage=0;state=generateCards(state);assert.ok(!state.candidates.includes("signal"));
+});
+
+test("有截止日的自訂主線在解鎖後仍會保留且只完成一次",()=>{
+  let state=newGame("x",29);state.day=2;state.seen.signal=true;state.customCards.push({id:"custom_expired_main",deck:"main",stage:0,main:true,repeatable:true,customDirect:true,title:"逾期待辦主線",summary:"仍應保留",tag:"主線",effects:[],result:"完成",requirements:{dayMin:1,dayMax:1}});
+  state=generateCards(state);assert.ok(state.candidates.includes("custom_expired_main"));
+  state=selectCard(state,"custom_expired_main");assert.equal(state.seen.custom_expired_main,true);
+  state.day=5;state.stage=0;state=generateCards(state);assert.ok(!state.candidates.includes("custom_expired_main"));
 });
 
 test("高報酬戰鬥卡會進入回合戰鬥並結算獎勵",()=>{
