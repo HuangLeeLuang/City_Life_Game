@@ -3,7 +3,12 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "npm run build:offline",
+    "build:offline": "esbuild src/app.mjs --bundle --format=iife --platform=browser --target=es2020 --charset=utf8 --legal-comments=none --minify --outfile=dist/game.bundle.js",
     "test": "node --test",
     "serve": "node server.mjs"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.1"
   }
 }

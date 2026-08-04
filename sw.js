@@ -1,5 +1,14 @@
-const CACHE = "crime-five-roads-v20";
-const FILES = ["./", "./index.html", "./play.html", "./styles.css", "./manifest.webmanifest", "./src/app.mjs", "./src/engine.mjs", "./src/content.mjs", "./src/life-content.mjs", "./src/night-content.mjs", "./src/chapter-content.mjs", "./src/faction-content.mjs", "./src/team-content.mjs", "./src/market-content.mjs"];
+const CACHE = "crime-five-roads-v27";
+const FILES = [
+  "./", "./index.html", "./play.html", "./styles.css", "./manifest.webmanifest", "./dist/game.bundle.js",
+  "./assets/icons/icon-192.png", "./assets/icons/icon-512.png", "./assets/icons/icon-maskable-512.png", "./assets/icons/apple-touch-icon.png", "./assets/icons/favicon-32.png",
+  "./assets/images/hero-harbor-desktop.webp", "./assets/images/hero-harbor-mobile.webp", "./assets/images/characters/difei-full.webp",
+  ...["azhe", "mira", "kael", "zero", "difei", "chenglan"].map(id => `./assets/images/characters/${id}.webp`),
+  ...["signal", "runner", "ch1-burner", "checkpoint", "ambush", "vault", "ch3-escape", "ch3-container", "ch3-broadcast", "ch4-election", "ch4-betrayal", "ch4-truth", "ch5-siege", "ch5-tower", "ch5-finale"].flatMap(id => ["desktop", "mobile"].map(mode => `./assets/images/event-${id}-${mode}.webp`)),
+  ...["spar", "media", "interview"].flatMap(id => ["desktop", "mobile"].map(mode => `./assets/images/difei-${id}-${mode}.webp`)),
+  ...["steel_jaw", "grey_fox", "ghost", "spark", "dove", "eagle_eye", "counsel", "ledger"].map(id => `./assets/images/team/${id}.webp`),
+  ...["south_docks", "fish_market", "east_chop_shop", "overpass_toll", "neon_strip", "north_tenements", "river_casino", "chip_logistics", "finance_tower", "west_rail_yard", "construction_depot", "pirate_station", "relay_tower", "marina_club", "cruise_terminal"].map(id => `./assets/images/territories/${id}.webp`)
+];
 self.addEventListener("install", event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(FILES)).then(()=>self.skipWaiting())));
 self.addEventListener("activate", event => event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key !== CACHE).map(key => caches.delete(key)))).then(()=>self.clients.claim())));
 self.addEventListener("fetch", event => {

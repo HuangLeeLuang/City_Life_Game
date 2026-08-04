@@ -46,7 +46,9 @@ export const TRAINING_CARDS = [
 export const CONTACTS = [
   {id:"mira",name:"若琳",detail:"修車、喝咖啡或談論彼此的未來。",effects:[{type:"relation.add",key:"mira",value:6},{type:"ability.add",key:"social",value:2},{type:"stat.add",key:"stress",value:-5},{type:"resource.add",value:-3}],result:"若琳沒有替你解決問題，但她讓你記得自己仍有可以回去的地方。"},
   {id:"kael",name:"小凱",detail:"談車、試跑，或聽他吹噓下一場比賽。",effects:[{type:"relation.add",key:"kael",value:6},{type:"ability.add",key:"engineering",value:2},{type:"stat.add",key:"fatigue",value:3},{type:"resource.add",value:-2}],result:"小凱帶你繞過兩條沒人知道的捷徑，也終於停止把你當成過時的老傢伙。"},
-  {id:"zero",name:"老六",detail:"交換市場消息，了解警方、幫派與商品行情。",effects:[{type:"relation.add",key:"zero",value:5},{type:"ability.add",key:"management",value:2},{type:"world.add",key:"security",value:-1},{type:"stat.add",key:"stress",value:2},{type:"resource.add",value:-3}],result:"老六從不免費聊天。你付了酒錢，也帶走幾條足以省下更多錢的消息。"}
+  {id:"zero",name:"老六",detail:"交換市場消息，了解警方、幫派與商品行情。",effects:[{type:"relation.add",key:"zero",value:5},{type:"ability.add",key:"management",value:2},{type:"world.add",key:"security",value:-1},{type:"stat.add",key:"stress",value:2},{type:"resource.add",value:-3}],result:"老六從不免費聊天。你付了酒錢，也帶走幾條足以省下更多錢的消息。"},
+  {id:"difei",name:"狄菲",detail:"助理與護衛；每次見面會在對練、整理情報與吃飯之間隨機進行。",effects:[],result:"狄菲替你確認下一段行程，仍不忘用一句『老闆』挑釁你的決定。"},
+  {id:"chenglan",name:"程嵐",detail:"警務情報員；每次見面會在情報交換、系統演練與巡邏車會面之間隨機進行。",effects:[],result:"程嵐用最短的句子交代風險，已經替你留下不只一條退路。"}
 ];
 
 export const JOBS = [

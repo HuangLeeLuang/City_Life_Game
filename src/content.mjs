@@ -1,4 +1,4 @@
-import { EXTRA_MARKET_CHOICES } from "./market-content.mjs?v=20";
+import { EXTRA_MARKET_CHOICES } from "./market-content.mjs?v=23";
 
 export const STAGES = ["上午・故事", "下午・生活", "晚上・夜生活"];
 export const ABILITY_LABELS = { physique:"體能", reflex:"槍法", hacking:"科技", engineering:"駕駛", social:"口才", perception:"觀察", will:"膽識", management:"生意" };

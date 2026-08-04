@@ -6,12 +6,16 @@
   <meta name="theme-color" content="#07110f">
   <meta name="description" content="現代都市犯罪劇情 RPG">
   <link rel="manifest" href="manifest.webmanifest">
-  <link rel="stylesheet" href="styles.css?v=19">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/icons/apple-touch-icon.png">
+  <link rel="preload" as="image" href="assets/images/hero-harbor-mobile.webp" media="(max-width: 760px)">
+  <link rel="preload" as="image" href="assets/images/hero-harbor-desktop.webp" media="(min-width: 761px)">
+  <link rel="stylesheet" href="styles.css">
   <title>罪城：五路亡命</title>
 </head>
 <body>
   <div id="app"></div>
   <noscript>本遊戲需要啟用 JavaScript。</noscript>
-  <script type="module" src="src/app.mjs?v=19"></script>
+  <script defer src="dist/game.bundle.js"></script>
 </body>
 </html>

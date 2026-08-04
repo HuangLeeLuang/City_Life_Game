@@ -54,4 +54,9 @@ const STORY_BRIDGES={
 };
 for(const event of CHAPTER_EVENTS)if(STORY_BRIDGES[event.id])event.summary=STORY_BRIDGES[event.id];
 
-export function chapterForDay(day){return Math.min(5,Math.floor((day-1)/5)+1);}
+export const OFFICIAL_MAINLINE_IDS=["signal","runner","ch1_burner","checkpoint","ambush","vault","ch3_escape","ch3_container","ch3_broadcast","ch4_election","ch4_betrayal","ch4_truth","ch5_siege","ch5_tower","ch5_finale"];
+export const OFFICIAL_MAINLINE=OFFICIAL_MAINLINE_IDS.map((id,index)=>({id,index,chapter:Math.floor(index/3)+1,position:index%3+1}));
+export const officialMainlineMeta=id=>OFFICIAL_MAINLINE.find(item=>item.id===id)||null;
+export function chapterForProgress(state){const index=OFFICIAL_MAINLINE_IDS.findIndex(id=>!state?.seen?.[id]);return index<0?5:Math.floor(index/3)+1;}
+// 保留舊匯出名稱供既有外部工具使用；章節現在只由主線完成進度決定。
+export function chapterForDay(){return 1;}

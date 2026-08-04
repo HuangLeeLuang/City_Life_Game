@@ -1,6 +1,8 @@
 export const TEAM_LIMIT = 5;
 
 export const TEAM_MEMBERS = [
+  {id:"difei",name:"狄菲",role:"助理／護衛",unlockDay:1,cost:0,ability:"physique",recruitable:false,art:"assets/images/characters/difei.webp",summary:"二十歲的前國家級格鬥選手。她以助理身分整理情報，也會在最危險的距離保護老闆。",bonuses:{brawl:4,hp:6}},
+  {id:"chenglan",name:"程嵐",role:"警務情報員",unlockDay:1,cost:0,ability:"hacking",recruitable:false,storyUnlock:"chapter1",art:"assets/images/characters/chenglan.webp",summary:"十九歲的天才警員，十六歲便協助偵破重大網路犯罪；冷靜、寡言，熟悉體制內的情報與退路。",bonuses:{hack:3,flee:3}},
   {id:"steel_jaw",name:"鋼牙",role:"近戰手",unlockDay:1,cost:16,ability:"physique",summary:"前地下拳手，能在混戰中撕開缺口並替隊伍承受火力。",bonuses:{brawl:4,hp:4}},
   {id:"grey_fox",name:"灰狐",role:"槍手",unlockDay:1,cost:18,ability:"reflex",summary:"冷靜的前靶場教練，擅長交叉火力與武器調度。",bonuses:{attack:4,weapon:2}},
   {id:"ghost",name:"幽靈",role:"駭客",unlockDay:3,cost:22,ability:"hacking",summary:"能切斷監視器、警報與敵方通訊，改寫戰場節奏。",bonuses:{hack:5,flee:1}},

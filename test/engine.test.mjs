@@ -1,17 +1,17 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { newGame, generateCards, getEvent, selectCard, resolveChoice, resolveActivity, resolveNightOption, acceptSideQuest, declineSideQuests, resolveSideQuestChoice, upgradeAsset, startFactionFight, startTerritoryFight, fortifyTerritory, recruitCrew, recruitTeamMember, toggleTeamMember, trainTeamMember, activeTeamMembers, teamBonuses, assetBonuses, controlledTerritories, territoryIncome, crewPower, battleAction, continueStage, applyEffects, modifyValue, saveCardDefinition, validateSave, GameError } from "../src/engine.mjs";
+import { newGame, generateCards, getEvent, selectCard, resolveChoice, resolveActivity, resolveNightOption, acceptSideQuest, declineSideQuests, resolveSideQuestChoice, upgradeAsset, startFactionFight, startTerritoryFight, fortifyTerritory, recruitCrew, recruitTeamMember, toggleTeamMember, activeTeamMembers, teamBonuses, assetBonuses, contactBonuses, controlledTerritories, territoryIncome, crewPower, battleAction, continueStage, continueChapterTransition, continueFreePlay, pendingCharacterEvent, startCharacterEvent, resolveCharacterEventChoice, characterLevelChance, nextOfficialMainlineId, applyEffects, modifyValue, saveCardDefinition, validateSave, GameError } from "../src/engine.mjs";
 import { EVENTS } from "../src/content.mjs";
 import { LIFE_CARDS, LEISURE_CARDS, TRAINING_CARDS, CONTACTS, SIDE_QUESTS } from "../src/life-content.mjs";
 import { NIGHT_CARDS } from "../src/night-content.mjs";
-import { CHAPTER_EVENTS } from "../src/chapter-content.mjs";
+import { CHAPTER_EVENTS, OFFICIAL_MAINLINE_IDS } from "../src/chapter-content.mjs";
 import { FACTIONS, TERRITORIES } from "../src/faction-content.mjs";
 import { TEAM_MEMBERS, TEAM_LIMIT } from "../src/team-content.mjs";
 
 function playCard(state,id){
   state=selectCard(state,id);
   if(state.phase==="event"){const event=getEvent(id);return resolveChoice(state,event.choices[0].id);}
-  if(state.phase==="activity"){if(state.activityKind.startsWith("night:"))return resolveNightOption(state,state.activityOptions[0]||"cancel");const source=state.activityKind==="leisure"?LEISURE_CARDS:state.activityKind==="training"?TRAINING_CARDS:state.activityKind==="social"?CONTACTS:getEvent("asset_market").choices;const usable=state.activityOptions.find(optionId=>{const option=source.find(x=>x.id===optionId);const asset=option.effects.find(effect=>effect.type==="asset.grant");return (!option.cost||option.cost<=state.player.resource)&&(!asset||!state.assets[asset.category].some(item=>item.id===asset.assetId));});return resolveActivity(state,usable||"cancel");}
+  if(state.phase==="activity"){if(state.activityKind.startsWith("night:"))return resolveNightOption(state,state.activityOptions[0]||"cancel");if(state.activityKind==="social")return resolveActivity(state,"cancel");const source=state.activityKind==="leisure"?LEISURE_CARDS:state.activityKind==="training"?TRAINING_CARDS:getEvent("asset_market").choices;const usable=state.activityOptions.find(optionId=>{const option=source.find(x=>x.id===optionId);const asset=option?.effects?.find(effect=>effect.type==="asset.grant");return option&&(!option.cost||option.cost<=state.player.resource)&&(!asset||!state.assets[asset.category].some(item=>item.id===asset.assetId));});return resolveActivity(state,usable||"cancel");}
   if(state.phase==="sidequestPick")return declineSideQuests(state);
   if(state.phase==="sidequestNode"){const quest=SIDE_QUESTS.find(x=>x.id===state.activeSideQuest.id);return resolveSideQuestChoice(state,quest.nodes[state.activeSideQuest.nodeIndex].choices[0].id);}
   return state;
@@ -21,8 +21,8 @@ test("相同 seed 產生相同卡牌",()=>{
   const a=generateCards(newGame("x",42)); const b=generateCards(newGame("x",42));
   assert.equal(a.candidates.length,5); assert.equal(a.deckType,"morning"); assert.ok(a.candidates.includes("signal"));assert.deepEqual(a.candidates,b.candidates); assert.equal(a.seed,b.seed);
 });
-test("上午沒有主線時改抽五張生活卡牌",()=>{
-  const input=newGame("x",42); input.day=2;input.seen.signal=true;
+test("官方主線全部完成後，上午沒有自訂主線時改抽五張生活卡牌",()=>{
+  const input=newGame("x",42);input.day=2;for(const id of OFFICIAL_MAINLINE_IDS)input.seen[id]=true;input.finished=true;input.postgame=true;
   const state=generateCards(input);
   assert.equal(state.deckType,"life"); assert.equal(state.candidates.length,5);
   assert.ok(state.candidates.every(id=>LIFE_CARDS.some(card=>card.id===id)));
@@ -42,9 +42,10 @@ test("可由固定策略完整通關，風險失敗也不中斷主線",()=>{
     const preferred=state.candidates.find(id=>["signal","checkpoint","ambush","vault","ch5_finale"].includes(id))??state.candidates.find(id=>(getEvent(id,state).cost||0)<=state.player.resource)??state.candidates[0];
     state=playCard(state,preferred);
     while(state.phase==="battle") state=battleAction(state,"attack");
-    state=continueStage(state);
+    if(state.phase==="ending")break;
+    state=continueStage(state);if(state.phase==="chapterTransition")state=continueChapterTransition(state);
   }
-  assert.equal(state.finished,true); assert.equal(state.day,26); assert.ok(state.flags.ending_free||state.flags.ending_restore||state.flags.ending_destroy);
+  assert.equal(state.finished,true);assert.equal(state.phase,"ending");assert.ok(state.flags.ending_free||state.flags.ending_restore||state.flags.ending_destroy);state=continueFreePlay(state);assert.equal(state.postgame,true);assert.equal(state.phase,"cards");
   assert.ok(state.log.length>20);
 });
 test("兩百個種子的主線優先策略皆不會卡死",()=>{
@@ -54,7 +55,8 @@ test("兩百個種子的主線優先策略皆不會卡死",()=>{
       const selected=state.candidates.find(id=>getEvent(id,state).main)??state.candidates.find(id=>(getEvent(id,state).cost||0)<=state.player.resource)??state.candidates[0];
       state=playCard(state,selected);
       while(state.phase==="battle") state=battleAction(state,"guard");
-      state=continueStage(state);
+      if(state.phase==="ending")break;
+      state=continueStage(state);if(state.phase==="chapterTransition")state=continueChapterTransition(state);
     }
     assert.equal(state.finished,true,`seed ${seed} 未完成`);
     assert.ok(state.flags.ending_free||state.flags.ending_restore||state.flags.ending_destroy,`seed ${seed} 無結局`);
@@ -79,9 +81,9 @@ test("產業會在日結產生被動現金，車庫免除轎跑保養費",()=>{
   const before=state.player.resource;
   state.phase="result"; state.stage=2;
   state=continueStage(state);
-  assert.equal(state.lastSettlement.industryIncome,5);
+  assert.equal(state.lastSettlement.industryIncome,6);
   assert.equal(state.lastSettlement.vehicleMaintenance,0);
-  assert.equal(state.player.resource,before+5);
+  assert.equal(state.player.resource,before+6);
 });
 test("生活牌堆每個選項都有專屬結果、能力成長與介面六值影響",()=>{
   const hudEffects=new Set(["stat.add","resource.add","relation.add","world.add"]);
@@ -144,8 +146,8 @@ test("玩家未選的主線會永久保留，直到完成選取",()=>{
   state.stage=0;state=generateCards(state);assert.ok(!state.candidates.includes("signal"));
 });
 
-test("有截止日的自訂主線在解鎖後仍會保留且只完成一次",()=>{
-  let state=newGame("x",29);state.day=2;state.seen.signal=true;state.customCards.push({id:"custom_expired_main",deck:"main",stage:0,main:true,repeatable:true,customDirect:true,title:"逾期待辦主線",summary:"仍應保留",tag:"主線",effects:[],result:"完成",requirements:{dayMin:1,dayMax:1}});
+test("自訂主線只在官方十五個任務後出現，並依建立順序永久保留",()=>{
+  let state=newGame("x",29);state.day=200;state.customCards.push({id:"custom_expired_main",deck:"main",stage:0,main:true,repeatable:true,customDirect:true,title:"逾期待辦主線",summary:"仍應保留",tag:"主線",effects:[],result:"完成",requirements:{dayMin:1,dayMax:1}});state=generateCards(state);assert.ok(!state.candidates.includes("custom_expired_main"));for(const id of OFFICIAL_MAINLINE_IDS)state.seen[id]=true;state.finished=true;state.postgame=true;state.stage=0;
   state=generateCards(state);assert.ok(state.candidates.includes("custom_expired_main"));
   state=selectCard(state,"custom_expired_main");assert.equal(state.seen.custom_expired_main,true);
   state.day=5;state.stage=0;state=generateCards(state);assert.ok(!state.candidates.includes("custom_expired_main"));
@@ -166,17 +168,17 @@ test("攻佔地盤後產生每日收益，並可花錢強化",()=>{
   state.phase="result";state.stage=2;const beforeSettlement=state.player.resource;state=continueStage(state);assert.equal(state.lastSettlement.turfIncome,6);assert.ok(state.player.resource>=beforeSettlement+6);
 });
 
-test("隊伍可招募並強化戰鬥支援，舊存檔會自動補上勢力資料",()=>{
+test("隊伍可招募；舊版存檔只保留能力、現金與資產並重置故事",()=>{
   let state=newGame();state.phase="factionBoard";state.selected="life_conflict";state.player.resource=100;const before=state.player.resource;state=recruitCrew(state);assert.equal(state.crew.members,3);assert.equal(state.player.resource,before-12);assert.equal(state.phase,"result");
-  const old=newGame();old.assets.weapons=[{id:"weapon_sawed_shotgun",name:"短管霰彈槍"}];delete old.factions;delete old.territories;delete old.crew;delete old.team;delete old.assets.items;delete old.pendingRetaliation;const restored=validateSave(old);assert.equal(Object.keys(restored.factions).length,9);assert.equal(Object.keys(restored.territories).length,15);assert.equal(restored.crew.members,2);assert.deepEqual(restored.team,{roster:[],active:[]});assert.deepEqual(restored.assets.items,[]);assert.equal(restored.assets.weapons[0].combatPower,6);
+  const old={...newGame(),version:1,day:19};old.player.resource=77;old.player.abilities.hacking=91;old.assets.weapons=[{id:"weapon_sawed_shotgun",name:"短管霰彈槍"}];old.seen.signal=true;old.team={roster:[{id:"grey_fox",level:9}],active:["grey_fox"]};old.customCards=[{id:"legacy"}];const restored=validateSave(old);assert.equal(restored.version,2);assert.equal(restored.day,1);assert.equal(restored.player.resource,77);assert.equal(restored.player.abilities.hacking,91);assert.equal(restored.seen.signal,undefined);assert.deepEqual(restored.team.active,["difei"]);assert.equal(restored.assets.weapons[0].combatPower,6);assert.deepEqual(restored.customCards,[]);
 });
 
-test("可招募八名命名專家、編制五人出勤團隊並訓練",()=>{
-  assert.equal(TEAM_MEMBERS.length,8);let state=newGame("x",1);state.day=20;state.player.resource=999;
-  for(const member of TEAM_MEMBERS.slice(0,6)){state.phase="factionBoard";state.selected="life_conflict";state=recruitTeamMember(state,member.id);}
-  assert.equal(state.team.roster.length,6);assert.equal(activeTeamMembers(state).length,TEAM_LIMIT);assert.throws(()=>{const board={...state,phase:"factionBoard",selected:"life_conflict"};toggleTeamMember(board,TEAM_MEMBERS[5].id);},error=>error.code==="ACTIVE_TEAM_FULL");
-  state.phase="factionBoard";state.selected="life_conflict";state=toggleTeamMember(state,TEAM_MEMBERS[0].id);state=toggleTeamMember(state,TEAM_MEMBERS[5].id);assert.equal(state.team.active.length,5);assert.ok(state.team.active.includes(TEAM_MEMBERS[5].id));
-  state.phase="factionBoard";state.selected="life_conflict";const beforeCash=state.player.resource;state.seed=1;state=trainTeamMember(state,TEAM_MEMBERS[1].id);assert.ok(state.player.resource<beforeCash);assert.equal(state.team.roster.find(item=>item.id===TEAM_MEMBERS[1].id).level,2);
+test("共有十名核心隊員、五人出勤上限，升級統一透過見面",()=>{
+  assert.equal(TEAM_MEMBERS.length,10);let state=newGame("x",1);state.day=20;state.player.resource=999;assert.deepEqual(state.team.active,["difei"]);const recruits=TEAM_MEMBERS.filter(member=>member.recruitable!==false).slice(0,6);
+  for(const member of recruits){state.phase="factionBoard";state.selected="life_conflict";state=recruitTeamMember(state,member.id);}
+  assert.equal(state.team.roster.length,7);assert.equal(activeTeamMembers(state).length,TEAM_LIMIT);assert.throws(()=>{const board={...state,phase:"factionBoard",selected:"life_conflict"};toggleTeamMember(board,recruits[4].id);},error=>error.code==="ACTIVE_TEAM_FULL");
+  state.phase="factionBoard";state.selected="life_conflict";state=toggleTeamMember(state,recruits[0].id);state=toggleTeamMember(state,recruits[4].id);assert.equal(state.team.active.length,5);assert.ok(state.team.active.includes(recruits[4].id));
+  const social=LIFE_CARDS.find(card=>card.hub==="social");state.phase="cards";state.candidates=[social.id];state=selectCard(state,social.id);const target=recruits[1].id,beforeCash=state.player.resource,beforeRelation=state.relations[target];state.seed=1;state=resolveActivity(state,target);assert.ok(state.player.resource<beforeCash);assert.equal(state.relations[target],beforeRelation+4);assert.equal(state.characterLevels[target],2);
 });
 
 test("核心隊員、武器與戰術物品會實際改變戰鬥",()=>{
@@ -194,8 +196,8 @@ test("敵方反攻時可主動防守，勝利後保留地盤並解除警報",()=
   let state=newGame("x",303);state.day=12;state.stage=1;state.player.resource=100;state.player.abilities.physique=100;state.crew={members:20,morale:100};state.territories.south_docks.owner="player";state.territories.south_docks.level=3;state.pendingRetaliation={territoryId:"south_docks",factionId:"red_tide",sinceDay:12};state.phase="factionBoard";state.selected="life_conflict";state=startTerritoryFight(state,"south_docks");assert.equal(state.battle.battleType,"defend");let guard=0;while(state.phase==="battle"&&guard++<20)state=battleAction(state,"brawl");assert.equal(state.lastResult.success,true);assert.equal(state.territories.south_docks.owner,"player");assert.equal(state.pendingRetaliation,null);
 });
 
-test("每章五天，五章主線延伸至第25天",()=>{
-  const state=newGame();state.day=25;for(const id of ["signal","runner","ch1_burner","checkpoint","ambush","vault","ch3_escape","ch3_container","ch3_broadcast","ch4_election","ch4_betrayal","ch4_truth","ch5_siege","ch5_tower"])state.seen[id]=true;const cards=generateCards(state);
+test("五章各三個任務，主線順序與日期無關",()=>{
+  const state=newGame();state.day=250;for(const id of OFFICIAL_MAINLINE_IDS.slice(0,-1))state.seen[id]=true;const cards=generateCards(state);
   assert.equal(cards.chapter,5);assert.ok(cards.candidates.includes("ch5_finale"));
 });
 
@@ -203,4 +205,29 @@ test("修改器可改數值並新增離線自訂卡",()=>{
   let state=modifyValue(newGame(),"ability.hacking",91);assert.equal(state.player.abilities.hacking,91);
   state=saveCardDefinition(state,{deck:"night",title:"在屋頂看夜景",summary:"免費／精神 -5。",cost:0,effects:[{type:"stat.add",key:"stress",value:-5}]});
   assert.equal(state.customCards.length,1);assert.equal(state.customCards[0].deck,"night");
+});
+
+test("新遊戲有五名聯絡人，狄菲預設為 Lv.1 出勤核心隊員",()=>{
+  const state=newGame();assert.equal(CONTACTS.length,5);assert.deepEqual(state.knownContacts,["mira","kael","zero","difei"]);assert.equal(state.relations.difei,35);assert.equal(state.characterLevels.difei,1);assert.deepEqual(state.team.active,["difei"]);assert.equal(nextOfficialMainlineId(state),"signal");
+});
+
+test("前三個官方任務嚴格依序，第一章完成後程嵐加入並顯示轉場",()=>{
+  let state=generateCards(newGame("x",404));for(const [index,id] of OFFICIAL_MAINLINE_IDS.slice(0,3).entries()){assert.ok(state.candidates.includes(id));assert.equal(state.candidates.filter(candidate=>OFFICIAL_MAINLINE_IDS.includes(candidate)).length,1);state=selectCard(state,id);state=resolveChoice(state,getEvent(id,state).choices[0].id);if(index<2){state.phase="cards";state.stage=0;state=generateCards(state);}}
+  assert.equal(state.chapterTransition.to,2);assert.ok(state.knownContacts.includes("chenglan"));assert.ok(state.team.roster.some(member=>member.id==="chenglan"));assert.ok(!state.team.active.includes("chenglan"));state=continueStage(state);assert.equal(state.phase,"chapterTransition");state=continueChapterTransition(state);assert.equal(state.chapter,2);assert.equal(nextOfficialMainlineId(state),"checkpoint");
+});
+
+test("日數沒有上限，等待到第1000天仍保留下一個主線",()=>{
+  let state=newGame("x",505);state.day=999;state.stage=2;state.phase="result";state=continueStage(state);assert.equal(state.day,1000);assert.equal(state.finished,false);assert.ok(state.candidates.includes("signal"));state=modifyValue(state,"day",12345);assert.equal(state.day,12345);
+});
+
+test("聯絡人提供常駐且隨等級縮放的支援，程嵐降低警方戒備增幅",()=>{
+  let state=newGame();state.knownContacts.push("chenglan");const before=state.world.security;state=applyEffects(state,[{type:"world.add",key:"security",value:5}],"test");assert.equal(state.world.security,before+3);state.characterLevels.chenglan=5;assert.equal(contactBonuses(state).securityReduction,4);const before2=state.world.security;state=applyEffects(state,[{type:"world.add",key:"security",value:5}],"test2");assert.equal(state.world.security,before2+1);state=applyEffects(state,[{type:"world.add",key:"security",value:-5}],"test3");assert.equal(state.world.security,before2-4);
+});
+
+test("角色升級機率依等級下降至5%下限，專長每級增加基礎值25%",()=>{
+  assert.equal(characterLevelChance(1),90);assert.equal(characterLevelChance(2),80);assert.equal(characterLevelChance(3),75);assert.equal(characterLevelChance(99),5);const state=newGame();state.characterLevels.difei=5;assert.equal(teamBonuses(state).brawl,8);assert.equal(teamBonuses(state).hp,12);
+});
+
+test("狄菲人物事件達門檻後永久保留，且三段事件必須依序完成",()=>{
+  let state=applyEffects(newGame(),[{type:"relation.add",key:"difei",value:10}],"unlock");assert.equal(pendingCharacterEvent(state).id,"difei_spar_event");state=applyEffects(state,[{type:"relation.add",key:"difei",value:-100}],"drop");assert.equal(pendingCharacterEvent(state).id,"difei_spar_event");state.phase="activity";state.activityKind="social";state.activityOptions=["difei"];state=startCharacterEvent(state,"difei_spar_event");state=resolveCharacterEventChoice(state,"steady");assert.ok(state.completedCharacterEvents.includes("difei_spar_event"));state=applyEffects(state,[{type:"relation.add",key:"difei",value:200}],"unlock2");assert.equal(pendingCharacterEvent(state).id,"difei_media_event");
 });

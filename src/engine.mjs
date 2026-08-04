@@ -1,13 +1,14 @@
-import { EVENTS, STAGES } from "./content.mjs?v=20";
-import { LIFE_CARDS, LEISURE_CARDS, TRAINING_CARDS, CONTACTS, JOBS, SIDE_QUESTS } from "./life-content.mjs?v=20";
-import { NIGHT_CARDS } from "./night-content.mjs?v=20";
-import { CHAPTER_EVENTS, chapterForDay } from "./chapter-content.mjs?v=20";
-import { FACTIONS, TERRITORIES, factionById, territoryById } from "./faction-content.mjs?v=20";
-import { TEAM_MEMBERS, TEAM_LIMIT, teamMemberById } from "./team-content.mjs?v=20";
+import { EVENTS, STAGES } from "./content.mjs?v=23";
+import { LIFE_CARDS, LEISURE_CARDS, TRAINING_CARDS, CONTACTS, JOBS, SIDE_QUESTS } from "./life-content.mjs?v=23";
+import { NIGHT_CARDS } from "./night-content.mjs?v=23";
+import { CHAPTER_EVENTS, OFFICIAL_MAINLINE_IDS, officialMainlineMeta, chapterForProgress } from "./chapter-content.mjs?v=24";
+import { FACTIONS, TERRITORIES, factionById, territoryById } from "./faction-content.mjs?v=23";
+import { TEAM_MEMBERS, TEAM_LIMIT, teamMemberById } from "./team-content.mjs?v=24";
+import { CONTACT_PASSIVES, DIFEI_ACTIVITIES, CHENGLAN_ACTIVITIES, DIFEI_EVENTS, characterEventById } from "./character-content.mjs?v=24";
 
 const LIMITS = { health:[0,100], fatigue:[0,100], stress:[0,100], resource:[0,999], ability:[0,100], relation:[-100,100], world:[0,100] };
-const MAINLINE_SCHEDULE={signal:1,runner:3,ch1_burner:5,checkpoint:6,ambush:8,vault:10,ch3_escape:11,ch3_container:13,ch3_broadcast:15,ch4_election:16,ch4_betrayal:18,ch4_truth:20,ch5_siege:21,ch5_tower:23,ch5_finale:25};
 const ASSET_BASE_PRICES={property_riverside_flat:40,property_suburban_safehouse:28,vehicle_grey_sport:22,vehicle_black_suv:18,weapon_sawed_shotgun:14,weapon_silenced_pistol:18,luxury_gold_watch:10,luxury_black_bag:12,industry_bay_diner:18,industry_east_garage:28,industry_blue_nightclub:36,industry_old_apartments:50};
+const CHARACTER_IDS=[...new Set([...CONTACTS.map(contact=>contact.id),...TEAM_MEMBERS.map(member=>member.id)])];
 export class GameError extends Error { constructor(code,message){ super(message); this.code=code; } }
 export function rngNext(seed){ let x=seed|0; x^=x<<13; x^=x>>>17; x^=x<<5; return {seed:x>>>0,value:(x>>>0)/4294967296}; }
 const clone = value => structuredClone(value);
@@ -16,35 +17,41 @@ const freshFactions=()=>Object.fromEntries(FACTIONS.map(faction=>[faction.id,{ho
 const freshTerritories=()=>Object.fromEntries(TERRITORIES.map(territory=>[territory.id,{owner:territory.factionId,level:0,capturedDay:null}]));
 export const controlledTerritories=state=>TERRITORIES.filter(territory=>state.territories?.[territory.id]?.owner==="player");
 export const territoryIncome=state=>controlledTerritories(state).reduce((sum,territory)=>sum+(state.pendingRetaliation?.territoryId===territory.id?0:territory.income+(state.territories[territory.id].level||0)*2),0);
-export const activeTeamMembers=state=>(state.team?.active||[]).map(id=>{const roster=state.team?.roster?.find(item=>item.id===id),definition=teamMemberById(id);return roster&&definition?{...definition,level:roster.level||1}:null;}).filter(Boolean);
+export const activeTeamMembers=state=>(state.team?.active||[]).map(id=>{const roster=state.team?.roster?.find(item=>item.id===id),definition=teamMemberById(id);return roster&&definition?{...definition,level:state.characterLevels?.[id]||roster.level||1}:null;}).filter(Boolean);
 export function teamBonuses(state){
   const totals={attack:0,brawl:0,hack:0,flee:0,hp:0,armor:0,medical:0,reward:0,income:0,weapon:0};
   for(const member of activeTeamMembers(state)){const scale=1+Math.max(0,(member.level||1)-1)*.25;for(const [key,value] of Object.entries(member.bonuses||{}))totals[key]=(totals[key]||0)+Math.round(value*scale);}
   return totals;
 }
 export function assetBonuses(state){
-  const totals={attack:0,brawl:0,hack:0,flee:0,hp:0,armor:0,medical:0,reward:0,income:0,weapon:0};
+  const totals={attack:0,brawl:0,hack:0,flee:0,hp:0,armor:0,medical:0,reward:0,income:0,weapon:0,securityReduction:0};
   for(const asset of Object.values(state.assets||{}).flat()){const level=asset.level||0,scale=1+level*.2;for(const [key,value] of Object.entries(asset.bonuses||{}))totals[key]=(totals[key]||0)+Math.round(value*scale);if(asset.armor)totals.armor+=Math.round(asset.armor*scale);if(asset.combatPower)totals.weapon+=Math.round(asset.combatPower*scale);}
   return totals;
 }
-const combinedBonuses=state=>{const team=teamBonuses(state),assets=assetBonuses(state);return Object.fromEntries(Object.keys(team).map(key=>[key,(team[key]||0)+(assets[key]||0)]));};
+export function contactBonuses(state){
+  const totals={attack:0,brawl:0,hack:0,flee:0,hp:0,armor:0,medical:0,reward:0,income:0,weapon:0,securityReduction:0};
+  for(const id of state.knownContacts||[]){const base=CONTACT_PASSIVES[id];if(!base)continue;const scale=1+Math.max(0,(state.characterLevels?.[id]||1)-1)*.25;for(const [key,value] of Object.entries(base))totals[key]=(totals[key]||0)+Math.round(value*scale);}
+  return totals;
+}
+export const combinedBonuses=state=>{const sources=[teamBonuses(state),assetBonuses(state),contactBonuses(state)],keys=new Set(sources.flatMap(source=>Object.keys(source)));return Object.fromEntries([...keys].map(key=>[key,sources.reduce((sum,source)=>sum+(source[key]||0),0)]));};
 export const crewPower=state=>(state.crew?.members||0)*2+Math.floor((state.crew?.morale||0)/10)+controlledTerritories(state).length*3+activeTeamMembers(state).reduce((sum,member)=>sum+2+(member.level||1),0);
 
 export function newGame(gender="不公開",seed=2026){
   return {
-    version:1, contentVersion:"0.8.1-five-person-team", seed:seed>>>0, gender, day:1, stage:0, chapter:1, phase:"cards", candidates:[], selected:null, battle:null, finished:false,
+    version:2, contentVersion:"0.9.0-unlimited-story", seed:seed>>>0, gender, day:1, stage:0, chapter:1, phase:"cards", candidates:[], selected:null, battle:null, finished:false,postgame:false,endingShown:false,chapterTransition:null,
     player:{health:100,fatigue:10,stress:8,resource:24,abilities:{physique:28,reflex:28,hacking:28,engineering:28,social:28,perception:28,will:28,management:28}},
     assets:{properties:[],vehicles:[],weapons:[],items:[],luxuries:[],industries:[]}, buffs:[], activeSideQuest:null, completedSideQuests:[], metContacts:{},
-    factions:freshFactions(),territories:freshTerritories(),crew:{members:2,morale:50},team:{roster:[],active:[]},pendingRetaliation:null,
-    relations:{mira:0,kael:0,zero:0}, world:{corporate:55,gangs:45,security:58,people:42,ai:35}, flags:{}, seen:{}, cooldown:{}, customCards:[], cardOverrides:{}, unlockedSideQuests:[], log:[], sequence:0
+    factions:freshFactions(),territories:freshTerritories(),crew:{members:2,morale:50},team:{roster:[{id:"difei",level:1,recruitedDay:1}],active:["difei"]},pendingRetaliation:null,
+    relations:Object.fromEntries(CHARACTER_IDS.map(id=>[id,id==="difei"?35:id==="chenglan"?20:0])),characterLevels:Object.fromEntries(CHARACTER_IDS.map(id=>[id,1])),knownContacts:["mira","kael","zero","difei"],unlockedCharacterEvents:[],completedCharacterEvents:[],selectedCharacterEvent:null,
+    world:{corporate:55,gangs:45,security:58,people:42,ai:35}, flags:{}, seen:{}, cooldown:{}, customCards:[], cardOverrides:{}, unlockedSideQuests:[], log:[], sequence:0
   };
 }
 
-const mainlineAvailableDay=event=>MAINLINE_SCHEDULE[event.id]??event.requirements?.dayMin??1;
-function pendingMainlineEvents(state,events){
-  return events
-    .filter(event=>event.main&&!state.seen[event.id]&&mainlineAvailableDay(event)<=state.day&&(!event.blocker||!state.flags[event.blocker]))
-    .sort((a,b)=>mainlineAvailableDay(a)-mainlineAvailableDay(b));
+export const nextOfficialMainlineId=state=>OFFICIAL_MAINLINE_IDS.find(id=>!state.seen?.[id])||null;
+function pendingMainlineEvent(state,events){
+  const officialId=nextOfficialMainlineId(state);
+  if(officialId)return events.find(event=>event.id===officialId)||null;
+  return (state.customCards||[]).find(card=>card.deck==="main"&&card.enabled!==false&&!state.seen?.[card.id])||null;
 }
 function shuffledWeighted(state,list){
   const scored=list.map(item=>{ const n=rngNext(state.seed); state.seed=n.seed; return {item,score:-Math.log(Math.max(n.value,1e-9))/(item.weight||1)}; });
@@ -52,11 +59,10 @@ function shuffledWeighted(state,list){
 }
 export function generateCards(input){
   const state=clone(input);
-  if(state.finished) return state;
-  state.chapter=chapterForDay(state.day);
+  state.chapter=chapterForProgress(state);
   const custom=(state.customCards||[]).filter(card=>card.enabled!==false);
-  const storyEvents=[...EVENTS,...CHAPTER_EVENTS,...custom.filter(card=>card.deck==="main")].map(event=>MAINLINE_SCHEDULE[event.id]?{...event,chapter:Math.ceil(MAINLINE_SCHEDULE[event.id]/5)}:event);
-  const morningMain=state.stage===0?(pendingMainlineEvents(state,storyEvents)[0]||null):null;
+  const storyEvents=[...EVENTS,...CHAPTER_EVENTS,...custom.filter(card=>card.deck==="main")].map(event=>{const meta=officialMainlineMeta(event.id);return meta?{...event,chapter:meta.chapter,storyPosition:meta.position}:event;});
+  const morningMain=state.stage===0?pendingMainlineEvent(state,storyEvents):null;
   {
     const sourceStage=state.stage===0?1:state.stage;
     let eligible;
@@ -112,7 +118,7 @@ export function applyEffects(input,effects,source="system"){
         case "stat.add": add(state,state.player,effect.key,effect.value,LIMITS[effect.key],source,effect.type); break;
         case "resource.add": add(state,state.player,"resource",effect.value,LIMITS.resource,source,effect.type); break;
         case "relation.add": add(state,state.relations,effect.key,effect.value,LIMITS.relation,source,effect.type); break;
-        case "world.add": add(state,state.world,effect.key,effect.value,LIMITS.world,source,effect.type); break;
+        case "world.add": {const reduction=effect.key==="security"&&effect.value>0?(combinedBonuses(state).securityReduction||0):0,adjusted=effect.value>0?Math.max(0,effect.value-reduction):effect.value;add(state,state.world,effect.key,adjusted,LIMITS.world,source,effect.type);break;}
         case "flag.set": { const before=state.flags[effect.key]; state.flags[effect.key]=effect.value; logEffect(state,source,effect.type,effect.key,before,effect.value,null); break; }
         case "buff.add": { const incoming={...effect,remaining:effect.duration}; const current=state.buffs.find(buff=>buff.id===effect.id); const before=current?`${current.label} ${current.value}/${current.remaining}`:null; if(!current) state.buffs.push(incoming); else if(effect.value>=current.value) Object.assign(current,incoming); logEffect(state,source,effect.type,effect.id,before,`${incoming.label} ${incoming.value}/${incoming.duration}`,null); break; }
         case "asset.grant": { const list=state.assets?.[effect.category]; if(!Array.isArray(list)) throw new GameError("INVALID_ASSET_CATEGORY",`未知資產類別：${effect.category}`); if(list.some(asset=>asset.id===effect.assetId)) throw new GameError("ASSET_OWNED",`已經持有：${effect.name}`); list.push({id:effect.assetId,name:effect.name,acquiredDay:state.day,dailyIncome:effect.dailyIncome||0,basePrice:effect.basePrice||1,combatPower:effect.combatPower||0,armor:effect.armor||0,bonuses:{...(effect.bonuses||{})},description:effect.description||"",level:0}); logEffect(state,source,effect.type,effect.category,null,effect.name,null); break; }
@@ -121,6 +127,8 @@ export function applyEffects(input,effects,source="system"){
         default: throw new GameError("UNKNOWN_EFFECT",`不支援的效果：${effect.type}`);
       }
     }
+    state.unlockedCharacterEvents??=[];
+    for(const event of DIFEI_EVENTS)if((state.relations?.[event.characterId]||0)>=event.threshold&&!state.unlockedCharacterEvents.includes(event.id))state.unlockedCharacterEvents.push(event.id);
     return state;
   }catch(error){ throw error instanceof GameError?error:new GameError("TRANSACTION_FAILED",error.message); }
 }
@@ -139,7 +147,7 @@ export function selectCard(input,eventId){
     state.activityKind="leisure";state.activityOptions=options.map(option=>option.id);state.phase="activity";return state;
   }
   if(card.hub==="training"){state.activityKind="training";state.activityOptions=TRAINING_CARDS.map(option=>option.id);state.phase="activity";return state;}
-  if(card.hub==="social"){state.activityKind="social";state.activityOptions=CONTACTS.filter(contact=>!state.metContacts[`${state.day}:${contact.id}`]).map(contact=>contact.id);state.phase="activity";return state;}
+  if(card.hub==="social"){state.activityKind="social";state.activityOptions=meetingCharacterIds(state);state.phase="activity";return state;}
   if(card.hub==="purchase"){state.activityKind="purchase";state.activityOptions=getEvent("asset_market").choices.map(option=>option.id);state.phase="activity";return state;}
   if(card.hub==="work") return resolveWork(state);
   if(card.hub==="sidequest"){
@@ -152,16 +160,16 @@ export function selectCard(input,eventId){
 }
 function resolveDirectCard(input,card){
   if(card.cost&&input.player.resource<card.cost)throw new GameError("INSUFFICIENT_CASH",`現金不足，需要 ${card.cost}`);
-  const effects=[...(card.cost?[{type:"resource.add",value:-card.cost}]:[]),...(card.effects||[])];let state=applyEffects(input,effects,`custom:${card.id}`);if(card.main)state.seen[card.id]=true;state.phase="result";state.lastResult={title:card.title,choice:card.title,success:true,summary:card.result||card.summary||"自訂卡牌已結算。"};return state;
+  const effects=[...(card.cost?[{type:"resource.add",value:-card.cost}]:[]),...(card.effects||[])];let state=applyEffects(input,effects,`custom:${card.id}`);if(card.main){state.seen[card.id]=true;state=completeOfficialProgress(state,card.id);}state.phase=state.finished&&!state.postgame?"ending":"result";state.lastResult={title:card.title,choice:card.title,success:true,summary:card.result||card.summary||"自訂卡牌已結算。"};return state;
 }
 function openNightCard(input,card){
   if(card.cost&&input.player.resource<card.cost)throw new GameError("INSUFFICIENT_CASH",`現金不足，需要 ${card.cost}`);
   if(card.hub){
     const state=clone(input);state.activityKind=`night:${card.hub}`;
     if(card.hub==="property")state.activityOptions=state.assets.properties.map(asset=>asset.id);
-    else if(card.hub==="contact")state.activityOptions=CONTACTS.map(contact=>contact.id);
+    else if(card.hub==="contact")state.activityOptions=CONTACTS.filter(contact=>state.knownContacts?.includes(contact.id)).map(contact=>contact.id);
     else if(card.hub==="industry")state.activityOptions=state.assets.industries.map(asset=>asset.id);
-    else if(card.hub==="industryContact")state.activityOptions=state.assets.industries.flatMap(asset=>CONTACTS.map(contact=>`${asset.id}|${contact.id}`));
+    else if(card.hub==="industryContact")state.activityOptions=state.assets.industries.flatMap(asset=>CONTACTS.filter(contact=>state.knownContacts?.includes(contact.id)).map(contact=>`${asset.id}|${contact.id}`));
     else if(card.hub==="industryRisk")state.activityOptions=state.assets.industries.map(asset=>asset.id);
     state.phase="activity";return state;
   }
@@ -196,6 +204,23 @@ export function resolveNightOption(input,id){
 }
 function buffEffect(id,label,ability,value){return {type:"buff.add",id,label,ability,value,duration:5};}
 function abilityValue(state,key){return (state.player.abilities[key]||0)+state.buffs.filter(buff=>buff.ability===key).reduce((sum,buff)=>sum+buff.value,0);}
+export const characterLevelChance=level=>level===1?90:level===2?80:Math.max(5,80-(level-2)*5);
+export function meetingCharacterIds(state){return [...new Set([...(state.knownContacts||[]),...(state.team?.roster||[]).map(item=>item.id)])].filter(id=>CONTACTS.some(contact=>contact.id===id)||teamMemberById(id));}
+export function pendingCharacterEvent(state){return DIFEI_EVENTS.find(event=>!(state.completedCharacterEvents||[]).includes(event.id)&&((state.unlockedCharacterEvents||[]).includes(event.id)||(state.relations?.[event.characterId]||0)>=event.threshold))||null;}
+export function startCharacterEvent(input,eventId){
+  if(input.phase!=="activity"||input.activityKind!=="social")throw new GameError("WRONG_PHASE","必須先選擇「與人見面」");const pending=pendingCharacterEvent(input);if(!pending||pending.id!==eventId)throw new GameError("CHARACTER_EVENT_LOCKED","這段人物事件尚未解鎖");const state=clone(input);state.selectedCharacterEvent=eventId;state.phase="characterEvent";return state;
+}
+export function resolveCharacterEventChoice(input,choiceId){
+  if(input.phase!=="characterEvent"||!input.selectedCharacterEvent)throw new GameError("WRONG_PHASE","目前沒有進行中的人物事件");const event=characterEventById(input.selectedCharacterEvent),choice=event?.choices.find(item=>item.id===choiceId);if(!event||!choice)throw new GameError("UNKNOWN_CHOICE","找不到人物事件選項");let state=applyEffects(input,choice.effects,`character-event:${event.id}:${choice.id}`);state.completedCharacterEvents=[...new Set([...(state.completedCharacterEvents||[]),event.id])];state.selectedCharacterEvent=null;state.phase="result";state.lastResult={title:event.title,choice:choice.text,success:true,summary:choice.result};return state;
+}
+function meetingActivity(state,id){
+  if(id==="difei"||id==="chenglan"){const options=id==="difei"?DIFEI_ACTIVITIES:CHENGLAN_ACTIVITIES,n=rngNext(state.seed);state.seed=n.seed;return options[Math.floor(n.value*options.length)];}
+  const contact=CONTACTS.find(option=>option.id===id);if(contact)return contact;
+  const member=teamMemberById(id),cost=teamTrainingCost(state,id);return member?{id,name:member.name,title:`與${member.name}進行專長交流`,detail:`現金 -${cost}／關係 +4。`,effects:[{type:"resource.add",value:-cost},{type:"relation.add",key:id,value:4}],result:`你和${member.name}完成一次不公開的專長交流。真正的進步來自反覆合作，而不是一次付費訓練。`}:null;
+}
+function resolveCharacterMeeting(input,id){
+  if(!input.activityOptions.includes(id)||!meetingCharacterIds(input).includes(id))throw new GameError("UNKNOWN_ACTIVITY",`未知人物：${id}`);if(input.metContacts[`${input.day}:${id}`])throw new GameError("ALREADY_MET","今天已經和這名人物見過面");let state=clone(input),activity=meetingActivity(state,id);if(!activity)throw new GameError("UNKNOWN_ACTIVITY",`未知人物：${id}`);const cashCost=(activity.effects||[]).filter(effect=>effect.type==="resource.add"&&effect.value<0).reduce((sum,effect)=>sum-effect.value,0);if(state.player.resource<cashCost)throw new GameError("INSUFFICIENT_CASH",`現金不足，需要 ${cashCost}`);state=applyEffects(state,activity.effects||[],`meeting:${id}:${activity.id}`);state.metContacts[`${state.day}:${id}`]=true;const before=state.characterLevels[id]||1,chance=characterLevelChance(before),roll=rngNext(state.seed);state.seed=roll.seed;const success=roll.value*100<chance;if(success)state.characterLevels[id]=before+1;else state.characterLevels[id]=before;const roster=state.team?.roster?.find(item=>item.id===id);if(roster)roster.level=state.characterLevels[id];state.phase="result";state.lastResult={title:"與人見面",choice:activity.title||activity.name,success:true,levelUp:success,summary:`${activity.result} ${success?`${activity.name||teamMemberById(id)?.name||id}的專長提升至 Lv.${before+1}。`:`本次沒有突破 Lv.${before}（成功率 ${chance}%），但關係仍照常提升。`}`};return state;
+}
 function activityOption(state,id){
   if(state.activityKind==="leisure") return LEISURE_CARDS.find(option=>option.id===id);
   if(state.activityKind==="training") return TRAINING_CARDS.find(option=>option.id===id);
@@ -205,6 +230,7 @@ function activityOption(state,id){
 export function resolveActivity(input,id){
   if(input.phase!=="activity") throw new GameError("WRONG_PHASE","目前不在生活活動選單");
   if(id==="cancel"){const state=clone(input);state.phase="result";state.lastResult={title:getEvent(state.selected).title,choice:"取消行程",success:true,summary:"你沒有進行活動，但尋找與安排仍花掉了這段時間。"};return state;}
+  if(input.activityKind==="social")return resolveCharacterMeeting(input,id);
   const option=activityOption(input,id); if(!option||!input.activityOptions.includes(id)) throw new GameError("UNKNOWN_ACTIVITY",`未知活動：${id}`);
   if(option.cost&&input.player.resource<option.cost) throw new GameError("INSUFFICIENT_CASH",`現金不足，需要 ${option.cost}`);
   const assetEffect=option.effects.find(effect=>effect.type==="asset.grant");
@@ -266,17 +292,24 @@ export function recruitCrew(input){
 }
 function teamManageReady(input){if(input.phase!=="factionBoard"||input.selected!=="life_conflict")throw new GameError("WRONG_PHASE","請先使用「尋找對手」卡牌進入城市勢力");}
 export const teamRecruitCost=memberId=>teamMemberById(memberId)?.cost||0;
-export const teamTrainingCost=(state,memberId)=>{const member=teamMemberById(memberId),roster=state.team?.roster?.find(item=>item.id===memberId);return member&&roster?Math.max(4,Math.ceil(member.cost*.18*((roster.level||1)+1))):0;};
-export const teamTrainingChance=(state,memberId)=>{const level=state.team?.roster?.find(item=>item.id===memberId)?.level||1;return level===1?90:level===2?80:Math.max(5,80-(level-2)*5);};
+export const teamTrainingCost=(state,memberId)=>{const member=teamMemberById(memberId),roster=state.team?.roster?.find(item=>item.id===memberId);return member&&roster?Math.max(4,Math.ceil(Math.max(16,member.cost)*.18*((state.characterLevels?.[memberId]||roster.level||1)+1))):0;};
+export const teamTrainingChance=(state,memberId)=>characterLevelChance(state.characterLevels?.[memberId]||state.team?.roster?.find(item=>item.id===memberId)?.level||1);
 export function recruitTeamMember(input,memberId){
-  teamManageReady(input);const member=teamMemberById(memberId);if(!member)throw new GameError("UNKNOWN_TEAM_MEMBER","找不到這名專家");if(input.day<member.unlockDay)throw new GameError("TEAM_MEMBER_LOCKED",`第 ${member.unlockDay} 日後才能聯絡${member.name}`);if(input.team?.roster?.some(item=>item.id===memberId))throw new GameError("TEAM_MEMBER_OWNED",`${member.name}已經加入團隊`);if(input.player.resource<member.cost)throw new GameError("INSUFFICIENT_CASH",`招募${member.name}需要現金 ${member.cost}`);
-  let state=applyEffects(input,[{type:"resource.add",value:-member.cost},{type:"ability.add",key:member.ability,value:1}],`team:${memberId}:recruit`);state.team.roster.push({id:memberId,level:1,recruitedDay:state.day});if(state.team.active.length<TEAM_LIMIT)state.team.active.push(memberId);state.crew.morale=clamp(state.crew.morale+4,[0,100]);state.phase="result";state.lastResult={title:"招募核心隊員",choice:`${member.name}／${member.role}`,success:true,summary:`${member.summary} ${member.name}已加入團隊${state.team.active.includes(memberId)?"並自動編入本次出勤名單":"，可之後編入出勤名單"}；最多同時派出 ${TEAM_LIMIT} 名核心隊員。`};return state;
+  teamManageReady(input);const member=teamMemberById(memberId);if(!member)throw new GameError("UNKNOWN_TEAM_MEMBER","找不到這名專家");if(member.recruitable===false)throw new GameError("TEAM_MEMBER_STORY_LOCKED",`${member.name}只能透過故事加入`);if(input.day<member.unlockDay)throw new GameError("TEAM_MEMBER_LOCKED",`第 ${member.unlockDay} 日後才能聯絡${member.name}`);if(input.team?.roster?.some(item=>item.id===memberId))throw new GameError("TEAM_MEMBER_OWNED",`${member.name}已經加入團隊`);if(input.player.resource<member.cost)throw new GameError("INSUFFICIENT_CASH",`招募${member.name}需要現金 ${member.cost}`);
+  let state=applyEffects(input,[{type:"resource.add",value:-member.cost},{type:"ability.add",key:member.ability,value:1}],`team:${memberId}:recruit`);state.team.roster.push({id:memberId,level:1,recruitedDay:state.day});state.characterLevels[memberId]??=1;state.relations[memberId]??=0;if(state.team.active.length<TEAM_LIMIT)state.team.active.push(memberId);state.crew.morale=clamp(state.crew.morale+4,[0,100]);state.phase="result";state.lastResult={title:"招募核心隊員",choice:`${member.name}／${member.role}`,success:true,summary:`${member.summary} ${member.name}已加入團隊${state.team.active.includes(memberId)?"並自動編入本次出勤名單":"，可之後編入出勤名單"}；最多同時派出 ${TEAM_LIMIT} 名核心隊員。`};return state;
 }
 export function toggleTeamMember(input,memberId){
   teamManageReady(input);if(!input.team?.roster?.some(item=>item.id===memberId))throw new GameError("TEAM_MEMBER_NOT_RECRUITED","這名專家尚未加入團隊");const state=clone(input),index=state.team.active.indexOf(memberId);if(index>=0)state.team.active.splice(index,1);else{if(state.team.active.length>=TEAM_LIMIT)throw new GameError("ACTIVE_TEAM_FULL",`出勤名單最多 ${TEAM_LIMIT} 人，請先撤下一名隊員`);state.team.active.push(memberId);}return state;
 }
 export function trainTeamMember(input,memberId){
-  teamManageReady(input);const member=teamMemberById(memberId),roster=input.team?.roster?.find(item=>item.id===memberId);if(!member||!roster)throw new GameError("TEAM_MEMBER_NOT_RECRUITED","這名專家尚未加入團隊");const cost=teamTrainingCost(input,memberId),chance=teamTrainingChance(input,memberId);if(input.player.resource<cost)throw new GameError("INSUFFICIENT_CASH",`訓練${member.name}需要現金 ${cost}`);let state=applyEffects(input,[{type:"resource.add",value:-cost}],`team:${memberId}:train`);const n=rngNext(state.seed);state.seed=n.seed;const success=n.value*100<chance,target=state.team.roster.find(item=>item.id===memberId),before=target.level||1;if(success)target.level=before+1;state.phase="result";state.lastResult={title:"核心隊員訓練",choice:`${member.name} Lv.${before} → Lv.${success?before+1:before}`,success,summary:success?`${member.role}專長訓練成功。所有專長效果隨等級提高，且沒有等級上限。`:`本次訓練沒有突破。花費現金 ${cost}，等級不會下降；目前成功率 ${chance}%。`};return state;
+  teamManageReady(input);const member=teamMemberById(memberId),roster=input.team?.roster?.find(item=>item.id===memberId);if(!member||!roster)throw new GameError("TEAM_MEMBER_NOT_RECRUITED","這名專家尚未加入團隊");throw new GameError("TRAINING_REPLACED","核心隊員訓練已整合到「與人見面」；見面時關係必定提升，並依等級機率突破。");
+}
+function completeOfficialProgress(input,eventId){
+  const meta=officialMainlineMeta(eventId);if(!meta)return input;const state=clone(input);
+  if(meta.index===2&&!state.flags.chenglanJoined){state.flags.chenglanJoined=true;state.knownContacts=[...new Set([...(state.knownContacts||[]),"chenglan"])];if(!state.team.roster.some(item=>item.id==="chenglan"))state.team.roster.push({id:"chenglan",level:1,recruitedDay:state.day});state.characterLevels.chenglan=1;state.relations.chenglan=20;}
+  if(meta.position===3&&meta.chapter<5)state.chapterTransition={from:meta.chapter,to:meta.chapter+1,title:`第 ${meta.chapter} 章完成`};
+  if(meta.index===OFFICIAL_MAINLINE_IDS.length-1){state.finished=true;state.endingShown=true;}
+  state.chapter=chapterForProgress(state);return state;
 }
 export function resolveChoice(input,choiceId){
   if(input.phase!=="event") throw new GameError("WRONG_PHASE","現在不能選擇事件選項");
@@ -289,9 +322,9 @@ export function resolveChoice(input,choiceId){
   if(choice.check){ const n=rngNext(state.seed); state.seed=n.seed; roll=Math.floor(n.value*41)+20; const score=abilityValue(state,choice.check.ability)+roll; success=score>=choice.check.difficulty+28; }
   let effects=choice.effects;
   if(!success) effects=[{type:"stat.add",key:"health",value:-7},{type:"stat.add",key:"stress",value:6}];
-  effects=effects.map(effect=>effect.type==="asset.grant"?{...effect,basePrice:choice.cost}:effect);state=applyEffects(state,effects,`${event.id}:${choice.id}`); state.seen[event.id]=true;
+  effects=effects.map(effect=>effect.type==="asset.grant"?{...effect,basePrice:choice.cost}:effect);state=applyEffects(state,effects,`${event.id}:${choice.id}`); state.seen[event.id]=true;state=completeOfficialProgress(state,event.id);
   state.lastResult={title:event.title,choice:choice.text,success,roll,check:choice.check||null,summary:success?(choice.result||"行動奏效，城市的狀態已經改變。"):(choice.failureResult||"事情沒有照計畫發展。你承受了代價，但故事仍會繼續。")};
-  if(state.phase!=="battle") state.phase="result";
+  if(state.finished&&!state.postgame)state.phase="ending";else if(state.phase!=="battle") state.phase="result";
   return state;
 }
 export function battleAction(input,action){
@@ -312,38 +345,36 @@ export function battleAction(input,action){
   if(b.playerHp<=0){const rawMedical=Math.max(6,Math.ceil(b.reward*.15)),medicalLoss=Math.min(state.player.resource,Math.max(0,rawMedical-(b.medicalReduction||0))),territory=territoryById(b.territoryId),defenseLost=b.battleType==="defend";state=applyEffects(state,[{type:"stat.add",key:"health",value:-22},{type:"resource.add",value:-medicalLoss},{type:"flag.set",key:"battle_lost",value:true}],"battle:loss");if(state.player.health<=0)state.player.health=1;if(b.factionId&&state.factions[b.factionId]){const status=state.factions[b.factionId];status.losses++;status.hostility=clamp(status.hostility+4,[0,100]);status.respect=clamp(status.respect+1,[0,100]);}if(defenseLost&&territory){state.territories[b.territoryId].owner=b.factionId;state.territories[b.territoryId].level=Math.max(0,(state.territories[b.territoryId].level||0)-1);state.pendingRetaliation=null;}state.crew.morale=clamp(state.crew.morale-8,[0,100]);const title=b.title,enemy=b.enemy;state.battle=null;state.phase="result";state.lastResult={title,choice:defenseLost?"地盤失守":"負傷撤離",success:false,summary:`你沒能擊敗${enemy}，但同伴把你送出戰場。支付醫療與撤離費 ${medicalLoss}${b.medicalReduction?`（團隊與物品減免 ${Math.min(rawMedical,b.medicalReduction)}）`:""}。${defenseLost?`${territory.name}被奪回，地盤強化下降 1 級。`:"故事仍會繼續，你也可以日後再次挑戰。"}`}; return state; }
   b.message=message; return state;
 }
-export function continueStage(input){
-  if(input.phase!=="result") throw new GameError("WRONG_PHASE","事件尚未結束");
-  let state=clone(input); state.buffs=(state.buffs||[]).map(buff=>({...buff,remaining:buff.remaining-1})).filter(buff=>buff.remaining>0);state.stage++;
+function advanceStage(input){
+  let state=clone(input);state.buffs=(state.buffs||[]).map(buff=>({...buff,remaining:buff.remaining-1})).filter(buff=>buff.remaining>0);state.stage++;
   if(state.stage>=STAGES.length){
-    state.stage=0; state.day++;
-    const ownsCar=state.assets?.vehicles?.some(asset=>asset.id==="vehicle_grey_sport");
-    const ownsGarage=state.assets?.industries?.some(asset=>asset.id==="industry_east_garage");
-    const vehicleSelfMaintained=(state.assets?.vehicles||[]).some(asset=>(asset.level||0)>=3);
-    const baseIndustryIncome=(state.assets?.industries||[]).reduce((sum,asset)=>sum+(asset.dailyIncome||0),0),businessBonus=baseIndustryIncome?combinedBonuses(state).income:0,industryIncome=baseIndustryIncome+businessBonus;
-    const turfIncome=territoryIncome(state);
+    state.stage=0;state.day++;
+    const ownsCar=state.assets?.vehicles?.some(asset=>asset.id==="vehicle_grey_sport"),ownsGarage=state.assets?.industries?.some(asset=>asset.id==="industry_east_garage"),vehicleSelfMaintained=(state.assets?.vehicles||[]).some(asset=>(asset.level||0)>=3);
+    const baseIndustryIncome=(state.assets?.industries||[]).reduce((sum,asset)=>sum+(asset.dailyIncome||0),0),businessBonus=baseIndustryIncome?combinedBonuses(state).income:0,industryIncome=baseIndustryIncome+businessBonus,turfIncome=territoryIncome(state);
     state=applyEffects(state,[{type:"resource.add",value:(state.flags.safehouse?3:0)+industryIncome+turfIncome-(ownsCar&&!ownsGarage&&!vehicleSelfMaintained?1:0)}],"day:end");
     state.lastSettlement={industryIncome,businessBonus,turfIncome,vehicleMaintenance:ownsCar&&!ownsGarage&&!vehicleSelfMaintained?1:0,day:state.day-1};
     if(state.activeSideQuest?.deadlineDay&&state.day>state.activeSideQuest.deadlineDay){const expired=SIDE_QUESTS.find(quest=>quest.id===state.activeSideQuest.id);state=applyEffects(state,[{type:"stat.add",key:"stress",value:7},{type:"world.add",key:"people",value:-4}],`sidequest:${expired.id}:expired`);state.flags[`expired.${expired.id}`]=true;state.activeSideQuest=null;}
     const owned=controlledTerritories(state);if(owned.length&&!state.pendingRetaliation){const maxHostility=Math.max(...owned.map(territory=>state.factions[territory.factionId]?.hostility||0)),risk=Math.min(.55,.06+owned.length*.025+maxHostility/500),chance=rngNext(state.seed);state.seed=chance.seed;if(chance.value<risk){const pick=rngNext(state.seed);state.seed=pick.seed;const territory=owned[Math.floor(pick.value*owned.length)];state.pendingRetaliation={territoryId:territory.id,factionId:territory.factionId,sinceDay:state.day};}}
   }
-  if(state.day>25&&(state.flags.ending_free||state.flags.ending_restore||state.flags.ending_destroy)){
-    state.finished=true; state.phase="ending"; state.candidates=[]; return state;
-  }
   return generateCards(state);
 }
+export function continueStage(input){if(input.phase!=="result")throw new GameError("WRONG_PHASE","事件尚未結束");if(input.chapterTransition){const state=clone(input);state.phase="chapterTransition";state.candidates=[];return state;}return advanceStage(input);}
+export function continueChapterTransition(input){if(input.phase!=="chapterTransition"||!input.chapterTransition)throw new GameError("WRONG_PHASE","目前沒有章節轉場");const state=clone(input);state.chapterTransition=null;state.phase="result";return advanceStage(state);}
+export function continueFreePlay(input){if(input.phase!=="ending"||!input.finished)throw new GameError("WRONG_PHASE","主線尚未完成");const state=clone(input);state.postgame=true;state.phase="result";return advanceStage(state);}
 export function validateSave(data){
-  if(!data||data.version!==1||!Number.isInteger(data.day)||!data.player?.abilities||!data.world||!Array.isArray(data.log)) throw new GameError("INVALID_SAVE","存檔格式無效或版本不相容");
-  const state=clone(data); state.assets??={}; for(const category of ["properties","vehicles","weapons","items","luxuries","industries"]){state.assets[category]??=[];for(const asset of state.assets[category]){const marketEffect=getEvent("asset_market").choices.flatMap(choice=>choice.effects).find(effect=>effect.type==="asset.grant"&&effect.assetId===asset.id);asset.level??=0;asset.basePrice??=ASSET_BASE_PRICES[asset.id]||1;asset.dailyIncome??=marketEffect?.dailyIncome||0;asset.combatPower??=marketEffect?.combatPower||0;asset.armor??=marketEffect?.armor||0;asset.bonuses={...(marketEffect?.bonuses||{}),...(asset.bonuses||{})};asset.description??=marketEffect?.description||"";}}state.buffs??=[];state.activeSideQuest??=null;state.completedSideQuests??=[];state.metContacts??={};state.customCards??=[];state.cardOverrides??={};state.unlockedSideQuests??=[];state.factions={...freshFactions(),...(state.factions||{})};state.territories={...freshTerritories(),...(state.territories||{})};for(const territory of TERRITORIES){state.territories[territory.id].level??=0;state.territories[territory.id].capturedDay??=null;}state.crew={members:2,morale:50,...(state.crew||{})};state.team={roster:[],active:[],...(state.team||{})};state.team.roster=(state.team.roster||[]).filter(item=>teamMemberById(item.id)).map(item=>({...item,level:Math.max(1,item.level||1)}));const ownedTeam=new Set(state.team.roster.map(item=>item.id));state.team.active=[...new Set(state.team.active||[])].filter(id=>ownedTeam.has(id)).slice(0,TEAM_LIMIT);state.pendingRetaliation??=null;state.chapter=chapterForDay(state.day);return state;
+  if(!data||![1,2].includes(data.version)||!data.player?.abilities)throw new GameError("INVALID_SAVE","存檔格式無效或版本不相容");
+  if(data.version===1){const migrated=newGame();migrated.player.abilities={...migrated.player.abilities,...Object.fromEntries(Object.entries(data.player.abilities).filter(([key])=>key in migrated.player.abilities).map(([key,value])=>[key,clamp(Math.round(Number(value)||0),LIMITS.ability)]))};migrated.player.resource=clamp(Math.round(Number(data.player.resource)||0),LIMITS.resource);migrated.assets=clone(data.assets||migrated.assets);normalizeAssets(migrated);return migrated;}
+  const base=newGame(data.gender,data.seed),state={...base,...clone(data)};state.version=2;state.contentVersion="0.9.0-unlimited-story";state.day=Math.max(1,Math.round(Number(state.day)||1));state.player={...base.player,...state.player,abilities:{...base.player.abilities,...(state.player?.abilities||{})}};state.assets=state.assets||base.assets;normalizeAssets(state);state.buffs=Array.isArray(state.buffs)?state.buffs:[];state.completedSideQuests=Array.isArray(state.completedSideQuests)?state.completedSideQuests:[];state.metContacts=state.metContacts||{};state.customCards=Array.isArray(state.customCards)?state.customCards:[];state.cardOverrides=state.cardOverrides||{};state.unlockedSideQuests=Array.isArray(state.unlockedSideQuests)?state.unlockedSideQuests:[];state.factions={...freshFactions(),...(state.factions||{})};state.territories={...freshTerritories(),...(state.territories||{})};for(const territory of TERRITORIES){state.territories[territory.id].level??=0;state.territories[territory.id].capturedDay??=null;}state.crew={...base.crew,...(state.crew||{})};state.relations={...base.relations,...(state.relations||{})};state.characterLevels={...base.characterLevels,...(state.characterLevels||{})};for(const id of CHARACTER_IDS)state.characterLevels[id]=Math.max(1,Math.round(state.characterLevels[id]||1));state.knownContacts=[...new Set(Array.isArray(state.knownContacts)?state.knownContacts:base.knownContacts)].filter(id=>CONTACTS.some(contact=>contact.id===id));state.unlockedCharacterEvents=Array.isArray(state.unlockedCharacterEvents)?state.unlockedCharacterEvents:[];state.completedCharacterEvents=Array.isArray(state.completedCharacterEvents)?state.completedCharacterEvents:[];state.team={...base.team,...(state.team||{})};state.team.roster=(state.team.roster||[]).filter(item=>teamMemberById(item.id)).map(item=>({...item,level:state.characterLevels[item.id]||Math.max(1,item.level||1)}));const ownedTeam=new Set(state.team.roster.map(item=>item.id));state.team.active=[...new Set(state.team.active||[])].filter(id=>ownedTeam.has(id)).slice(0,TEAM_LIMIT);state.pendingRetaliation??=null;state.log=Array.isArray(state.log)?state.log:[];state.sequence=Number.isInteger(state.sequence)?state.sequence:state.log.length;state.chapter=chapterForProgress(state);return state;
 }
+function normalizeAssets(state){state.assets??={};for(const category of ["properties","vehicles","weapons","items","luxuries","industries"]){state.assets[category]=Array.isArray(state.assets[category])?state.assets[category]:[];for(const asset of state.assets[category]){const marketEffect=getEvent("asset_market").choices.flatMap(choice=>choice.effects).find(effect=>effect.type==="asset.grant"&&effect.assetId===asset.id);asset.level??=0;asset.basePrice??=ASSET_BASE_PRICES[asset.id]||1;asset.dailyIncome??=marketEffect?.dailyIncome||0;asset.combatPower??=marketEffect?.combatPower||0;asset.armor??=marketEffect?.armor||0;asset.bonuses={...(marketEffect?.bonuses||{}),...(asset.bonuses||{})};asset.description??=marketEffect?.description||"";}}}
 export function modifyValue(input,path,value){
   const state=clone(input),number=Number(value);if(!Number.isFinite(number))throw new GameError("INVALID_VALUE","修改值必須是數字");
-  const direct={health:[state.player,"health",LIMITS.health],fatigue:[state.player,"fatigue",LIMITS.fatigue],stress:[state.player,"stress",LIMITS.stress],resource:[state.player,"resource",LIMITS.resource],mira:[state.relations,"mira",LIMITS.relation],kael:[state.relations,"kael",LIMITS.relation],zero:[state.relations,"zero",LIMITS.relation],corporate:[state.world,"corporate",LIMITS.world],gangs:[state.world,"gangs",LIMITS.world],security:[state.world,"security",LIMITS.world],people:[state.world,"people",LIMITS.world],ai:[state.world,"ai",LIMITS.world]};
+  const direct={health:[state.player,"health",LIMITS.health],fatigue:[state.player,"fatigue",LIMITS.fatigue],stress:[state.player,"stress",LIMITS.stress],resource:[state.player,"resource",LIMITS.resource],...Object.fromEntries(CHARACTER_IDS.map(id=>[id,[state.relations,id,LIMITS.relation]])),corporate:[state.world,"corporate",LIMITS.world],gangs:[state.world,"gangs",LIMITS.world],security:[state.world,"security",LIMITS.world],people:[state.world,"people",LIMITS.world],ai:[state.world,"ai",LIMITS.world]};
   if(path.startsWith("ability.")){const key=path.slice(8);if(!(key in state.player.abilities))throw new GameError("INVALID_VALUE","未知能力");state.player.abilities[key]=clamp(Math.round(number),LIMITS.ability);}
   else if(direct[path]){const [target,key,limit]=direct[path];target[key]=clamp(Math.round(number),limit);}
   else if(path==="crew.members")state.crew.members=clamp(Math.round(number),[1,20]);
   else if(path==="crew.morale")state.crew.morale=clamp(Math.round(number),[0,100]);
-  else if(path==="day"){state.day=clamp(Math.round(number),[1,25]);state.chapter=chapterForDay(state.day);state.stage=0;state.phase="result";state.lastResult={title:"修改器",choice:"變更日期",success:true,summary:`日期已修改為第 ${state.day} 日、第 ${state.chapter} 章。按繼續重新抽牌。`};}
+  else if(path==="day"){state.day=Math.max(1,Math.round(number));state.chapter=chapterForProgress(state);state.stage=0;state.phase="result";state.lastResult={title:"修改器",choice:"變更日期",success:true,summary:`日期已修改為第 ${state.day} 日。章節仍依主線完成順序決定；按繼續重新抽牌。`};}
   else throw new GameError("INVALID_VALUE","不允許修改這個欄位");return state;
 }
 export function saveCardDefinition(input,definition){
