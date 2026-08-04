@@ -255,6 +255,43 @@ test("一般狀態下狄菲穩定建議格鬥或槍法，接受後立即完成�
   let state=generateCards(newGame("x",606));const advice=assistantAdvice(state),again=assistantAdvice(state);assert.deepEqual(advice,again);assert.match(advice.id,/^train:train_(physique|reflex)$/);const ability=advice.id.endsWith("reflex")?"reflex":"physique",before=state.player.abilities[ability];state=acceptAssistantAdvice(state,advice.id);assert.equal(state.phase,"result");assert.equal(state.player.abilities[ability],before+3);assert.match(state.lastResult.title,/訓練/);
 });
 
+test("狄菲只會從玩家勾選且可負擔的一般行動中隨機建議",()=>{
+  const state=generateCards(newGame("x",611));state.player.resource=50;
+  const hacking=assistantAdvice(state,["train:train_hacking"]),rest=assistantAdvice(state,["recover:leisure_free_rest"]),mixedSelection=["train:train_social","recover:leisure_movie","work:cash"],mixed=assistantAdvice(state,mixedSelection);
+  assert.equal(hacking.id,"train:train_hacking");assert.equal(rest.id,"recover:leisure_free_rest");assert.ok(mixedSelection.includes(mixed.id));assert.deepEqual(assistantAdvice(state,mixedSelection),mixed);
+  state.player.resource=0;const unavailable=assistantAdvice(state,["train:train_management"]);assert.equal(unavailable.actionable,false);assert.equal(unavailable.id,"observe:no-affordable-action");
+});
+
+test("助理建議完成後可由對話框繼續，效果等同行動結果的繼續",()=>{
+  let state=generateCards(newGame("x",612));const advice=assistantAdvice(state,"allTraining");state=acceptAssistantAdvice(state,advice.id,"allTraining");assert.equal(state.phase,"result");assert.equal(state.flags.assistantActionPending,true);
+  const followup=assistantAdvice(state,"allTraining");assert.equal(followup.id,"continue:stage");const viaAssistant=acceptAssistantAdvice(state,followup.id,"allTraining"),viaResult=continueStage(state);assert.equal(viaAssistant.phase,viaResult.phase);assert.equal(viaAssistant.day,viaResult.day);assert.equal(viaAssistant.stage,viaResult.stage);assert.equal(viaAssistant.flags.assistantActionPending,undefined);
+});
+
+test("連續接受免費安全角落休息與助理繼續不會卡住階段",()=>{
+  let state=generateCards(newGame("x",9));const selection=["recover:leisure_free_rest"];
+  for(let step=0;step<9;step++){const advice=assistantAdvice(state,selection);assert.equal(advice.id,"recover:leisure_free_rest");state=acceptAssistantAdvice(state,advice.id,selection);assert.equal(state.phase,"result");assert.equal(state.flags.assistantActionPending,true);const followup=assistantAdvice(state,selection);assert.equal(followup.id,"continue:stage");state=acceptAssistantAdvice(state,followup.id,selection);assert.equal(state.phase,"cards");assert.equal(state.flags.assistantActionPending,undefined);}
+  assert.equal(state.day,4);assert.equal(state.stage,0);
+});
+
+test("從零現金連續接受各類助理建議時現金不會成為負數或卡死",()=>{
+  let state=generateCards(newGame("x",614));state.player.resource=0;const selection=[...TRAINING_CARDS.map(option=>`train:${option.id}`),...LEISURE_CARDS.map(option=>`recover:${option.id}`),"work:cash"];
+  for(let step=0;step<120;step++){const advice=assistantAdvice(state,selection);assert.equal(advice.actionable,true);state=acceptAssistantAdvice(state,advice.id,selection);assert.ok(state.player.resource>=0);assert.equal(state.phase,"result");const followup=assistantAdvice(state,selection);assert.equal(followup.id,"continue:stage");state=acceptAssistantAdvice(state,followup.id,selection);assert.ok(state.player.resource>=0);assert.equal(state.phase,"cards");}
+  assert.ok(state.day>30);
+});
+
+test("夜晚接受助理的賺錢或限期支線建議不會進入空白活動選單",()=>{
+  let state=newGame("x",616);state.stage=2;state.player.resource=0;state=generateCards(state);let advice=assistantAdvice(state,["work:cash"]);assert.equal(advice.id,"work:cash");state=acceptAssistantAdvice(state,advice.id,["work:cash"]);assert.equal(state.phase,"result");assert.ok(state.player.resource>0);
+  state=newGame("x",617);state.stage=2;state.activeSideQuest={id:"sq_armored_tip",nodeIndex:0,startedDay:1,deadlineDay:1};state=generateCards(state);advice=assistantAdvice(state,["work:cash"]);assert.equal(advice.id,"sidequest:continue");state=acceptAssistantAdvice(state,advice.id,["work:cash"]);assert.equal(state.phase,"sidequestNode");
+});
+
+test("讀取異常舊存檔時會把負數現金修復為零",()=>{
+  const damaged=JSON.parse(JSON.stringify(newGame("x",615)));damaged.player.resource=-999;damaged.player.health=-20;const repaired=validateSave(damaged);assert.equal(repaired.player.resource,0);assert.equal(repaired.player.health,0);
+});
+
+test("夜生活的找個安全角落過夜完成後可正常進入隔天",()=>{
+  let state=newGame("x",613);state.stage=2;state=generateCards(state);assert.ok(state.candidates.includes("night_shelter"));state=selectCard(state,"night_shelter");assert.equal(state.phase,"result");const beforeDay=state.day;state=continueStage(state);assert.equal(state.phase,"cards");assert.equal(state.day,beforeDay+1);assert.equal(state.stage,0);
+});
+
 test("狄菲會優先處理急迫狀態，並能直接執行恢復與支線建議",()=>{
   let state=generateCards(newGame("x",607));state.player.health=24;state.player.resource=20;let advice=assistantAdvice(state);assert.match(advice.id,/^recover:/);state=acceptAssistantAdvice(state,advice.id);assert.equal(state.phase,"result");assert.ok(state.player.health>24);
   state=generateCards(newGame("x",610));state.player.health=10;state.player.resource=0;advice=assistantAdvice(state);assert.equal(advice.id,"work:cash");state=acceptAssistantAdvice(state,advice.id);assert.equal(state.phase,"result");assert.ok(state.player.resource>0);

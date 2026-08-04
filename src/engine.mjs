@@ -242,13 +242,24 @@ export function resolveActivity(input,id){
   return state;
 }
 
-function assistantTrainingOption(state){
-  const physique=TRAINING_CARDS.find(option=>option.id==="train_physique"),reflex=TRAINING_CARDS.find(option=>option.id==="train_reflex");
-  const preferReflex=(((state.seed||0)^(state.day||0)*31^(state.stage||0)*17^(state.sequence||0))>>>0)%2===1;
-  const preferred=preferReflex?reflex:physique,alternate=preferReflex?physique:reflex;
-  if((preferred?.cost||0)<=state.player.resource)return preferred;
-  if((alternate?.cost||0)<=state.player.resource)return alternate;
-  return null;
+const DEFAULT_ASSISTANT_ACTIONS=["train:train_physique","train:train_reflex"];
+function allAssistantActionIds(){return [...TRAINING_CARDS.map(option=>`train:${option.id}`),...LEISURE_CARDS.map(option=>`recover:${option.id}`),"work:cash"];}
+function normalizeAssistantActions(selection){
+  const valid=new Set(allAssistantActionIds());
+  if(Array.isArray(selection)){const chosen=[...new Set(selection)].filter(id=>valid.has(id));return chosen.length?chosen:DEFAULT_ASSISTANT_ACTIONS;}
+  const legacy={combat:DEFAULT_ASSISTANT_ACTIONS,allTraining:TRAINING_CARDS.map(option=>`train:${option.id}`),recovery:LEISURE_CARDS.map(option=>`recover:${option.id}`),balanced:allAssistantActionIds()};
+  return legacy[selection]||DEFAULT_ASSISTANT_ACTIONS;
+}
+function assistantPickIndex(state,length,salt=""){
+  if(!length)return -1;
+  let hash=((state.seed||0)^(state.day||0)*31^(state.stage||0)*17^(state.sequence||0)*13)>>>0;
+  for(const character of salt)hash=Math.imul(hash^character.charCodeAt(0),16777619)>>>0;
+  return hash%length;
+}
+function assistantTrainingOption(state,actionIds,availableIds=null){
+  const selected=new Set(normalizeAssistantActions(actionIds)),allowed=availableIds?new Set(availableIds):null;
+  const options=TRAINING_CARDS.filter(option=>selected.has(`train:${option.id}`)&&(!allowed||allowed.has(option.id))&&(option.cost||0)<=state.player.resource);
+  return options[assistantPickIndex(state,options.length,`training:${[...selected].sort().join("|")}`)]||null;
 }
 function assistantRecoveryOption(state){
   const options=state.player.health<=35
@@ -262,9 +273,29 @@ function assistantDirectActivity(input,kind,optionId){
   const state=clone(input);state.phase="activity";state.selected=kind==="training"?"life_training":"life_leisure";state.activityKind=kind;state.activityOptions=[optionId];return resolveActivity(state,optionId);
 }
 function assistantAdviceObject(id,tone,title,message,actionLabel=null){return {id,tone,title,message,actionLabel,actionable:!!actionLabel};}
+function assistantGeneralAdvice(state,selection){
+  const selected=normalizeAssistantActions(selection),selectedSet=new Set(selected),choices=[
+    ...TRAINING_CARDS.filter(option=>selectedSet.has(`train:${option.id}`)&&(option.cost||0)<=state.player.resource).map(option=>({kind:"training",option})),
+    ...LEISURE_CARDS.filter(option=>selectedSet.has(`recover:${option.id}`)&&(option.cost||0)<=state.player.resource).map(option=>({kind:"leisure",option})),
+    ...(selectedSet.has("work:cash")?[{kind:"work"}]:[])
+  ];
+  if(!choices.length)return assistantAdviceObject("observe:no-affordable-action","normal","勾選的行動目前無法執行","目前現金不足以執行已勾選的行動。你可以開啟一般建議項目加入免費休息或賺錢，也能自行選擇畫面上的其他行動。");
+  const choice=choices[assistantPickIndex(state,choices.length,`general:${[...selected].sort().join("|")}`)];
+  if(choice.kind==="training"){
+    const option=choice.option,isReflex=option.id==="train_reflex",isPhysique=option.id==="train_physique";
+    const title=isReflex?"練一輪槍法":isPhysique?"練一輪格鬥基本功":`安排：${option.title}`;
+    const message=isReflex?"目前沒有更急的事。我替你留好靶位，現在練呼吸和第一發命中。":isPhysique?"目前沒有更急的事。我把安全屋的訓練區清出來了，先做體能與近身步法。":`目前沒有更急的狀況。${option.detail}`;
+    return assistantAdviceObject(`train:${option.id}`,"normal",title,message,`接受：${option.title}`);
+  }
+  if(choice.kind==="leisure")return assistantAdviceObject(`recover:${choice.option.id}`,"normal",`安排：${choice.option.title}`,`目前沒有急迫狀況，先整理狀態。${choice.option.detail}`,`接受：${choice.option.title}`);
+  return assistantAdviceObject("work:cash","normal","處理一份短期工作","目前沒有急迫狀況。我找到一份能立刻結算的工作，可以先補充現金。","接受：立即工作");
+}
+function markAssistantAction(result){const state=clone(result);state.flags={...(state.flags||{}),assistantActionPending:true};return state;}
 
-export function assistantAdvice(state){
+export function assistantAdvice(state,selection=DEFAULT_ASSISTANT_ACTIONS){
   if(!state)return null;
+  const selectedActions=normalizeAssistantActions(selection);
+  if(state.phase==="result"&&state.flags?.assistantActionPending)return assistantAdviceObject("continue:stage","normal","行動已經完成",`${state.lastResult?.summary||"結果已經記錄。"} 確認後，我們繼續下一段時間。`,"繼續");
   if(state.phase==="battle"&&state.battle){
     const guardThreshold=(state.battle.enemyDamage||7)*2+6;
     if(state.battle.playerHp<=guardThreshold)return assistantAdviceObject("battle:guard","urgent","先找掩護","你的戰力已經接近危險線。先卸掉這一輪傷害，再找反擊空檔。","接受：尋找掩護");
@@ -287,12 +318,10 @@ export function assistantAdvice(state){
       const recovery=assistantRecoveryOption(state),reason=state.player.health<=35?"傷勢已經會影響下一次行動":state.player.fatigue>=75?"疲勞已經接近失誤區間":"精神壓力正在拖慢判斷";
       if(state.player.health<=35&&recovery.id==="leisure_free_rest")return assistantAdviceObject("work:cash","urgent","先籌恢復費用","傷勢需要處理，但目前的現金連基本補給都不夠。我先替你安排一份能立刻結算的工作。","接受：立即工作");return assistantAdviceObject(`recover:${recovery.id}`,"urgent","先恢復狀態",`${reason}。先處理，城市不會因為我們硬撐就變安全。`,`接受：${recovery.title}`);
     }
-    const training=assistantTrainingOption(state);
-    if(training){const isReflex=training.id==="train_reflex";return assistantAdviceObject(`train:${training.id}`,"normal",isReflex?"練一輪槍法":"練一輪格鬥基本功",isReflex?"目前沒有更急的事。我替你留好靶位，現在練呼吸和第一發命中。":"目前沒有更急的事。我把安全屋的訓練區清出來了，先做體能與近身步法。",`接受：${training.title}`);}
-    return assistantAdviceObject("work:cash","normal","先補訓練經費","現在連最低訓練開銷都不夠。我找到一份能立刻結算的工作，先把現金補起來。","接受：立即工作");
+    return assistantGeneralAdvice(state,selectedActions);
   }
   if(state.phase==="activity"&&state.activityKind==="training"){
-    const training=assistantTrainingOption(state);if(training&&state.activityOptions.includes(training.id)){const isReflex=training.id==="train_reflex";return assistantAdviceObject(`train:${training.id}`,"normal",isReflex?"今天練槍法":"今天練格鬥",isReflex?"你目前的狀態適合做短時間高專注射擊。":"體能與步法最需要靠反覆動作固定下來。",`接受：${training.title}`);}
+    const training=assistantTrainingOption(state,selectedActions,state.activityOptions);if(training){const isReflex=training.id==="train_reflex",isPhysique=training.id==="train_physique";return assistantAdviceObject(`train:${training.id}`,"normal",isReflex?"今天練槍法":isPhysique?"今天練格鬥":`今天練${training.title.replace("訓練","")}`,isReflex?"你目前的狀態適合做短時間高專注射擊。":isPhysique?"體能與步法最需要靠反覆動作固定下來。":training.detail,`接受：${training.title}`);}
   }
   if(state.phase==="factionBoard"&&state.pendingRetaliation){
     const territory=territoryById(state.pendingRetaliation.territoryId);
@@ -302,14 +331,15 @@ export function assistantAdvice(state){
   return assistantAdviceObject(`observe:${state.phase}`,"normal",contextual[0],contextual[1]);
 }
 
-export function acceptAssistantAdvice(input,adviceId){
-  const advice=assistantAdvice(input);if(!advice?.actionable||advice.id!==adviceId)throw new GameError("ADVICE_CHANGED","狄菲已經依最新狀態調整建議，請重新確認。");
-  if(adviceId.startsWith("battle:"))return battleAction(input,adviceId.slice(7));
-  if(adviceId.startsWith("train:"))return assistantDirectActivity(input,"training",adviceId.slice(6));
-  if(adviceId.startsWith("recover:"))return assistantDirectActivity(input,"leisure",adviceId.slice(8));
-  if(adviceId.startsWith("defend:")){const state=clone(input);state.phase="factionBoard";state.selected="life_conflict";return startTerritoryFight(state,adviceId.slice(7));}
-  if(adviceId==="sidequest:continue"){const state=clone(input);state.phase="cards";state.candidates=[...new Set([...(state.candidates||[]),"life_sidequest"])];return selectCard(state,"life_sidequest");}
-  if(adviceId==="work:cash"){const state=clone(input);state.phase="cards";state.candidates=[...new Set([...(state.candidates||[]),"life_work"])];return selectCard(state,"life_work");}
+export function acceptAssistantAdvice(input,adviceId,selection=DEFAULT_ASSISTANT_ACTIONS){
+  const advice=assistantAdvice(input,selection);if(!advice?.actionable||advice.id!==adviceId)throw new GameError("ADVICE_CHANGED","狄菲已經依最新狀態調整建議，請重新確認。");
+  if(adviceId==="continue:stage")return continueStage(input);
+  if(adviceId.startsWith("battle:"))return markAssistantAction(battleAction(input,adviceId.slice(7)));
+  if(adviceId.startsWith("train:"))return markAssistantAction(assistantDirectActivity(input,"training",adviceId.slice(6)));
+  if(adviceId.startsWith("recover:"))return markAssistantAction(assistantDirectActivity(input,"leisure",adviceId.slice(8)));
+  if(adviceId.startsWith("defend:")){const state=clone(input);state.phase="factionBoard";state.selected="life_conflict";return markAssistantAction(startTerritoryFight(state,adviceId.slice(7)));}
+  if(adviceId==="sidequest:continue"){const state=clone(input);state.phase="cards";state.deckType="life";state.candidates=[...new Set([...(state.candidates||[]),"life_sidequest"])];return markAssistantAction(selectCard(state,"life_sidequest"));}
+  if(adviceId==="work:cash"){const state=clone(input);state.selected="life_work";return markAssistantAction(resolveWork(state));}
   throw new GameError("UNKNOWN_ADVICE",`未知助理建議：${adviceId}`);
 }
 function resolveWork(input){
@@ -429,13 +459,13 @@ function advanceStage(input){
   }
   return generateCards(state);
 }
-export function continueStage(input){if(input.phase!=="result")throw new GameError("WRONG_PHASE","事件尚未結束");if(input.chapterTransition){const state=clone(input);state.phase="chapterTransition";state.candidates=[];return state;}return advanceStage(input);}
+export function continueStage(input){if(input.phase!=="result")throw new GameError("WRONG_PHASE","事件尚未結束");const state=clone(input);if(state.flags)delete state.flags.assistantActionPending;if(state.chapterTransition){state.phase="chapterTransition";state.candidates=[];return state;}return advanceStage(state);}
 export function continueChapterTransition(input){if(input.phase!=="chapterTransition"||!input.chapterTransition)throw new GameError("WRONG_PHASE","目前沒有章節轉場");const state=clone(input);state.chapterTransition=null;state.phase="result";return advanceStage(state);}
 export function continueFreePlay(input){if(input.phase!=="ending"||!input.finished)throw new GameError("WRONG_PHASE","主線尚未完成");const state=clone(input);state.postgame=true;state.phase="result";return advanceStage(state);}
 export function validateSave(data){
   if(!data||![1,2].includes(data.version)||!data.player?.abilities)throw new GameError("INVALID_SAVE","存檔格式無效或版本不相容");
   if(data.version===1){const migrated=newGame();migrated.player.abilities={...migrated.player.abilities,...Object.fromEntries(Object.entries(data.player.abilities).filter(([key])=>key in migrated.player.abilities).map(([key,value])=>[key,clamp(Math.round(Number(value)||0),LIMITS.ability)]))};migrated.player.resource=clamp(Math.round(Number(data.player.resource)||0),LIMITS.resource);migrated.assets=clone(data.assets||migrated.assets);normalizeAssets(migrated);return migrated;}
-  const base=newGame(data.gender,data.seed),state={...base,...clone(data)};state.version=2;state.contentVersion="0.9.0-unlimited-story";state.day=Math.max(1,Math.round(Number(state.day)||1));state.player={...base.player,...state.player,abilities:{...base.player.abilities,...(state.player?.abilities||{})}};state.assets=state.assets||base.assets;normalizeAssets(state);state.buffs=Array.isArray(state.buffs)?state.buffs:[];state.completedSideQuests=Array.isArray(state.completedSideQuests)?state.completedSideQuests:[];state.metContacts=state.metContacts||{};state.customCards=Array.isArray(state.customCards)?state.customCards:[];state.cardOverrides=state.cardOverrides||{};state.unlockedSideQuests=Array.isArray(state.unlockedSideQuests)?state.unlockedSideQuests:[];state.factions={...freshFactions(),...(state.factions||{})};state.territories={...freshTerritories(),...(state.territories||{})};for(const territory of TERRITORIES){state.territories[territory.id].level??=0;state.territories[territory.id].capturedDay??=null;}state.crew={...base.crew,...(state.crew||{})};state.relations={...base.relations,...(state.relations||{})};state.characterLevels={...base.characterLevels,...(state.characterLevels||{})};for(const id of CHARACTER_IDS)state.characterLevels[id]=Math.max(1,Math.round(state.characterLevels[id]||1));state.knownContacts=[...new Set(Array.isArray(state.knownContacts)?state.knownContacts:base.knownContacts)].filter(id=>CONTACTS.some(contact=>contact.id===id));state.unlockedCharacterEvents=Array.isArray(state.unlockedCharacterEvents)?state.unlockedCharacterEvents:[];state.completedCharacterEvents=Array.isArray(state.completedCharacterEvents)?state.completedCharacterEvents:[];state.team={...base.team,...(state.team||{})};state.team.roster=(state.team.roster||[]).filter(item=>teamMemberById(item.id)).map(item=>({...item,level:state.characterLevels[item.id]||Math.max(1,item.level||1)}));const ownedTeam=new Set(state.team.roster.map(item=>item.id));state.team.active=[...new Set(state.team.active||[])].filter(id=>ownedTeam.has(id)).slice(0,TEAM_LIMIT);state.pendingRetaliation??=null;state.log=Array.isArray(state.log)?state.log:[];state.sequence=Number.isInteger(state.sequence)?state.sequence:state.log.length;state.chapter=chapterForProgress(state);return state;
+  const base=newGame(data.gender,data.seed),state={...base,...clone(data)};state.version=2;state.contentVersion="0.9.0-unlimited-story";state.day=Math.max(1,Math.round(Number(state.day)||1));state.player={...base.player,...state.player,abilities:{...base.player.abilities,...(state.player?.abilities||{})}};for(const key of ["health","fatigue","stress"])state.player[key]=clamp(Math.round(Number(state.player[key])||0),LIMITS[key]);state.player.resource=clamp(Math.round(Number(state.player.resource)||0),LIMITS.resource);for(const key of Object.keys(base.player.abilities))state.player.abilities[key]=clamp(Math.round(Number(state.player.abilities[key])||0),LIMITS.ability);state.assets=state.assets||base.assets;normalizeAssets(state);state.buffs=Array.isArray(state.buffs)?state.buffs:[];state.completedSideQuests=Array.isArray(state.completedSideQuests)?state.completedSideQuests:[];state.metContacts=state.metContacts||{};state.customCards=Array.isArray(state.customCards)?state.customCards:[];state.cardOverrides=state.cardOverrides||{};state.unlockedSideQuests=Array.isArray(state.unlockedSideQuests)?state.unlockedSideQuests:[];state.factions={...freshFactions(),...(state.factions||{})};state.territories={...freshTerritories(),...(state.territories||{})};for(const territory of TERRITORIES){state.territories[territory.id].level??=0;state.territories[territory.id].capturedDay??=null;}state.crew={...base.crew,...(state.crew||{})};state.relations={...base.relations,...(state.relations||{})};state.characterLevels={...base.characterLevels,...(state.characterLevels||{})};for(const id of CHARACTER_IDS)state.characterLevels[id]=Math.max(1,Math.round(state.characterLevels[id]||1));state.knownContacts=[...new Set(Array.isArray(state.knownContacts)?state.knownContacts:base.knownContacts)].filter(id=>CONTACTS.some(contact=>contact.id===id));state.unlockedCharacterEvents=Array.isArray(state.unlockedCharacterEvents)?state.unlockedCharacterEvents:[];state.completedCharacterEvents=Array.isArray(state.completedCharacterEvents)?state.completedCharacterEvents:[];state.team={...base.team,...(state.team||{})};state.team.roster=(state.team.roster||[]).filter(item=>teamMemberById(item.id)).map(item=>({...item,level:state.characterLevels[item.id]||Math.max(1,item.level||1)}));const ownedTeam=new Set(state.team.roster.map(item=>item.id));state.team.active=[...new Set(state.team.active||[])].filter(id=>ownedTeam.has(id)).slice(0,TEAM_LIMIT);state.pendingRetaliation??=null;state.log=Array.isArray(state.log)?state.log:[];state.sequence=Number.isInteger(state.sequence)?state.sequence:state.log.length;state.chapter=chapterForProgress(state);return state;
 }
 function normalizeAssets(state){state.assets??={};for(const category of ["properties","vehicles","weapons","items","luxuries","industries"]){state.assets[category]=Array.isArray(state.assets[category])?state.assets[category]:[];for(const asset of state.assets[category]){const marketEffect=getEvent("asset_market").choices.flatMap(choice=>choice.effects).find(effect=>effect.type==="asset.grant"&&effect.assetId===asset.id);asset.level??=0;asset.basePrice??=ASSET_BASE_PRICES[asset.id]||1;asset.dailyIncome??=marketEffect?.dailyIncome||0;asset.combatPower??=marketEffect?.combatPower||0;asset.armor??=marketEffect?.armor||0;asset.bonuses={...(marketEffect?.bonuses||{}),...(asset.bonuses||{})};asset.description??=marketEffect?.description||"";}}}
 export function modifyValue(input,path,value){

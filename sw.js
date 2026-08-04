@@ -1,8 +1,8 @@
-const CACHE = "crime-five-roads-v32";
+const CACHE = "crime-five-roads-v36";
 const FILES = [
   "./", "./index.html", "./play.html", "./styles.css", "./manifest.webmanifest", "./dist/game.bundle.js",
   "./assets/icons/icon-192.png", "./assets/icons/icon-512.png", "./assets/icons/icon-maskable-512.png", "./assets/icons/apple-touch-icon.png", "./assets/icons/favicon-32.png",
-  "./assets/images/hero-harbor-desktop.webp", "./assets/images/hero-harbor-mobile.webp", "./assets/images/characters/difei-full.webp", "./assets/images/characters/difei-assistant-cutout.png", "./assets/images/difei-spar-mobile-v2.webp",
+  "./assets/images/hero-harbor-desktop.webp", "./assets/images/hero-harbor-mobile.webp", "./assets/images/characters/difei-full.webp", "./assets/images/characters/difei-portrait-v2.webp", "./assets/images/characters/difei-assistant-cutout.png", "./assets/images/difei-spar-mobile-v2.webp",
   ...["azhe", "mira", "kael", "zero", "difei", "chenglan"].map(id => `./assets/images/characters/${id}.webp`),
   ...["signal", "runner", "ch1-burner", "checkpoint", "ambush", "vault", "ch3-escape", "ch3-container", "ch3-broadcast", "ch4-election", "ch4-betrayal", "ch4-truth", "ch5-siege", "ch5-tower", "ch5-finale"].flatMap(id => ["desktop", "mobile"].map(mode => `./assets/images/event-${id}-${mode}.webp`)),
   ...["spar", "media", "interview"].flatMap(id => ["desktop", "mobile"].map(mode => `./assets/images/difei-${id}-${mode}.webp`)),
