@@ -14,6 +14,7 @@
 | --- | --- | --- | --- |
 | 首頁主視覺 | 16:9、文案安全區在左側 | 2:3、文案安全區在下半部 | eager、high priority |
 | 劇情事件 | 16:9 | 4:5 | lazy |
+| 支線任務卡 | 3:2 | 4:5 | lazy |
 
 - 切換點為 `760px`，由 HTML `<picture>` 的 `<source media>` 選擇正確版本。
 - 檔名使用 `{場景}-desktop.webp` 與 `{場景}-mobile.webp`。
@@ -38,15 +39,18 @@
 - `event-ch5-siege-desktop.webp`／`event-ch5-siege-mobile.webp`：第五章主線「海港封鎖線」。
 - `event-ch5-tower-desktop.webp`／`event-ch5-tower-mobile.webp`：第五章主線「沒有名字的第六十層」。
 - `event-ch5-finale-desktop.webp`／`event-ch5-finale-mobile.webp`：第五章終局「五路亡命」。
-- `difei-spar-desktop.webp`／`difei-spar-mobile.webp`：狄菲事件一「停在最後一拳」。
+- `difei-spar-desktop.webp`／`difei-spar-mobile-v2.webp`：狄菲事件一「停在最後一拳」；手機版保留完整臉部、上半身與格鬥架式。
 - `difei-media-desktop.webp`／`difei-media-mobile.webp`：狄菲事件二「雨中的舊畫面」。
 - `difei-interview-desktop.webp`／`difei-interview-mobile.webp`：狄菲事件三「空拳台上的回答」。
+- `sidequest-character-desktop.webp`／`sidequest-character-mobile.webp`：人物支線共用情境「雨夜修車廠的舊債」。
+- `sidequest-crime-desktop.webp`／`sidequest-crime-mobile.webp`：犯罪支線共用情境「港區便利商店外的運鈔車監視」。
+- `sidequest-city-desktop.webp`／`sidequest-city-mobile.webp`：城市支線共用情境「封閉抽水站的污染採證」。
 
 ## 圖片覆蓋範圍
 
 - 所有會停留在獨立劇情畫面的內容都已有圖片：首頁、五章十五個官方主線，以及狄菲三段永久人物事件；桌機與手機版本皆為不同構圖。
 - 六名劇情人物、十名核心隊員與十五塊城市地盤都已有卡片圖片，程嵐完成第一章後才會在人物檔案中出現。
-- 日常、夜生活、角色會面結果與支線節點採快速文字結算，不會進入 `eventView`，因此目前刻意不載入情境插圖；這些不是遺失檔案，也不影響離線遊玩。
+- 九項支線任務依「人物、犯罪、城市」類型共用三組響應式情境圖，選擇卡與任務節點都會顯示。日間見面、夜間邀約、人物事件提示與交流結果會重用角色基準人像；非人物日常與夜生活仍採快速圖示文字結算。
 - 後續若新增會進入 `eventView` 或 `characterEventView` 的劇情，必須同時加入 16:9 桌機圖與 4:5 手機圖，並登記到 `EVENT_ART`。
 
 ## 角色基準圖
@@ -59,6 +63,7 @@
 - `zero.webp`：老六，港區酒保與情報販子。
 - `difei.webp`：狄菲，20 歲成人，及腰黑色長直髮、白色格鬥訓練上衣、黑色短褲；800×1000 肖像。
 - `difei-full.webp`：狄菲 800×1200 全身比例基準，使用修長腿部與較高髖線。
+- `difei-assistant-cutout.png`：狄菲常駐助理透明全身立繪；日常狀態採較年輕的成人面容、自然平滑膚況與完整頭頂至鞋底構圖，桌機置於側欄、手機改為底部助理面板。
 - `chenglan.webp`：程嵐，19 歲成人，低馬尾、深色連帽外套與機能短褲。
 
 ## 核心行動團隊
@@ -88,6 +93,12 @@
 
 圖示位於 `assets/icons/`。`icon-master.png` 是 1024×1024 主檔；`icon-512.png`、`icon-192.png`、`icon-maskable-512.png` 供 PWA 使用，另有 `apple-touch-icon.png` 與 `favicon-32.png`。Maskable 版本已縮小主要圖形並保留安全邊界。
 
+遊戲內介面圖示位於 `src/ui-icons.mjs`，使用可縮放的行內 SVG。生活牌、夜生活分類、六項狀態、支線類型、五種戰鬥行動、早午晚階段與成功／代價結果各有辨識圖示；這些圖示不需要額外網路請求，手機高解析螢幕也能保持清晰。
+
+## 城市勢力地圖
+
+城市勢力畫面使用程式繪製的響應式 SVG 示意底圖與十五個 HTML 地盤節點。節點會依目前控制勢力著色，並以不同狀態標示玩家控制、情報鎖定及敵方反攻；選取後可查看地盤摘要並直接定位到對應卡片。桌機顯示完整地盤名稱，手機改用編號節點與下方詳細資訊，避免文字重疊。
+
 ## 生成方式
 
-本批素材以內建 ImageGen 生成，使用同一組港區犯罪黑色電影視覺提示；事件桌機版與手機版分開重新構圖，隊員與地盤圖依卡片用途採固定比例，再以 ImageMagick 轉為遊戲尺寸、移除中繼資料並壓縮。狄菲先生成角色錨點，再以錨點與全身比例圖生成六張事件圖；程嵐使用獨立的較年輕成人臉部幾何，避免與狄菲同臉。
+本批素材以內建 ImageGen 生成，使用同一組港區犯罪黑色電影視覺提示；事件桌機版與手機版分開重新構圖，隊員與地盤圖依卡片用途採固定比例，再以 ImageMagick 轉為遊戲尺寸、移除中繼資料並壓縮。狄菲先生成角色錨點，再以錨點與全身比例圖生成事件圖；常駐助理立繪以既有全身圖鎖定身分與服裝，在純色背景上生成後以本機色鍵工具建立透明邊緣。程嵐使用獨立的較年輕成人臉部幾何，避免與狄菲同臉。新增的三類支線情境同樣分別生成 3:2 桌機圖與 4:5 手機圖，沒有直接互相裁切。

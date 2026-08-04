@@ -189,18 +189,18 @@ export function resolveNightOption(input,id){
   if(input.phase!=="activity"||!input.activityKind?.startsWith("night:"))throw new GameError("WRONG_PHASE","目前不在夜生活選單");
   const card=getEvent(input.selected,input);if(id==="cancel"){const state=clone(input);state.phase="result";state.lastResult={title:card.title,choice:"取消安排",success:true,summary:"你沒有進行活動，但尋找場所仍花掉了整晚。"};return state;}
   if(!input.activityOptions.includes(id))throw new GameError("UNKNOWN_ACTIVITY",`未知夜生活選項：${id}`);
-  let state=clone(input),effects=[],label="",summary="";
+  let state=clone(input),effects=[],label="",summary="",characterId=null;
   if(input.activityKind==="night:property"){
     const asset=state.assets.properties.find(item=>item.id===id),level=asset.level||0,milestone=(level>=10?10:level>=5?5:level>=3?3:0);effects=[{type:"stat.add",key:"fatigue",value:-(18+level*2)},{type:"stat.add",key:"stress",value:-(6+level+milestone)},{type:"stat.add",key:"health",value:3+level+milestone},buffEffect("property_sleep",`${asset.name}的好眠`,"physique",1+Math.floor(level/3))];label=asset.name;summary=`你回到 ${asset.name}，升級 +${level} 的設備讓這晚恢復得更完整。`;
   }else if(input.activityKind==="night:contact"){
-    const contact=CONTACTS.find(item=>item.id===id),second=!!state.metContacts[`${state.day}:${id}`],gain=second?3:6;effects=[{type:"resource.add",value:-card.cost},{type:"relation.add",key:id,value:gain},{type:"stat.add",key:"fatigue",value:card.id.includes("drive")?3:-5},{type:"stat.add",key:"stress",value:-12},...(card.id.includes("drive")?[buffEffect("social_drive","有人同行","engineering",2)]:[buffEffect("social_night","有人陪伴","social",2)])];state.metContacts[`${state.day}:${id}`]=true;label=contact.name;summary=`你和${contact.name}一起度過晚上。${second?"這是今天第二次見面，關係提升效果減半。":"你們之間多了一段不必向別人解釋的共同記憶。"}`;
+    const contact=CONTACTS.find(item=>item.id===id),second=!!state.metContacts[`${state.day}:${id}`],gain=second?3:6;characterId=id;effects=[{type:"resource.add",value:-card.cost},{type:"relation.add",key:id,value:gain},{type:"stat.add",key:"fatigue",value:card.id.includes("drive")?3:-5},{type:"stat.add",key:"stress",value:-12},...(card.id.includes("drive")?[buffEffect("social_drive","有人同行","engineering",2)]:[buffEffect("social_night","有人陪伴","social",2)])];state.metContacts[`${state.day}:${id}`]=true;label=contact.name;summary=`你和${contact.name}一起度過晚上。${second?"這是今天第二次見面，關係提升效果減半。":"你們之間多了一段不必向別人解釋的共同記憶。"}`;
   }else{
     const [assetId,contactId]=id.split("|"),asset=state.assets.industries.find(item=>item.id===assetId);const level=asset.level||0;if(!asset)throw new GameError("UNKNOWN_ASSET","找不到產業");label=asset.name;
     if(input.activityKind==="night:industry"){effects=[{type:"resource.add",value:Math.max(2,(asset.dailyIncome||0)+level)},{type:"stat.add",key:"stress",value:-7},{type:"stat.add",key:"fatigue",value:-4}];summary=`你親自巡視 ${asset.name}，解決小問題並拿到今晚額外收入。`;}
-    else if(input.activityKind==="night:industryContact"){const contact=CONTACTS.find(item=>item.id===contactId),second=!!state.metContacts[`${state.day}:${contactId}`];effects=[{type:"resource.add",value:-card.cost},{type:"relation.add",key:contactId,value:second?3:6},{type:"resource.add",value:Math.max(1,Math.floor((asset.dailyIncome||0)/2))},{type:"stat.add",key:"stress",value:-10}];state.metContacts[`${state.day}:${contactId}`]=true;label=`${asset.name}／${contact.name}`;summary=`你在 ${asset.name} 招待${contact.name}，談感情也談生意。`;}
+    else if(input.activityKind==="night:industryContact"){const contact=CONTACTS.find(item=>item.id===contactId),second=!!state.metContacts[`${state.day}:${contactId}`];characterId=contactId;effects=[{type:"resource.add",value:-card.cost},{type:"relation.add",key:contactId,value:second?3:6},{type:"resource.add",value:Math.max(1,Math.floor((asset.dailyIncome||0)/2))},{type:"stat.add",key:"stress",value:-10}];state.metContacts[`${state.day}:${contactId}`]=true;label=`${asset.name}／${contact.name}`;summary=`你在 ${asset.name} 招待${contact.name}，談感情也談生意。`;}
     else{const ability=["management","social","perception"].sort((a,b)=>abilityValue(state,b)-abilityValue(state,a))[0],n=rngNext(state.seed);state.seed=n.seed;const roll=Math.floor(n.value*41)+20,success=abilityValue(state,ability)+roll>=70;effects=success?[{type:"resource.add",value:5+level},{type:"stat.add",key:"stress",value:-5}]:[{type:"resource.add",value:-Math.min(state.player.resource,4+level)},{type:"stat.add",key:"stress",value:6}];state=applyEffects(state,effects,`night:industryRisk:${asset.id}`);state.phase="result";state.lastResult={title:card.title,choice:asset.name,success,roll,check:{ability,difficulty:42},summary:success?"你在打烊前找出問題源頭，保住收入與員工信心。":"問題沒有完全解決，你付出一筆損失，但產業仍能繼續營業。"};return state;}
   }
-  state=applyEffects(state,effects,`night:${card.id}:${id}`);state.phase="result";state.lastResult={title:card.title,choice:label,success:true,summary};return state;
+  state=applyEffects(state,effects,`night:${card.id}:${id}`);state.phase="result";state.lastResult={title:card.title,choice:label,success:true,summary,...(characterId?{characterId}:{})};return state;
 }
 function buffEffect(id,label,ability,value){return {type:"buff.add",id,label,ability,value,duration:5};}
 function abilityValue(state,key){return (state.player.abilities[key]||0)+state.buffs.filter(buff=>buff.ability===key).reduce((sum,buff)=>sum+buff.value,0);}
@@ -211,7 +211,7 @@ export function startCharacterEvent(input,eventId){
   if(input.phase!=="activity"||input.activityKind!=="social")throw new GameError("WRONG_PHASE","必須先選擇「與人見面」");const pending=pendingCharacterEvent(input);if(!pending||pending.id!==eventId)throw new GameError("CHARACTER_EVENT_LOCKED","這段人物事件尚未解鎖");const state=clone(input);state.selectedCharacterEvent=eventId;state.phase="characterEvent";return state;
 }
 export function resolveCharacterEventChoice(input,choiceId){
-  if(input.phase!=="characterEvent"||!input.selectedCharacterEvent)throw new GameError("WRONG_PHASE","目前沒有進行中的人物事件");const event=characterEventById(input.selectedCharacterEvent),choice=event?.choices.find(item=>item.id===choiceId);if(!event||!choice)throw new GameError("UNKNOWN_CHOICE","找不到人物事件選項");let state=applyEffects(input,choice.effects,`character-event:${event.id}:${choice.id}`);state.completedCharacterEvents=[...new Set([...(state.completedCharacterEvents||[]),event.id])];state.selectedCharacterEvent=null;state.phase="result";state.lastResult={title:event.title,choice:choice.text,success:true,summary:choice.result};return state;
+  if(input.phase!=="characterEvent"||!input.selectedCharacterEvent)throw new GameError("WRONG_PHASE","目前沒有進行中的人物事件");const event=characterEventById(input.selectedCharacterEvent),choice=event?.choices.find(item=>item.id===choiceId);if(!event||!choice)throw new GameError("UNKNOWN_CHOICE","找不到人物事件選項");let state=applyEffects(input,choice.effects,`character-event:${event.id}:${choice.id}`);state.completedCharacterEvents=[...new Set([...(state.completedCharacterEvents||[]),event.id])];state.selectedCharacterEvent=null;state.phase="result";state.lastResult={title:event.title,choice:choice.text,success:true,summary:choice.result,characterId:event.characterId};return state;
 }
 function meetingActivity(state,id){
   if(id==="difei"||id==="chenglan"){const options=id==="difei"?DIFEI_ACTIVITIES:CHENGLAN_ACTIVITIES,n=rngNext(state.seed);state.seed=n.seed;return options[Math.floor(n.value*options.length)];}
@@ -219,7 +219,7 @@ function meetingActivity(state,id){
   const member=teamMemberById(id),cost=teamTrainingCost(state,id);return member?{id,name:member.name,title:`與${member.name}進行專長交流`,detail:`現金 -${cost}／關係 +4。`,effects:[{type:"resource.add",value:-cost},{type:"relation.add",key:id,value:4}],result:`你和${member.name}完成一次不公開的專長交流。真正的進步來自反覆合作，而不是一次付費訓練。`}:null;
 }
 function resolveCharacterMeeting(input,id){
-  if(!input.activityOptions.includes(id)||!meetingCharacterIds(input).includes(id))throw new GameError("UNKNOWN_ACTIVITY",`未知人物：${id}`);if(input.metContacts[`${input.day}:${id}`])throw new GameError("ALREADY_MET","今天已經和這名人物見過面");let state=clone(input),activity=meetingActivity(state,id);if(!activity)throw new GameError("UNKNOWN_ACTIVITY",`未知人物：${id}`);const cashCost=(activity.effects||[]).filter(effect=>effect.type==="resource.add"&&effect.value<0).reduce((sum,effect)=>sum-effect.value,0);if(state.player.resource<cashCost)throw new GameError("INSUFFICIENT_CASH",`現金不足，需要 ${cashCost}`);state=applyEffects(state,activity.effects||[],`meeting:${id}:${activity.id}`);state.metContacts[`${state.day}:${id}`]=true;const before=state.characterLevels[id]||1,chance=characterLevelChance(before),roll=rngNext(state.seed);state.seed=roll.seed;const success=roll.value*100<chance;if(success)state.characterLevels[id]=before+1;else state.characterLevels[id]=before;const roster=state.team?.roster?.find(item=>item.id===id);if(roster)roster.level=state.characterLevels[id];state.phase="result";state.lastResult={title:"與人見面",choice:activity.title||activity.name,success:true,levelUp:success,summary:`${activity.result} ${success?`${activity.name||teamMemberById(id)?.name||id}的專長提升至 Lv.${before+1}。`:`本次沒有突破 Lv.${before}（成功率 ${chance}%），但關係仍照常提升。`}`};return state;
+  if(!input.activityOptions.includes(id)||!meetingCharacterIds(input).includes(id))throw new GameError("UNKNOWN_ACTIVITY",`未知人物：${id}`);if(input.metContacts[`${input.day}:${id}`])throw new GameError("ALREADY_MET","今天已經和這名人物見過面");let state=clone(input),activity=meetingActivity(state,id);if(!activity)throw new GameError("UNKNOWN_ACTIVITY",`未知人物：${id}`);const cashCost=(activity.effects||[]).filter(effect=>effect.type==="resource.add"&&effect.value<0).reduce((sum,effect)=>sum-effect.value,0);if(state.player.resource<cashCost)throw new GameError("INSUFFICIENT_CASH",`現金不足，需要 ${cashCost}`);state=applyEffects(state,activity.effects||[],`meeting:${id}:${activity.id}`);state.metContacts[`${state.day}:${id}`]=true;const before=state.characterLevels[id]||1,chance=characterLevelChance(before),roll=rngNext(state.seed);state.seed=roll.seed;const success=roll.value*100<chance;if(success)state.characterLevels[id]=before+1;else state.characterLevels[id]=before;const roster=state.team?.roster?.find(item=>item.id===id);if(roster)roster.level=state.characterLevels[id];state.phase="result";state.lastResult={title:"與人見面",choice:activity.title||activity.name,success:true,levelUp:success,characterId:id,summary:`${activity.result} ${success?`${activity.name||teamMemberById(id)?.name||id}的專長提升至 Lv.${before+1}。`:`本次沒有突破 Lv.${before}（成功率 ${chance}%），但關係仍照常提升。`}`};return state;
 }
 function activityOption(state,id){
   if(state.activityKind==="leisure") return LEISURE_CARDS.find(option=>option.id===id);
@@ -240,6 +240,77 @@ export function resolveActivity(input,id){
   if(input.activityKind==="social") state.metContacts[`${state.day}:${id}`]=true;
   state.phase="result";state.lastResult={title:getEvent(input.selected).title,choice:option.title||option.text||option.name,success:true,summary:option.result};
   return state;
+}
+
+function assistantTrainingOption(state){
+  const physique=TRAINING_CARDS.find(option=>option.id==="train_physique"),reflex=TRAINING_CARDS.find(option=>option.id==="train_reflex");
+  const preferReflex=(((state.seed||0)^(state.day||0)*31^(state.stage||0)*17^(state.sequence||0))>>>0)%2===1;
+  const preferred=preferReflex?reflex:physique,alternate=preferReflex?physique:reflex;
+  if((preferred?.cost||0)<=state.player.resource)return preferred;
+  if((alternate?.cost||0)<=state.player.resource)return alternate;
+  return null;
+}
+function assistantRecoveryOption(state){
+  const options=state.player.health<=35
+    ?["leisure_treatment","leisure_nutrition","leisure_street_food","leisure_free_rest"]
+    :state.player.fatigue>=75
+      ?["leisure_sleep","leisure_nutrition","leisure_free_rest"]
+      :["leisure_bar","leisure_movie","leisure_coffee","leisure_free_rest"];
+  return options.map(id=>LEISURE_CARDS.find(option=>option.id===id)).find(option=>option&&(!option.cost||option.cost<=state.player.resource))||LEISURE_CARDS.find(option=>option.id==="leisure_free_rest");
+}
+function assistantDirectActivity(input,kind,optionId){
+  const state=clone(input);state.phase="activity";state.selected=kind==="training"?"life_training":"life_leisure";state.activityKind=kind;state.activityOptions=[optionId];return resolveActivity(state,optionId);
+}
+function assistantAdviceObject(id,tone,title,message,actionLabel=null){return {id,tone,title,message,actionLabel,actionable:!!actionLabel};}
+
+export function assistantAdvice(state){
+  if(!state)return null;
+  if(state.phase==="battle"&&state.battle){
+    const guardThreshold=(state.battle.enemyDamage||7)*2+6;
+    if(state.battle.playerHp<=guardThreshold)return assistantAdviceObject("battle:guard","urgent","先找掩護","你的戰力已經接近危險線。先卸掉這一輪傷害，再找反擊空檔。","接受：尋找掩護");
+    const bonuses=combinedBonuses(state),shooting=state.player.abilities.reflex+(bonuses.attack||0)*8,brawling=state.player.abilities.physique+(bonuses.brawl||0)*8;
+    return brawling>shooting
+      ?assistantAdviceObject("battle:brawl","urgent","貼近打亂陣形","我們的格鬥與近戰支援比較強，現在貼上去最有效率。","接受：近身格鬥")
+      :assistantAdviceObject("battle:attack","urgent","維持交叉射擊","槍法與射擊支援佔優，別讓對方靠近。","接受：快速射擊");
+  }
+  if(state.phase==="cards"){
+    if(state.pendingRetaliation){
+      const territory=territoryById(state.pendingRetaliation.territoryId);
+      if(state.player.health>=20)return assistantAdviceObject(`defend:${state.pendingRetaliation.territoryId}`,"urgent",`${territory?.name||"地盤"}正在遭到反攻`,`現在不處理就會失去收入與地盤。我已經把防守隊伍和撤離線排好。`,"接受：立即出動防守");
+      const recovery=assistantRecoveryOption(state);if(recovery.id==="leisure_free_rest")return assistantAdviceObject("work:cash","urgent","先籌醫療費","你現在的健康不足以帶隊防守，手邊也沒有治療費。我找到一份能立刻結算的工作。","接受：立即工作");return assistantAdviceObject(`recover:${recovery.id}`,"urgent","先處理傷勢","你現在的健康不足以帶隊防守。先把傷勢壓住，才有資格上場。",`接受：${recovery.title}`);
+    }
+    if(state.activeSideQuest?.deadlineDay){
+      const remaining=state.activeSideQuest.deadlineDay-state.day+1;
+      if(remaining<=1){const quest=SIDE_QUESTS.find(item=>item.id===state.activeSideQuest.id);return assistantAdviceObject("sidequest:continue","urgent",`${quest?.title||"支線任務"}即將到期`,`只剩今天。再拖下去，委託人和線索都不會等我們。`,"接受：立即繼續任務");}
+    }
+    if(state.player.health<=35||state.player.fatigue>=75||state.player.stress>=75){
+      const recovery=assistantRecoveryOption(state),reason=state.player.health<=35?"傷勢已經會影響下一次行動":state.player.fatigue>=75?"疲勞已經接近失誤區間":"精神壓力正在拖慢判斷";
+      if(state.player.health<=35&&recovery.id==="leisure_free_rest")return assistantAdviceObject("work:cash","urgent","先籌恢復費用","傷勢需要處理，但目前的現金連基本補給都不夠。我先替你安排一份能立刻結算的工作。","接受：立即工作");return assistantAdviceObject(`recover:${recovery.id}`,"urgent","先恢復狀態",`${reason}。先處理，城市不會因為我們硬撐就變安全。`,`接受：${recovery.title}`);
+    }
+    const training=assistantTrainingOption(state);
+    if(training){const isReflex=training.id==="train_reflex";return assistantAdviceObject(`train:${training.id}`,"normal",isReflex?"練一輪槍法":"練一輪格鬥基本功",isReflex?"目前沒有更急的事。我替你留好靶位，現在練呼吸和第一發命中。":"目前沒有更急的事。我把安全屋的訓練區清出來了，先做體能與近身步法。",`接受：${training.title}`);}
+    return assistantAdviceObject("work:cash","normal","先補訓練經費","現在連最低訓練開銷都不夠。我找到一份能立刻結算的工作，先把現金補起來。","接受：立即工作");
+  }
+  if(state.phase==="activity"&&state.activityKind==="training"){
+    const training=assistantTrainingOption(state);if(training&&state.activityOptions.includes(training.id)){const isReflex=training.id==="train_reflex";return assistantAdviceObject(`train:${training.id}`,"normal",isReflex?"今天練槍法":"今天練格鬥",isReflex?"你目前的狀態適合做短時間高專注射擊。":"體能與步法最需要靠反覆動作固定下來。",`接受：${training.title}`);}
+  }
+  if(state.phase==="factionBoard"&&state.pendingRetaliation){
+    const territory=territoryById(state.pendingRetaliation.territoryId);
+    if(state.player.health>=20)return assistantAdviceObject(`defend:${state.pendingRetaliation.territoryId}`,"urgent",`守住${territory?.name||"地盤"}`,"反攻隊已經進場，我們現在出動還能搶回主動。","接受：開始防守戰");
+  }
+  const contextual={event:["先看清選項","這裡的選擇會改變故事，我把風險標出來了，最後決定由你下。"],characterEvent:["她正在等你的回答","人物事件不會過期，這次可以慢慢選。"],sidequestPick:["委託都已整理","風險、期限與可能收益都在卡片上，挑你願意承擔後果的那一件。"],sidequestNode:["先處理眼前節點","線索正在變動，這一步需要你親自決定。"],result:["行程已完成","結果和能力變化都已記錄。確認後再繼續下一段時間。"],ending:["主線已走到終點","城市不會停下來；你仍可以繼續經營、訓練與處理人物關係。"],chapterTransition:["下一章已準備好","主線沒有期限，進入下一章後仍能照自己的步調生活。"]}[state.phase]||["我在旁邊","需要時直接叫我，我會一直更新眼前最重要的事。"];
+  return assistantAdviceObject(`observe:${state.phase}`,"normal",contextual[0],contextual[1]);
+}
+
+export function acceptAssistantAdvice(input,adviceId){
+  const advice=assistantAdvice(input);if(!advice?.actionable||advice.id!==adviceId)throw new GameError("ADVICE_CHANGED","狄菲已經依最新狀態調整建議，請重新確認。");
+  if(adviceId.startsWith("battle:"))return battleAction(input,adviceId.slice(7));
+  if(adviceId.startsWith("train:"))return assistantDirectActivity(input,"training",adviceId.slice(6));
+  if(adviceId.startsWith("recover:"))return assistantDirectActivity(input,"leisure",adviceId.slice(8));
+  if(adviceId.startsWith("defend:")){const state=clone(input);state.phase="factionBoard";state.selected="life_conflict";return startTerritoryFight(state,adviceId.slice(7));}
+  if(adviceId==="sidequest:continue"){const state=clone(input);state.phase="cards";state.candidates=[...new Set([...(state.candidates||[]),"life_sidequest"])];return selectCard(state,"life_sidequest");}
+  if(adviceId==="work:cash"){const state=clone(input);state.phase="cards";state.candidates=[...new Set([...(state.candidates||[]),"life_work"])];return selectCard(state,"life_work");}
+  throw new GameError("UNKNOWN_ADVICE",`未知助理建議：${adviceId}`);
 }
 function resolveWork(input){
   let state=clone(input); const scored=JOBS.map(job=>({job,score:Math.max(...job.abilities.map(key=>abilityValue(state,key)))})).sort((a,b)=>b.score-a.score); const job=scored[0].job;
