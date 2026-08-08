@@ -124,3 +124,14 @@ Built-in ImageGen produced 84 distinct choice masters for the `mainline`, `chara
 - Character consistency: local `azhe.webp`, `mira.webp`, `kael.webp`, and `difei-full.webp` files were supplied whenever their named characters appeared.
 - Constraints: no visible text, letters, numbers, brand marks, logo, watermark, excessive neon, gore, or futuristic technology.
 - QA: the complete batch was reviewed as a contact sheet for composition, legibility at thumbnail scale, visual cohesion, and obvious text or branding artifacts before mapping.
+
+### 2026-08-08 side-quest and daily-life choice batch
+
+Built-in ImageGen produced 90 distinct choice masters for the `sidequest`, `daily`, and `night` categories. Every final is a stripped quality-82 WebP at 1536x1024 (3:2), stored under `assets/images/choices/` and mapped through `CHOICE_ART` with action-specific Traditional Chinese alternative text.
+
+- Coverage: 22 side-quest node choices, 28 daily-life/contact/leisure/training choices, and 40 statically enumerable night choices including 12 night-combat entries.
+- Prompt family: every prompt was derived from the live activity title, summary, side-quest node text, and option action. Each image depicts the action the player chooses, rather than a generic parent scene or a success/failure outcome.
+- Character consistency: local `mira.webp`, `kael.webp`, `zero.webp`, `difei-full.webp`, and `chenglan.webp` references were supplied for all direct named-contact activities and named side quests.
+- Visual style: realistic modern East Asian harbor crime noir, deep blue-green and concrete gray, restrained amber and mint practical lighting, grounded contemporary locations and technology.
+- Constraints: absolutely no visible text, pseudo-writing, letters, numbers, signage, license plates, UI glyphs, brands, logos, watermarks, excessive neon, futuristic technology, gore, or graphic injury. Printed and display surfaces were requested blank or fully obscured.
+- QA: all 90 finals were reviewed together in a labeled contact sheet for semantic alignment, focal-action readability, character use, composition, and obvious prohibited marks. Night-combat entries show mission entry or pre-action tension without graphic harm. One initial basic-treatment prompt was rejected by output moderation and was safely regenerated as calm support-wrap care with no injury detail.
