@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import * as artContent from "../src/art-content.mjs";
 import { artKey, BUILTIN_ART_REQUIREMENTS, choiceArt, eventArt } from "../src/art-content.mjs";
 import { EVENTS } from "../src/content.mjs";
 import { CHAPTER_EVENTS } from "../src/chapter-content.mjs";
@@ -25,6 +26,36 @@ test("uses a custom category fallback for dynamic choices", () => {
 
 test("finds the existing signal event desktop art", () => {
   assert.match(eventArt("signal").desktop, /event-signal-desktop\.webp$/);
+});
+
+test("結果狀態提供成功失敗與中性文字", () => {
+  assert.equal(typeof artContent.resultStatus, "function");
+  const { resultStatus } = artContent;
+  assert.deepEqual(resultStatus(true), { label: "成功", tone: "success" });
+  assert.deepEqual(resultStatus(false), { label: "失敗", tone: "failure" });
+  assert.deepEqual(resultStatus(undefined), { label: "結果", tone: "neutral" });
+});
+
+test("結果圖片鍵直接解析並對未知內容使用有限備援", () => {
+  assert.equal(typeof artContent.choiceArtByKey, "function");
+  assert.deepEqual(artContent.choiceArtByKey("signal--trace", "event"), {
+    key: "signal--trace",
+    src: "assets/images/fallbacks/event.webp",
+    alt: "Artwork unavailable",
+    fallback: true,
+  });
+  assert.match(
+    artContent.choiceArtByKey(undefined, "not-a-category").src,
+    /assets\/images\/fallbacks\/default\.webp$/,
+  );
+});
+
+test("結果圖片鍵在沒有類別提示時推導有限備援類別", () => {
+  assert.match(artContent.choiceArtByKey("battle--attack").src, /fallbacks\/battle\.webp$/);
+  assert.match(artContent.choiceArtByKey("sidequest-old-debt-0--pay").src, /fallbacks\/sidequest\.webp$/);
+  assert.match(artContent.choiceArtByKey("activity-leisure-rest--rest").src, /fallbacks\/daily\.webp$/);
+  assert.match(artContent.choiceArtByKey("asset_market--buy").src, /fallbacks\/market\.webp$/);
+  assert.match(artContent.choiceArtByKey("custom-card--choice").src, /fallbacks\/custom\.webp$/);
 });
 
 test("covers every statically enumerable built-in option collection", () => {

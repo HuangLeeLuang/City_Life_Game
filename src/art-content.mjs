@@ -21,9 +21,7 @@ const FALLBACK_ALT = "Artwork unavailable";
 // single source of truth for what still needs to be generated.
 export const CHOICE_ART = {};
 
-// These records mirror the existing app-local EVENT_ART catalogue. The UI
-// continues to use its local copy in this task, so no gameplay or rendering
-// behavior changes while the inventory foundation is introduced.
+// Event artwork is centralized here so every renderer uses the same records.
 export const EVENT_ART = {
   signal:{desktop:"assets/images/event-signal-desktop.webp",mobile:"assets/images/event-signal-mobile.webp",alt:"雨中的海港公共電話正在響，玻璃上有一道難以辨認的人影"},
   runner:{desktop:"assets/images/event-runner-desktop.webp",mobile:"assets/images/event-runner-mobile.webp",alt:"受傷的年輕車手倒在雨夜港區住處門前，手中緊握一把保險箱鑰匙"},
@@ -49,11 +47,45 @@ export function eventArt(id) {
   return EVENT_ART[id] || null;
 }
 
+export function resultStatus(success) {
+  if (success === true) return { label: "成功", tone: "success" };
+  if (success === false) return { label: "失敗", tone: "failure" };
+  return { label: "結果", tone: "neutral" };
+}
+
 export function choiceArt(parentId, optionId, category = "default") {
   const key = artKey(parentId, optionId);
   const mapped = CHOICE_ART[key];
   if (mapped) return { key, ...mapped, fallback: false };
   const fallbackCategory = FALLBACK_CATEGORIES.has(category) ? category : "default";
+  return {
+    key,
+    src: `assets/images/fallbacks/${fallbackCategory}.webp`,
+    alt: FALLBACK_ALT,
+    fallback: true,
+  };
+}
+
+export function choiceArtByKey(value, category) {
+  const key = typeof value === "string" ? value : "";
+  const mapped = CHOICE_ART[key];
+  if (mapped) return { key, ...mapped, fallback: false };
+  const inferredCategory = key.startsWith("battle--") || key.startsWith("faction-") || key.startsWith("territory-")
+    ? "battle"
+    : key.startsWith("sidequest-")
+      ? "sidequest"
+      : key.startsWith("activity-")
+        ? "daily"
+        : key.startsWith("asset_market--") || key.startsWith("upgrade-")
+          ? "market"
+          : key.startsWith("custom-")
+            ? "custom"
+            : key
+              ? "event"
+              : "default";
+  const fallbackCategory = category === undefined
+    ? inferredCategory
+    : FALLBACK_CATEGORIES.has(category) ? category : "default";
   return {
     key,
     src: `assets/images/fallbacks/${fallbackCategory}.webp`,
