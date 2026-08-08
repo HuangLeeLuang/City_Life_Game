@@ -32,6 +32,7 @@ h1,h2,h3,p { margin-top:0; } h1 { font-size:clamp(1.25rem,4vw,1.8rem); color:#69
 .choices { display:grid; gap:10px; }.choice { min-height:auto!important; }.choice b { color:#69ffc7; display:block; margin-bottom:5px; }
 .icon-choice{display:grid!important;grid-template-columns:38px minmax(0,1fr);gap:12px;align-items:center}.icon-choice>.choice-icon{width:32px;height:32px;color:#ffcf67;padding:5px;border:1px solid #2e6453;background:#0b1915}.icon-choice>span{min-width:0}.icon-choice b{margin-top:0}
 .picture-choice{display:flex!important;align-items:center;gap:14px;padding:10px!important}.choice-copy{flex:1;min-width:0}.choice-copy>.muted,.choice-copy>.danger,.choice-copy>.accent{display:block;margin-top:6px}.picture-choice .character-choice-copy{padding:0}.choice-thumb{width:clamp(104px,20vw,180px);aspect-ratio:3/2;object-fit:cover;border-radius:10px;flex:none}
+.card-choice-thumb{display:block;width:100%;max-width:none;margin:0 0 12px}
 .primary,.secondary { border:1px solid #69ffc7; background:#69ffc7; color:#07110f; padding:10px 16px; cursor:pointer; font-weight:bold; }
 .secondary { color:#d5fbea; background:transparent; border-color:#497b69; }.actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:18px; }
 .log { max-height:220px; overflow:auto; border-left:2px solid #276a57; padding-left:14px; }.log p { margin:0 0 8px; color:#a9cfc0; font-size:.84rem; }

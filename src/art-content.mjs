@@ -74,11 +74,11 @@ export function choiceArtByKey(value, category) {
     ? "battle"
     : key.startsWith("sidequest-")
       ? "sidequest"
-      : key.startsWith("activity-")
+      : key.startsWith("activity-") || key.startsWith("night_")
         ? "daily"
         : key.startsWith("asset_market--") || key.startsWith("upgrade-")
           ? "market"
-          : key.startsWith("custom-")
+          : key.startsWith("custom-") || key.startsWith("custom_")
             ? "custom"
             : key
               ? "event"

@@ -55,7 +55,14 @@ test("結果圖片鍵在沒有類別提示時推導有限備援類別", () => {
   assert.match(artContent.choiceArtByKey("sidequest-old-debt-0--pay").src, /fallbacks\/sidequest\.webp$/);
   assert.match(artContent.choiceArtByKey("activity-leisure-rest--rest").src, /fallbacks\/daily\.webp$/);
   assert.match(artContent.choiceArtByKey("asset_market--buy").src, /fallbacks\/market\.webp$/);
-  assert.match(artContent.choiceArtByKey("custom-card--choice").src, /fallbacks\/custom\.webp$/);
+});
+
+test("動態夜間選項結果沿用每日活動備援", () => {
+  assert.match(artContent.choiceArtByKey("night_social_food--mira").src, /fallbacks\/daily\.webp$/);
+});
+
+test("真實自訂卡 ID 結果使用自訂備援", () => {
+  assert.match(artContent.choiceArtByKey("custom_1723100000000_42--custom_1723100000000_42").src, /fallbacks\/custom\.webp$/);
 });
 
 test("covers every statically enumerable built-in option collection", () => {
