@@ -80,9 +80,9 @@ test("結果圖片鍵直接解析並對未知內容使用有限備援", () => {
   assert.equal(typeof artContent.choiceArtByKey, "function");
   assert.deepEqual(artContent.choiceArtByKey("signal--trace", "event"), {
     key: "signal--trace",
-    src: "assets/images/fallbacks/event.webp",
-    alt: "Artwork unavailable",
-    fallback: true,
+    src: "assets/images/choices/signal--trace.webp",
+    alt: "追查來電：請電信公司內鬼定位公用電話。",
+    fallback: false,
   });
   assert.match(
     artContent.choiceArtByKey(undefined, "not-a-category").src,
