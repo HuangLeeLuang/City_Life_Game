@@ -5,6 +5,7 @@ import { CHAPTER_EVENTS, OFFICIAL_MAINLINE_IDS, officialMainlineMeta, chapterFor
 import { FACTIONS, TERRITORIES, factionById, territoryById } from "./faction-content.mjs?v=23";
 import { TEAM_MEMBERS, TEAM_LIMIT, teamMemberById } from "./team-content.mjs?v=24";
 import { CONTACT_PASSIVES, DIFEI_ACTIVITIES, CHENGLAN_ACTIVITIES, DIFEI_EVENTS, characterEventById } from "./character-content.mjs?v=24";
+import { artKey } from "./art-content.mjs";
 
 const LIMITS = { health:[0,100], fatigue:[0,100], stress:[0,100], resource:[0,999], ability:[0,100], relation:[-100,100], world:[0,100] };
 const ASSET_BASE_PRICES={property_riverside_flat:40,property_suburban_safehouse:28,vehicle_grey_sport:22,vehicle_black_suv:18,weapon_sawed_shotgun:14,weapon_silenced_pistol:18,luxury_gold_watch:10,luxury_black_bag:12,industry_bay_diner:18,industry_east_garage:28,industry_blue_nightclub:36,industry_old_apartments:50};
@@ -12,6 +13,11 @@ const CHARACTER_IDS=[...new Set([...CONTACTS.map(contact=>contact.id),...TEAM_ME
 export class GameError extends Error { constructor(code,message){ super(message); this.code=code; } }
 export function rngNext(seed){ let x=seed|0; x^=x<<13; x^=x>>>17; x^=x<<5; return {seed:x>>>0,value:(x>>>0)/4294967296}; }
 const clone = value => structuredClone(value);
+function resultRecord(parentId,optionId,data){return {...data,artKey:artKey(parentId,optionId)};}
+function withResultArt(state,parentId,optionId){
+  if(state.lastResult&&(state.phase==="result"||state.phase==="ending"))state.lastResult=resultRecord(parentId,optionId,state.lastResult);
+  return state;
+}
 const clamp = (value,[min,max]) => Math.max(min,Math.min(max,value));
 const freshFactions=()=>Object.fromEntries(FACTIONS.map(faction=>[faction.id,{hostility:faction.baseHostility,respect:0,wins:0,losses:0}]));
 const freshTerritories=()=>Object.fromEntries(TERRITORIES.map(territory=>[territory.id,{owner:territory.factionId,level:0,capturedDay:null}]));
@@ -158,11 +164,11 @@ export function selectCard(input,eventId){
   if(card.hub==="factions"){state.phase="factionBoard";return state;}
   throw new GameError("UNKNOWN_HUB",`未知生活卡牌：${card.hub}`);
 }
-function resolveDirectCard(input,card){
+function resolveDirectCardBase(input,card){
   if(card.cost&&input.player.resource<card.cost)throw new GameError("INSUFFICIENT_CASH",`現金不足，需要 ${card.cost}`);
   const effects=[...(card.cost?[{type:"resource.add",value:-card.cost}]:[]),...(card.effects||[])];let state=applyEffects(input,effects,`custom:${card.id}`);if(card.main){state.seen[card.id]=true;state=completeOfficialProgress(state,card.id);}state.phase=state.finished&&!state.postgame?"ending":"result";state.lastResult={title:card.title,choice:card.title,success:true,summary:card.result||card.summary||"自訂卡牌已結算。"};return state;
 }
-function openNightCard(input,card){
+function openNightCardBase(input,card){
   if(card.cost&&input.player.resource<card.cost)throw new GameError("INSUFFICIENT_CASH",`現金不足，需要 ${card.cost}`);
   if(card.hub){
     const state=clone(input);state.activityKind=`night:${card.hub}`;
@@ -185,7 +191,7 @@ function openNightCard(input,card){
   let state=applyEffects(input,card.effects||[],`night:${card.id}`);let extra="";if(card.random){const n=rngNext(state.seed);state.seed=n.seed;if(n.value<.3){state=applyEffects(state,[{type:"ability.add",key:"perception",value:1}],`night:${card.id}:random`);extra=" 隨機插曲：你無意間聽到一條可疑交易消息，觀察永久 +1。";}}
   state.phase="result";state.lastResult={title:card.title,choice:card.title,success:true,summary:(card.result||card.summary)+extra};return state;
 }
-export function resolveNightOption(input,id){
+function resolveNightOptionBase(input,id){
   if(input.phase!=="activity"||!input.activityKind?.startsWith("night:"))throw new GameError("WRONG_PHASE","目前不在夜生活選單");
   const card=getEvent(input.selected,input);if(id==="cancel"){const state=clone(input);state.phase="result";state.lastResult={title:card.title,choice:"取消安排",success:true,summary:"你沒有進行活動，但尋找場所仍花掉了整晚。"};return state;}
   if(!input.activityOptions.includes(id))throw new GameError("UNKNOWN_ACTIVITY",`未知夜生活選項：${id}`);
@@ -210,7 +216,7 @@ export function pendingCharacterEvent(state){return DIFEI_EVENTS.find(event=>!(s
 export function startCharacterEvent(input,eventId){
   if(input.phase!=="activity"||input.activityKind!=="social")throw new GameError("WRONG_PHASE","必須先選擇「與人見面」");const pending=pendingCharacterEvent(input);if(!pending||pending.id!==eventId)throw new GameError("CHARACTER_EVENT_LOCKED","這段人物事件尚未解鎖");const state=clone(input);state.selectedCharacterEvent=eventId;state.phase="characterEvent";return state;
 }
-export function resolveCharacterEventChoice(input,choiceId){
+function resolveCharacterEventChoiceBase(input,choiceId){
   if(input.phase!=="characterEvent"||!input.selectedCharacterEvent)throw new GameError("WRONG_PHASE","目前沒有進行中的人物事件");const event=characterEventById(input.selectedCharacterEvent),choice=event?.choices.find(item=>item.id===choiceId);if(!event||!choice)throw new GameError("UNKNOWN_CHOICE","找不到人物事件選項");let state=applyEffects(input,choice.effects,`character-event:${event.id}:${choice.id}`);state.completedCharacterEvents=[...new Set([...(state.completedCharacterEvents||[]),event.id])];state.selectedCharacterEvent=null;state.phase="result";state.lastResult={title:event.title,choice:choice.text,success:true,summary:choice.result,characterId:event.characterId};return state;
 }
 function meetingActivity(state,id){
@@ -227,7 +233,7 @@ function activityOption(state,id){
   if(state.activityKind==="social") return CONTACTS.find(option=>option.id===id);
   if(state.activityKind==="purchase") return getEvent("asset_market").choices.find(option=>option.id===id);
 }
-export function resolveActivity(input,id){
+function resolveActivityBase(input,id){
   if(input.phase!=="activity") throw new GameError("WRONG_PHASE","目前不在生活活動選單");
   if(id==="cancel"){const state=clone(input);state.phase="result";state.lastResult={title:getEvent(state.selected).title,choice:"取消行程",success:true,summary:"你沒有進行活動，但尋找與安排仍花掉了這段時間。"};return state;}
   if(input.activityKind==="social")return resolveCharacterMeeting(input,id);
@@ -342,7 +348,7 @@ export function acceptAssistantAdvice(input,adviceId,selection=DEFAULT_ASSISTANT
   if(adviceId==="work:cash"){const state=clone(input);state.selected="life_work";return markAssistantAction(resolveWork(state));}
   throw new GameError("UNKNOWN_ADVICE",`未知助理建議：${adviceId}`);
 }
-function resolveWork(input){
+function resolveWorkBase(input){
   let state=clone(input); const scored=JOBS.map(job=>({job,score:Math.max(...job.abilities.map(key=>abilityValue(state,key)))})).sort((a,b)=>b.score-a.score); const job=scored[0].job;
   const ability=job.abilities.sort((a,b)=>abilityValue(state,b)-abilityValue(state,a))[0]; const n=rngNext(state.seed);state.seed=n.seed;const roll=Math.floor(n.value*41)+20;const success=abilityValue(state,ability)+roll>=job.difficulty+28;
   const effects=success?[{type:"resource.add",value:job.reward},...job.effects]:[{type:"resource.add",value:Math.ceil(job.reward/3)},{type:"stat.add",key:"fatigue",value:7},{type:"stat.add",key:"stress",value:5}];
@@ -352,10 +358,10 @@ export function acceptSideQuest(input,questId){
   if(input.phase!=="sidequestPick"||!input.sideQuestCandidates.includes(questId)) throw new GameError("INVALID_SIDE_QUEST","這項支線不在候選清單中");
   const quest=SIDE_QUESTS.find(item=>item.id===questId);const state=clone(input);state.activeSideQuest={id:questId,nodeIndex:0,startedDay:state.day,deadlineDay:quest.deadlineDays?state.day+quest.deadlineDays:null};state.sideQuestCandidates=[];state.phase="sidequestNode";return state;
 }
-export function declineSideQuests(input){
+function declineSideQuestsBase(input){
   if(input.phase!=="sidequestPick") throw new GameError("WRONG_PHASE","目前沒有支線任務可拒絕"); const state=clone(input);state.sideQuestCandidates=[];state.phase="result";state.lastResult={title:"進行支線任務",choice:"全部拒絕",success:true,summary:"你花時間查看委託，最後決定一件也不接。這個生活階段仍然結束。"};return state;
 }
-export function resolveSideQuestChoice(input,choiceId){
+function resolveSideQuestChoiceBase(input,choiceId){
   if(input.phase!=="sidequestNode"||!input.activeSideQuest) throw new GameError("WRONG_PHASE","目前沒有進行中的支線節點");
   const quest=SIDE_QUESTS.find(item=>item.id===input.activeSideQuest.id);const node=quest.nodes[input.activeSideQuest.nodeIndex];const choice=node.choices.find(item=>item.id===choiceId);if(!choice)throw new GameError("UNKNOWN_CHOICE",`未知支線選項：${choiceId}`);
   let state=clone(input);const ability=quest.abilities.slice().sort((a,b)=>abilityValue(state,b)-abilityValue(state,a))[0];const n=rngNext(state.seed);state.seed=n.seed;const roll=Math.floor(n.value*41)+20;const difficulty={低:32,中:38,高:44}[quest.risk];const success=abilityValue(state,ability)+roll>=difficulty+28;const random=quest.randomEvents[state.seed%quest.randomEvents.length];
@@ -365,10 +371,10 @@ export function resolveSideQuestChoice(input,choiceId){
   if(complete){state.completedSideQuests.push(quest.id);state.activeSideQuest=null;}
   state.phase="result";state.lastResult={title:quest.title,choice:choice.text,success,roll,check:{ability,difficulty},summary:`${success?choice.result:choice.failure} 隨機狀況：${random}${complete?" 支線任務已結束。":""}`};return state;
 }
-export function abandonSideQuest(input){
+function abandonSideQuestBase(input){
   if(!input.activeSideQuest) throw new GameError("NO_SIDE_QUEST","目前沒有支線可以放棄");const quest=SIDE_QUESTS.find(item=>item.id===input.activeSideQuest.id);let state=applyEffects(input,[{type:"stat.add",key:"stress",value:5},{type:"world.add",key:"people",value:-3}],`sidequest:${quest.id}:abandon`);state.flags[`abandoned.${quest.id}`]=true;state.activeSideQuest=null;state.phase="result";state.lastResult={title:quest.title,choice:"放棄任務",success:false,summary:"你主動切斷了這條線。相關人物不會忘記，這項支線也不會再次出現。"};return state;
 }
-export function upgradeAsset(input,category,assetId){
+function upgradeAssetBase(input,category,assetId){
   if(input.phase!=="activity"||input.activityKind!=="purchase") throw new GameError("WRONG_PHASE","只能在購買卡牌中升級資產");const asset=input.assets?.[category]?.find(item=>item.id===assetId);if(!asset)throw new GameError("UNKNOWN_ASSET","找不到這項資產");const level=asset.level||0;const cost=Math.max(1,Math.ceil((asset.basePrice||1)*.25*(level+1)));if(input.player.resource<cost)throw new GameError("INSUFFICIENT_CASH",`升級需要現金 ${cost}`);const chance=level===0?100:level===1?90:level===2?80:Math.max(5,80-(level-2)*5);let state=applyEffects(input,[{type:"resource.add",value:-cost}],`upgrade:${assetId}`);const n=rngNext(state.seed);state.seed=n.seed;const success=n.value*100<chance;state=applyEffects(state,[{type:"asset.upgrade",category,assetId,success}],`upgrade:${assetId}`);state.phase="result";state.lastResult={title:"升級資產",choice:`${asset.name} +${level} → +${success?level+1:level}`,success,summary:success?`升級成功。資產提升至 +${level+1}；基礎效果增強，里程碑等級會解鎖額外功能。`:`升級失敗。花費現金 ${cost}，資產維持 +${level}，不會降級或損壞。`};return state;
 }
 export const factionFightCost=factionId=>Math.max(0,Math.ceil((factionById(factionId)?.strength||50)/25)-2);
@@ -385,17 +391,17 @@ export function startTerritoryFight(input,territoryId){
   const level=control.level||0,enemyHp=Math.max(42,territory.enemyHp+Math.floor(status.hostility/8)+(defending?8-level*7:level*4)),reward=defending?Math.ceil(territory.reward*.65):territory.reward;
   return applyEffects(input,[...(cost?[{type:"resource.add",value:-cost}]:[]),{type:"battle.start",battleType:defending?"defend":"capture",factionId:faction.id,territoryId,enemy:`${faction.name}${defending?"反攻隊":"地盤守衛"}`,title:defending?`防守地盤：${territory.name}`:`攻佔地盤：${territory.name}`,result:defending?`你守住${territory.name}，反攻隊留下裝備與一筆緊急軍資。`:`${territory.name}的守衛撤退，從今天起這裡的收入、眼線與麻煩都歸你。`,reward,enemyHp,enemyDamage:6+Math.floor(territory.enemyHp/38),rewardAbility:faction.rewardAbility,rewardAbilityValue:defending?2:3,rewardWorld:"gangs",rewardWorldValue:defending?-2:-4,securityOnWin:defending?1:3,opening:territory.opening}],`territory:${territoryId}:${defending?"defend":"capture"}`);
 }
-export function fortifyTerritory(input,territoryId){
+function fortifyTerritoryBase(input,territoryId){
   if(input.phase!=="factionBoard"||input.selected!=="life_conflict")throw new GameError("WRONG_PHASE","請先使用「尋找對手」卡牌");const territory=territoryById(territoryId),control=input.territories?.[territoryId];if(!territory||control?.owner!=="player")throw new GameError("TERRITORY_NOT_OWNED","只能強化自己的地盤");const cost=territoryFortifyCost(input,territoryId);if(input.player.resource<cost)throw new GameError("INSUFFICIENT_CASH",`強化地盤需要現金 ${cost}`);let state=applyEffects(input,[{type:"resource.add",value:-cost},{type:"ability.add",key:"management",value:1}],`territory:${territoryId}:fortify`);state.territories[territoryId].level=(state.territories[territoryId].level||0)+1;state.phase="result";state.lastResult={title:"強化地盤",choice:`${territory.name} +${state.territories[territoryId].level}`,success:true,summary:`你增設眼線、撤離路線與防守設備。每日收入提高 2，遭到反攻時敵方戰力也會降低。`};return state;
 }
-export function recruitCrew(input){
+function recruitCrewBase(input){
   if(input.phase!=="factionBoard"||input.selected!=="life_conflict")throw new GameError("WRONG_PHASE","請先使用「尋找對手」卡牌");if(input.crew.members>=20)throw new GameError("CREW_FULL","目前隊伍已達 20 人上限");const cost=6+input.crew.members*3;if(input.player.resource<cost)throw new GameError("INSUFFICIENT_CASH",`招募可靠成員需要現金 ${cost}`);let state=applyEffects(input,[{type:"resource.add",value:-cost},{type:"ability.add",key:"management",value:1},{type:"world.add",key:"people",value:1}],"crew:recruit");state.crew.members++;state.crew.morale=clamp(state.crew.morale+5,[0,100]);state.phase="result";state.lastResult={title:"擴充隊伍",choice:`招募第 ${state.crew.members} 名成員`,success:true,summary:`你從街坊與地下圈子找到一名可靠成員。隊伍會提高戰鬥耐久與傷害，也讓搶下的地盤更容易守住。`};return state;
 }
 function teamManageReady(input){if(input.phase!=="factionBoard"||input.selected!=="life_conflict")throw new GameError("WRONG_PHASE","請先使用「尋找對手」卡牌進入城市勢力");}
 export const teamRecruitCost=memberId=>teamMemberById(memberId)?.cost||0;
 export const teamTrainingCost=(state,memberId)=>{const member=teamMemberById(memberId),roster=state.team?.roster?.find(item=>item.id===memberId);return member&&roster?Math.max(4,Math.ceil(Math.max(16,member.cost)*.18*((state.characterLevels?.[memberId]||roster.level||1)+1))):0;};
 export const teamTrainingChance=(state,memberId)=>characterLevelChance(state.characterLevels?.[memberId]||state.team?.roster?.find(item=>item.id===memberId)?.level||1);
-export function recruitTeamMember(input,memberId){
+function recruitTeamMemberBase(input,memberId){
   teamManageReady(input);const member=teamMemberById(memberId);if(!member)throw new GameError("UNKNOWN_TEAM_MEMBER","找不到這名專家");if(member.recruitable===false)throw new GameError("TEAM_MEMBER_STORY_LOCKED",`${member.name}只能透過故事加入`);if(input.day<member.unlockDay)throw new GameError("TEAM_MEMBER_LOCKED",`第 ${member.unlockDay} 日後才能聯絡${member.name}`);if(input.team?.roster?.some(item=>item.id===memberId))throw new GameError("TEAM_MEMBER_OWNED",`${member.name}已經加入團隊`);if(input.player.resource<member.cost)throw new GameError("INSUFFICIENT_CASH",`招募${member.name}需要現金 ${member.cost}`);
   let state=applyEffects(input,[{type:"resource.add",value:-member.cost},{type:"ability.add",key:member.ability,value:1}],`team:${memberId}:recruit`);state.team.roster.push({id:memberId,level:1,recruitedDay:state.day});state.characterLevels[memberId]??=1;state.relations[memberId]??=0;if(state.team.active.length<TEAM_LIMIT)state.team.active.push(memberId);state.crew.morale=clamp(state.crew.morale+4,[0,100]);state.phase="result";state.lastResult={title:"招募核心隊員",choice:`${member.name}／${member.role}`,success:true,summary:`${member.summary} ${member.name}已加入團隊${state.team.active.includes(memberId)?"並自動編入本次出勤名單":"，可之後編入出勤名單"}；最多同時派出 ${TEAM_LIMIT} 名核心隊員。`};return state;
 }
@@ -412,7 +418,7 @@ function completeOfficialProgress(input,eventId){
   if(meta.index===OFFICIAL_MAINLINE_IDS.length-1){state.finished=true;state.endingShown=true;}
   state.chapter=chapterForProgress(state);return state;
 }
-export function resolveChoice(input,choiceId){
+function resolveChoiceBase(input,choiceId){
   if(input.phase!=="event") throw new GameError("WRONG_PHASE","現在不能選擇事件選項");
   const event=getEvent(input.selected,input); const choice=event.choices.find(c=>c.id===choiceId);
   if(!choice) throw new GameError("UNKNOWN_CHOICE",`未知選項：${choiceId}`);
@@ -428,7 +434,7 @@ export function resolveChoice(input,choiceId){
   if(state.finished&&!state.postgame)state.phase="ending";else if(state.phase!=="battle") state.phase="result";
   return state;
 }
-export function battleAction(input,action){
+function battleActionBase(input,action){
   if(input.phase!=="battle"||!input.battle) throw new GameError("WRONG_PHASE","目前不在戰鬥中");
   let state=clone(input), b=state.battle; let message=""; b.guard=false;const support=crewPower(state),bonuses=combinedBonuses(state);
   const n=rngNext(state.seed); state.seed=n.seed;
@@ -454,7 +460,9 @@ function advanceStage(input){
     const baseIndustryIncome=(state.assets?.industries||[]).reduce((sum,asset)=>sum+(asset.dailyIncome||0),0),businessBonus=baseIndustryIncome?combinedBonuses(state).income:0,industryIncome=baseIndustryIncome+businessBonus,turfIncome=territoryIncome(state);
     state=applyEffects(state,[{type:"resource.add",value:(state.flags.safehouse?3:0)+industryIncome+turfIncome-(ownsCar&&!ownsGarage&&!vehicleSelfMaintained?1:0)}],"day:end");
     state.lastSettlement={industryIncome,businessBonus,turfIncome,vehicleMaintenance:ownsCar&&!ownsGarage&&!vehicleSelfMaintained?1:0,day:state.day-1};
+    const expiredQuestId=state.activeSideQuest?.deadlineDay&&state.day>state.activeSideQuest.deadlineDay?state.activeSideQuest.id:null;
     if(state.activeSideQuest?.deadlineDay&&state.day>state.activeSideQuest.deadlineDay){const expired=SIDE_QUESTS.find(quest=>quest.id===state.activeSideQuest.id);state=applyEffects(state,[{type:"stat.add",key:"stress",value:7},{type:"world.add",key:"people",value:-4}],`sidequest:${expired.id}:expired`);state.flags[`expired.${expired.id}`]=true;state.activeSideQuest=null;}
+    if(expiredQuestId){const expired=SIDE_QUESTS.find(quest=>quest.id===expiredQuestId);state.lastResult=resultRecord(`sidequest:${expired.id}`,"expired",{title:expired.title,choice:"任務逾期",success:false,summary:"你錯過了支線任務的期限。相關人物已經各自離開，這條線不會再次出現。"});}
     const owned=controlledTerritories(state);if(owned.length&&!state.pendingRetaliation){const maxHostility=Math.max(...owned.map(territory=>state.factions[territory.factionId]?.hostility||0)),risk=Math.min(.55,.06+owned.length*.025+maxHostility/500),chance=rngNext(state.seed);state.seed=chance.seed;if(chance.value<risk){const pick=rngNext(state.seed);state.seed=pick.seed;const territory=owned[Math.floor(pick.value*owned.length)];state.pendingRetaliation={territoryId:territory.id,factionId:territory.factionId,sinceDay:state.day};}}
   }
   return generateCards(state);
@@ -468,7 +476,7 @@ export function validateSave(data){
   const base=newGame(data.gender,data.seed),state={...base,...clone(data)};state.version=2;state.contentVersion="0.9.0-unlimited-story";state.day=Math.max(1,Math.round(Number(state.day)||1));state.player={...base.player,...state.player,abilities:{...base.player.abilities,...(state.player?.abilities||{})}};for(const key of ["health","fatigue","stress"])state.player[key]=clamp(Math.round(Number(state.player[key])||0),LIMITS[key]);state.player.resource=clamp(Math.round(Number(state.player.resource)||0),LIMITS.resource);for(const key of Object.keys(base.player.abilities))state.player.abilities[key]=clamp(Math.round(Number(state.player.abilities[key])||0),LIMITS.ability);state.assets=state.assets||base.assets;normalizeAssets(state);state.buffs=Array.isArray(state.buffs)?state.buffs:[];state.completedSideQuests=Array.isArray(state.completedSideQuests)?state.completedSideQuests:[];state.metContacts=state.metContacts||{};state.customCards=Array.isArray(state.customCards)?state.customCards:[];state.cardOverrides=state.cardOverrides||{};state.unlockedSideQuests=Array.isArray(state.unlockedSideQuests)?state.unlockedSideQuests:[];state.factions={...freshFactions(),...(state.factions||{})};state.territories={...freshTerritories(),...(state.territories||{})};for(const territory of TERRITORIES){state.territories[territory.id].level??=0;state.territories[territory.id].capturedDay??=null;}state.crew={...base.crew,...(state.crew||{})};state.relations={...base.relations,...(state.relations||{})};state.characterLevels={...base.characterLevels,...(state.characterLevels||{})};for(const id of CHARACTER_IDS)state.characterLevels[id]=Math.max(1,Math.round(state.characterLevels[id]||1));state.knownContacts=[...new Set(Array.isArray(state.knownContacts)?state.knownContacts:base.knownContacts)].filter(id=>CONTACTS.some(contact=>contact.id===id));state.unlockedCharacterEvents=Array.isArray(state.unlockedCharacterEvents)?state.unlockedCharacterEvents:[];state.completedCharacterEvents=Array.isArray(state.completedCharacterEvents)?state.completedCharacterEvents:[];state.team={...base.team,...(state.team||{})};state.team.roster=(state.team.roster||[]).filter(item=>teamMemberById(item.id)).map(item=>({...item,level:state.characterLevels[item.id]||Math.max(1,item.level||1)}));const ownedTeam=new Set(state.team.roster.map(item=>item.id));state.team.active=[...new Set(state.team.active||[])].filter(id=>ownedTeam.has(id)).slice(0,TEAM_LIMIT);state.pendingRetaliation??=null;state.log=Array.isArray(state.log)?state.log:[];state.sequence=Number.isInteger(state.sequence)?state.sequence:state.log.length;state.chapter=chapterForProgress(state);return state;
 }
 function normalizeAssets(state){state.assets??={};for(const category of ["properties","vehicles","weapons","items","luxuries","industries"]){state.assets[category]=Array.isArray(state.assets[category])?state.assets[category]:[];for(const asset of state.assets[category]){const marketEffect=getEvent("asset_market").choices.flatMap(choice=>choice.effects).find(effect=>effect.type==="asset.grant"&&effect.assetId===asset.id);asset.level??=0;asset.basePrice??=ASSET_BASE_PRICES[asset.id]||1;asset.dailyIncome??=marketEffect?.dailyIncome||0;asset.combatPower??=marketEffect?.combatPower||0;asset.armor??=marketEffect?.armor||0;asset.bonuses={...(marketEffect?.bonuses||{}),...(asset.bonuses||{})};asset.description??=marketEffect?.description||"";}}}
-export function modifyValue(input,path,value){
+function modifyValueBase(input,path,value){
   const state=clone(input),number=Number(value);if(!Number.isFinite(number))throw new GameError("INVALID_VALUE","修改值必須是數字");
   const direct={health:[state.player,"health",LIMITS.health],fatigue:[state.player,"fatigue",LIMITS.fatigue],stress:[state.player,"stress",LIMITS.stress],resource:[state.player,"resource",LIMITS.resource],...Object.fromEntries(CHARACTER_IDS.map(id=>[id,[state.relations,id,LIMITS.relation]])),corporate:[state.world,"corporate",LIMITS.world],gangs:[state.world,"gangs",LIMITS.world],security:[state.world,"security",LIMITS.world],people:[state.world,"people",LIMITS.world],ai:[state.world,"ai",LIMITS.world]};
   if(path.startsWith("ability.")){const key=path.slice(8);if(!(key in state.player.abilities))throw new GameError("INVALID_VALUE","未知能力");state.player.abilities[key]=clamp(Math.round(number),LIMITS.ability);}
@@ -486,6 +494,27 @@ export function saveCardDefinition(input,definition){
   return state;
 }
 export function deleteCustomCard(input,id){const state=clone(input);state.customCards=state.customCards.filter(card=>card.id!==id);delete state.cardOverrides[id];return state;}
+function resolveDirectCard(input,card){return withResultArt(resolveDirectCardBase(input,card),card.id,card.id);}
+function openNightCard(input,card){return withResultArt(openNightCardBase(input,card),card.id,card.id);}
+export function resolveNightOption(input,id){return withResultArt(resolveNightOptionBase(input,id),input.selected,id);}
+export function resolveCharacterEventChoice(input,choiceId){return withResultArt(resolveCharacterEventChoiceBase(input,choiceId),input.selectedCharacterEvent,choiceId);}
+function activityArtIds(input,id){
+  if(input.activityKind==="purchase")return ["asset_market",id];
+  if(input.activityKind==="social")return [`activity:contacts:${id}`,id];
+  return [`activity:${input.activityKind}:${id}`,id];
+}
+export function resolveActivity(input,id){const [parentId,optionId]=activityArtIds(input,id);return withResultArt(resolveActivityBase(input,id),parentId,optionId);}
+function resolveWork(input){return withResultArt(resolveWorkBase(input),"activity:work","cash");}
+export function declineSideQuests(input){return withResultArt(declineSideQuestsBase(input),"sidequest","decline");}
+export function resolveSideQuestChoice(input,choiceId){return withResultArt(resolveSideQuestChoiceBase(input,choiceId),`sidequest:${input.activeSideQuest.id}:${input.activeSideQuest.nodeIndex}`,choiceId);}
+export function abandonSideQuest(input){return withResultArt(abandonSideQuestBase(input),`sidequest:${input.activeSideQuest.id}`,"abandon");}
+export function upgradeAsset(input,category,assetId){return withResultArt(upgradeAssetBase(input,category,assetId),`upgrade:${category}`,assetId);}
+export function fortifyTerritory(input,territoryId){return withResultArt(fortifyTerritoryBase(input,territoryId),`territory:${territoryId}`,"fortify");}
+export function recruitCrew(input){return withResultArt(recruitCrewBase(input),"crew","recruit");}
+export function recruitTeamMember(input,memberId){return withResultArt(recruitTeamMemberBase(input,memberId),`team:${memberId}`,"recruit");}
+export function resolveChoice(input,choiceId){return withResultArt(resolveChoiceBase(input,choiceId),input.selected,choiceId);}
+export function battleAction(input,action){return withResultArt(battleActionBase(input,action),"battle",action);}
+export function modifyValue(input,path,value){return withResultArt(modifyValueBase(input,path,value),"modifier",path);}
 export function endingText(state){
   if(state.flags.ending_free) return "證據在全國新聞同步播出。警長被捕、高萬城潛逃，而你成了揭露真相的罪犯。阿哲趁混亂消失，只留下三年前欠你的那一份錢。";
   if(state.flags.ending_restore) return "你救出若琳，帶著現金離開海港市。新聞把一切歸咎於阿哲；你知道這不是正義，但家人第一次擁有選擇未來的本錢。";

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { newGame, generateCards, getEvent, selectCard, resolveChoice, resolveActivity, resolveNightOption, acceptSideQuest, declineSideQuests, resolveSideQuestChoice, upgradeAsset, startFactionFight, startTerritoryFight, fortifyTerritory, recruitCrew, recruitTeamMember, toggleTeamMember, activeTeamMembers, teamBonuses, assetBonuses, contactBonuses, controlledTerritories, territoryIncome, crewPower, battleAction, assistantAdvice, acceptAssistantAdvice, continueStage, continueChapterTransition, continueFreePlay, pendingCharacterEvent, startCharacterEvent, resolveCharacterEventChoice, characterLevelChance, nextOfficialMainlineId, applyEffects, modifyValue, saveCardDefinition, validateSave, GameError } from "../src/engine.mjs";
+import { newGame, generateCards, getEvent, selectCard, resolveChoice, resolveActivity, resolveNightOption, acceptSideQuest, declineSideQuests, resolveSideQuestChoice, abandonSideQuest, upgradeAsset, startFactionFight, startTerritoryFight, fortifyTerritory, recruitCrew, recruitTeamMember, toggleTeamMember, activeTeamMembers, teamBonuses, assetBonuses, contactBonuses, controlledTerritories, territoryIncome, crewPower, battleAction, assistantAdvice, acceptAssistantAdvice, continueStage, continueChapterTransition, continueFreePlay, pendingCharacterEvent, startCharacterEvent, resolveCharacterEventChoice, characterLevelChance, nextOfficialMainlineId, applyEffects, modifyValue, saveCardDefinition, validateSave, GameError } from "../src/engine.mjs";
 import { EVENTS } from "../src/content.mjs";
 import { LIFE_CARDS, LEISURE_CARDS, TRAINING_CARDS, CONTACTS, SIDE_QUESTS } from "../src/life-content.mjs";
 import { NIGHT_CARDS } from "../src/night-content.mjs";
@@ -300,4 +300,41 @@ test("狄菲會優先處理急迫狀態，並能直接執行恢復與支線建�
 
 test("地盤遭反攻時接受狄菲建議會直接進入防守戰",()=>{
   let state=generateCards(newGame("x",609));state.day=12;state.territories.south_docks.owner="player";state.pendingRetaliation={territoryId:"south_docks",factionId:"red_tide",sinceDay:12};const advice=assistantAdvice(state);assert.equal(advice.id,"defend:south_docks");state=acceptAssistantAdvice(state,advice.id);assert.equal(state.phase,"battle");assert.equal(state.battle.battleType,"defend");const tactical=assistantAdvice(state);assert.match(tactical.id,/^battle:(attack|brawl|guard)$/);const turn=state.battle.turn;state=acceptAssistantAdvice(state,tactical.id);if(state.phase==="battle")assert.ok(state.battle.turn>turn);
+});
+
+test("event, activity, night, meeting, character, and battle results persist artKey",()=>{
+  let state=newGame("x",1);state.phase="event";state.selected="signal";
+  assert.equal(resolveChoice(state,"trace").lastResult.artKey,"signal--trace");
+
+  state=newGame("x",1);state.phase="activity";state.selected="life_leisure";state.activityKind="leisure";state.activityOptions=["leisure_coffee"];
+  assert.equal(resolveActivity(state,"leisure_coffee").lastResult.artKey,"activity-leisure-leisure_coffee--leisure_coffee");
+
+  state=newGame("x",1);state.phase="activity";state.selected="night_social_food";state.activityKind="night:contact";state.activityOptions=["difei"];
+  assert.equal(resolveNightOption(state,"difei").lastResult.artKey,"night_social_food--difei");
+
+  state=newGame("x",1);state.phase="activity";state.selected="life_social";state.activityKind="social";state.activityOptions=["mira"];
+  assert.equal(resolveActivity(state,"mira").lastResult.artKey,"activity-contacts-mira--mira");
+
+  state=newGame("x",1);state.phase="activity";state.activityKind="social";state.activityOptions=["difei"];state.unlockedCharacterEvents=["difei_spar_event"];state=startCharacterEvent(state,"difei_spar_event");
+  assert.equal(resolveCharacterEventChoice(state,"steady").lastResult.artKey,"difei_spar_event--steady");
+
+  state=applyEffects(newGame("x",1),[{type:"battle.start",enemy:"test",enemyHp:1,reward:1}],"test");state.player.abilities.physique=100;
+  assert.equal(battleAction(state,"brawl").lastResult.artKey,"battle--brawl");
+});
+
+test("side-quest choices, abandonment, and expiry persist artKey",()=>{
+  const startSideQuest=()=>{const state=newGame("x",1);state.phase="sidequestPick";state.sideQuestCandidates=[SIDE_QUESTS[0].id];return acceptSideQuest(state,SIDE_QUESTS[0].id);};
+  let state=startSideQuest();const choice=SIDE_QUESTS[0].nodes[0].choices[0];
+  assert.equal(resolveSideQuestChoice(state,choice.id).lastResult.artKey,`sidequest-${SIDE_QUESTS[0].id}-0--${choice.id}`);
+
+  state=startSideQuest();
+  assert.equal(abandonSideQuest(state).lastResult.artKey,`sidequest-${SIDE_QUESTS[0].id}--abandon`);
+
+  state=newGame("x",1);state.phase="result";state.stage=2;state.activeSideQuest={id:SIDE_QUESTS[0].id,nodeIndex:0,startedDay:1,deadlineDay:1};
+  assert.equal(continueStage(state).lastResult.artKey,`sidequest-${SIDE_QUESTS[0].id}--expired`);
+});
+
+test("legacy result art key remains optional when loading saves",()=>{
+  const state=newGame();state.phase="result";state.lastResult={title:"legacy",choice:"choice",success:true,summary:"summary"};
+  assert.doesNotThrow(()=>validateSave(state));
 });
