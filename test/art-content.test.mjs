@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { runInNewContext } from "node:vm";
 import * as artContent from "../src/art-content.mjs";
 import { artKey, BUILTIN_ART_REQUIREMENTS, choiceArt, eventArt } from "../src/art-content.mjs";
 import { EVENTS } from "../src/content.mjs";
@@ -152,4 +153,44 @@ test("service worker keeps choice art out of the install cache and caches images
   assert.doesNotMatch(source, /FILES[\s\S]*assets\/images\/choices\/.*\.webp/);
   assert.match(source, /request\.destination === "image"/);
   assert.match(source, /cache\.put\(event\.request, copy\)/);
+});
+
+test("service worker keeps an image response pending until its runtime cache write finishes", async () => {
+  const source = await readFile(new URL("../sw.js", import.meta.url), "utf8");
+  const listeners = new Map();
+  let releaseCacheWrite;
+  let cacheWriteFinished = false;
+  const cacheWrite = new Promise((resolve) => {
+    releaseCacheWrite = () => {
+      cacheWriteFinished = true;
+      resolve();
+    };
+  });
+  const response = { ok: true, clone: () => ({ body: "copy" }) };
+  const caches = {
+    match: async () => undefined,
+    open: async () => ({ addAll: async () => {}, put: async () => cacheWrite }),
+    keys: async () => [],
+    delete: async () => true,
+  };
+  const self = {
+    addEventListener: (type, listener) => listeners.set(type, listener),
+    skipWaiting: async () => {},
+    clients: { claim: async () => {} },
+  };
+  runInNewContext(source, { self, caches, fetch: async () => response, URL, Promise });
+
+  let responsePromise;
+  listeners.get("fetch")({
+    request: { method: "GET", destination: "image", url: "https://game.test/choice.webp" },
+    respondWith: (promise) => { responsePromise = promise; },
+  });
+  let responseSettled = false;
+  responsePromise.then(() => { responseSettled = true; });
+  await new Promise((resolve) => setImmediate(resolve));
+
+  assert.equal(responseSettled, false, "response lifecycle must include the pending cache.put");
+  releaseCacheWrite();
+  assert.equal(await responsePromise, response);
+  assert.equal(cacheWriteFinished, true);
 });

@@ -15,10 +15,11 @@ self.addEventListener("activate", event => event.waitUntil(caches.keys().then(ke
 self.addEventListener("fetch", event => {
   if (event.request.method !== "GET") return;
   if (event.request.destination === "image") {
-    event.respondWith(caches.match(event.request).then(hit => hit || fetch(event.request).then(response => {
+    event.respondWith(caches.match(event.request).then(hit => hit || fetch(event.request).then(async response => {
       if (!response.ok) return response;
       const copy = response.clone();
-      caches.open(CACHE).then(cache => cache.put(event.request, copy));
+      const cache = await caches.open(CACHE);
+      await cache.put(event.request, copy);
       return response;
     })));
     return;
