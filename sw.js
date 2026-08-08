@@ -17,9 +17,13 @@ self.addEventListener("fetch", event => {
   if (event.request.destination === "image") {
     event.respondWith(caches.match(event.request).then(hit => hit || fetch(event.request).then(async response => {
       if (!response.ok) return response;
-      const copy = response.clone();
-      const cache = await caches.open(CACHE);
-      await cache.put(event.request, copy);
+      try {
+        const copy = response.clone();
+        const cache = await caches.open(CACHE);
+        await cache.put(event.request, copy);
+      } catch {
+        // Runtime image caching is best-effort; keep the successful network response.
+      }
       return response;
     })));
     return;

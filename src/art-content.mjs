@@ -1,9 +1,9 @@
-import { EVENTS } from "./content.mjs";
-import { CHAPTER_EVENTS } from "./chapter-content.mjs";
-import { DIFEI_EVENTS } from "./character-content.mjs";
-import { LIFE_CARDS, LEISURE_CARDS, TRAINING_CARDS, CONTACTS, SIDE_QUESTS } from "./life-content.mjs";
-import { NIGHT_CARDS } from "./night-content.mjs";
-import { FACTIONS, TERRITORIES } from "./faction-content.mjs";
+import { EVENTS } from "./content.mjs?v=23";
+import { CHAPTER_EVENTS } from "./chapter-content.mjs?v=24";
+import { DIFEI_EVENTS } from "./character-content.mjs?v=24";
+import { LIFE_CARDS, LEISURE_CARDS, TRAINING_CARDS, CONTACTS, SIDE_QUESTS } from "./life-content.mjs?v=23";
+import { NIGHT_CARDS } from "./night-content.mjs?v=23";
+import { FACTIONS, TERRITORIES } from "./faction-content.mjs?v=23";
 
 export function normalizeArtId(value) {
   return String(value).trim().toLowerCase().replace(/[^a-z0-9_-]+/g, "-").replace(/^-|-$/g, "");

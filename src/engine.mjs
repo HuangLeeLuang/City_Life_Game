@@ -5,7 +5,7 @@ import { CHAPTER_EVENTS, OFFICIAL_MAINLINE_IDS, officialMainlineMeta, chapterFor
 import { FACTIONS, TERRITORIES, factionById, territoryById } from "./faction-content.mjs?v=23";
 import { TEAM_MEMBERS, TEAM_LIMIT, teamMemberById } from "./team-content.mjs?v=24";
 import { CONTACT_PASSIVES, DIFEI_ACTIVITIES, CHENGLAN_ACTIVITIES, DIFEI_EVENTS, characterEventById } from "./character-content.mjs?v=24";
-import { artKey, cardArtIdentity, upgradeArtIdentity } from "./art-content.mjs";
+import { artKey, cardArtIdentity, upgradeArtIdentity } from "./art-content.mjs?v=1";
 
 const LIMITS = { health:[0,100], fatigue:[0,100], stress:[0,100], resource:[0,999], ability:[0,100], relation:[-100,100], world:[0,100] };
 const ASSET_BASE_PRICES={property_riverside_flat:40,property_suburban_safehouse:28,vehicle_grey_sport:22,vehicle_black_suv:18,weapon_sawed_shotgun:14,weapon_silenced_pistol:18,luxury_gold_watch:10,luxury_black_bag:12,industry_bay_diner:18,industry_east_garage:28,industry_blue_nightclub:36,industry_old_apartments:50};

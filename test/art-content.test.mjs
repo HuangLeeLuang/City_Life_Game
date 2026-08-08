@@ -194,3 +194,35 @@ test("service worker keeps an image response pending until its runtime cache wri
   assert.equal(await responsePromise, response);
   assert.equal(cacheWriteFinished, true);
 });
+
+test("service worker returns a successful image response when runtime cache writes reject", async () => {
+  const source = await readFile(new URL("../sw.js", import.meta.url), "utf8");
+
+  for (const failure of ["open", "put"]) {
+    const listeners = new Map();
+    const response = { ok: true, clone: () => ({ body: "copy" }) };
+    const caches = {
+      match: async () => undefined,
+      open: async () => {
+        if (failure === "open") throw new Error("cache open rejected");
+        return { addAll: async () => {}, put: async () => { throw new Error("cache put rejected"); } };
+      },
+      keys: async () => [],
+      delete: async () => true,
+    };
+    const self = {
+      addEventListener: (type, listener) => listeners.set(type, listener),
+      skipWaiting: async () => {},
+      clients: { claim: async () => {} },
+    };
+    runInNewContext(source, { self, caches, fetch: async () => response, URL, Promise });
+
+    let responsePromise;
+    listeners.get("fetch")({
+      request: { method: "GET", destination: "image", url: "https://game.test/choice.webp" },
+      respondWith: (promise) => { responsePromise = promise; },
+    });
+
+    assert.equal(await responsePromise, response, `${failure} rejection must not discard the network response`);
+  }
+});
