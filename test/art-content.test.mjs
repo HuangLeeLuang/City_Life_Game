@@ -91,7 +91,7 @@ test("結果圖片鍵直接解析並對未知內容使用有限備援", () => {
 });
 
 test("結果圖片鍵在沒有類別提示時推導有限備援類別", () => {
-  assert.match(artContent.choiceArtByKey("battle--attack").src, /fallbacks\/battle\.webp$/);
+  assert.match(artContent.choiceArtByKey("battle--unknown-action").src, /fallbacks\/battle\.webp$/);
   assert.match(artContent.choiceArtByKey("sidequest-old-debt-0--pay").src, /fallbacks\/sidequest\.webp$/);
   assert.match(artContent.choiceArtByKey("activity-leisure-rest--rest").src, /fallbacks\/daily\.webp$/);
   assert.match(artContent.choiceArtByKey("asset_market--buy").src, /fallbacks\/market\.webp$/);

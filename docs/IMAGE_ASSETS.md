@@ -125,6 +125,16 @@ Built-in ImageGen produced 84 distinct choice masters for the `mainline`, `chara
 - Constraints: no visible text, letters, numbers, brand marks, logo, watermark, excessive neon, gore, or futuristic technology.
 - QA: the complete batch was reviewed as a contact sheet for composition, legibility at thumbnail scale, visual cohesion, and obvious text or branding artifacts before mapping.
 
+### 2026-08-08 market and battle choice batch
+
+Built-in ImageGen produced 77 distinct 3:2 choice masters: 33 market choices and 44 battle choices. Battle coverage includes five common actions, nine faction challenges, and capture/fortify art for all fifteen territories. Every final is a stripped quality-82 WebP at 1536x1024 under `assets/images/choices/` and has a dedicated Traditional Chinese alternative description in `CHOICE_ART`.
+
+- Market scenes show the exact live purchasable asset or the leave-market action as grounded inventory, property, vehicle, or business imagery.
+- Battle scenes show concrete pre-action intent without fixing a success or failure outcome; faction and territory scenes use their live locations and identities.
+- Prompt family: realistic modern East Asian harbor crime noir, deep blue-green and concrete gray, restrained amber and mint practical light, contemporary real-world materials and technology.
+- Constraints: no visible text, pseudo-writing, letters, numbers, signage, labels, license plates, UI glyphs, brands, logos, watermarks, excessive neon, gore, graphic injury, or futuristic technology.
+- QA: all 77 finals were inspected in labeled market and battle contact sheets for semantic alignment, thumbnail readability, grounded setting, and prohibited visual marks. A moderation-blocked territory-fortification output was safely regenerated with calm, non-violent security preparation language.
+
 ### 2026-08-08 side-quest and daily-life choice batch
 
 Built-in ImageGen produced 90 distinct choice masters for the `sidequest`, `daily`, and `night` categories. Every final is a stripped quality-82 WebP at 1536x1024 (3:2), stored under `assets/images/choices/` and mapped through `CHOICE_ART` with action-specific Traditional Chinese alternative text.
