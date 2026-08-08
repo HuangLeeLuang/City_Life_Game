@@ -105,3 +105,12 @@
 ## 生成方式
 
 本批素材以內建 ImageGen 生成，使用同一組港區犯罪黑色電影視覺提示；事件桌機版與手機版分開重新構圖，隊員與地盤圖依卡片用途採固定比例，再以 ImageMagick 轉為遊戲尺寸、移除中繼資料並壓縮。狄菲先生成角色錨點，再以錨點與全身比例圖生成事件圖；常駐助理立繪以既有全身圖鎖定身分與服裝，在純色背景上生成後以本機色鍵工具建立透明邊緣。程嵐使用獨立的較年輕成人臉部幾何，避免與狄菲同臉。新增的三類支線情境同樣分別生成 3:2 桌機圖與 4:5 手機圖，沒有直接互相裁切。
+
+### 2026-08-08 missing-event and fallback batch
+
+Built-in ImageGen produced each composition independently. Event desktop files are 1600x900 (16:9), event mobile files are 1000x1250 (4:5), and fallback files are 1500x1000 (3:2). Final files are stripped, quality-82 WebP images.
+
+- Fallbacks: `fallbacks/default.webp` (anonymous harbor doorway), `event.webp` (rainy street encounter), `sidequest.webp` (dockside envelope handoff), `daily.webp` (meal, wraps, and tools), `market.webp` (item inspection), `battle.webp` (container-yard standoff), `custom.webp` (blank story artifacts).
+- Event pairs: `event-morning_patrol-*`, `event-public_terminal-*`, `event-alley_contact-*`, `event-asset_market-*`, `event-clinic_supplies-*`, `event-community_kitchen-*`, `event-corporate_offer-*`, `event-drone_scrap-*`, `event-gang_toll-*`, `event-ghost_ai-*`, `event-gym-*`, `event-industry_market-*`, `event-inventory-*`, `event-network_storm-*`, `event-night_market-*`, `event-nightlife-*`, `event-power_cut-*`, `event-quiet_room-*`, `event-rooftop_radio-*`, `event-rumor-*`, `event-safehouse-*`, `event-shooting_range-*`, `event-small_job-*`, and `event-street_doc-*`.
+- Subjects respectively: dawn van watch; terminal surveillance; data-card exchange; goods and keys; medicine inventory; meal service; sealed offer; drone salvage; overpass confrontation; failing server room; heavy-bag training; business keys; safehouse inventory; network repair; dossier exchange; waterfront meeting; lantern blackout repair; harbor rest; antenna listening; tea-shop whispers; lock reinforcement; range practice; scooter repair; wrist care.
+- Prompt family: realistic modern East Asian harbor crime-noir concept art; rainy grounded setting; deep blue-green and concrete gray; limited amber and mint practical lighting; one clear focal action; no visible text, brand, logo, watermark, excessive neon, or futuristic technology. Mobile prompts explicitly requested a fresh vertical composition rather than a crop.

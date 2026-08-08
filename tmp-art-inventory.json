@@ -1,0 +1,3703 @@
+﻿{
+  "countsByCategory": {
+    "battle": 44,
+    "character": 9,
+    "daily": 28,
+    "event": 76,
+    "mainline": 41,
+    "market": 33,
+    "night": 40,
+    "sidequest": 22
+  },
+  "requirements": [
+    {
+      "kind": "choice",
+      "key": "activity-contacts-chenglan--chenglan",
+      "parentId": "activity:contacts:chenglan",
+      "optionId": "chenglan",
+      "category": "daily",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-contacts-difei--difei",
+      "parentId": "activity:contacts:difei",
+      "optionId": "difei",
+      "category": "daily",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-contacts-kael--kael",
+      "parentId": "activity:contacts:kael",
+      "optionId": "kael",
+      "category": "daily",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-contacts-mira--mira",
+      "parentId": "activity:contacts:mira",
+      "optionId": "mira",
+      "category": "daily",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-contacts-zero--zero",
+      "parentId": "activity:contacts:zero",
+      "optionId": "zero",
+      "category": "daily",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-leisure-leisure_bar--leisure_bar",
+      "parentId": "activity:leisure:leisure_bar",
+      "optionId": "leisure_bar",
+      "category": "daily",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-leisure-leisure_coffee--leisure_coffee",
+      "parentId": "activity:leisure:leisure_coffee",
+      "optionId": "leisure_coffee",
+      "category": "daily",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-leisure-leisure_free_rest--leisure_free_rest",
+      "parentId": "activity:leisure:leisure_free_rest",
+      "optionId": "leisure_free_rest",
+      "category": "daily",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-leisure-leisure_movie--leisure_movie",
+      "parentId": "activity:leisure:leisure_movie",
+      "optionId": "leisure_movie",
+      "category": "daily",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-leisure-leisure_nutrition--leisure_nutrition",
+      "parentId": "activity:leisure:leisure_nutrition",
+      "optionId": "leisure_nutrition",
+      "category": "daily",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-leisure-leisure_sleep--leisure_sleep",
+      "parentId": "activity:leisure:leisure_sleep",
+      "optionId": "leisure_sleep",
+      "category": "daily",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-leisure-leisure_street_food--leisure_street_food",
+      "parentId": "activity:leisure:leisure_street_food",
+      "optionId": "leisure_street_food",
+      "category": "daily",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-leisure-leisure_treatment--leisure_treatment",
+      "parentId": "activity:leisure:leisure_treatment",
+      "optionId": "leisure_treatment",
+      "category": "daily",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-life-life_conflict--life_conflict",
+      "parentId": "activity:life:life_conflict",
+      "optionId": "life_conflict",
+      "category": "daily",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-life-life_leisure--life_leisure",
+      "parentId": "activity:life:life_leisure",
+      "optionId": "life_leisure",
+      "category": "daily",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-life-life_purchase--life_purchase",
+      "parentId": "activity:life:life_purchase",
+      "optionId": "life_purchase",
+      "category": "daily",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-life-life_sidequest--life_sidequest",
+      "parentId": "activity:life:life_sidequest",
+      "optionId": "life_sidequest",
+      "category": "daily",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-life-life_social--life_social",
+      "parentId": "activity:life:life_social",
+      "optionId": "life_social",
+      "category": "daily",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-life-life_training--life_training",
+      "parentId": "activity:life:life_training",
+      "optionId": "life_training",
+      "category": "daily",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-life-life_work--life_work",
+      "parentId": "activity:life:life_work",
+      "optionId": "life_work",
+      "category": "daily",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-combat_arena_final--combat_arena_final",
+      "parentId": "activity:night:combat_arena_final",
+      "optionId": "combat_arena_final",
+      "category": "night",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-combat_bounty--combat_bounty",
+      "parentId": "activity:night:combat_bounty",
+      "optionId": "combat_bounty",
+      "category": "night",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-combat_convoy--combat_convoy",
+      "parentId": "activity:night:combat_convoy",
+      "optionId": "combat_convoy",
+      "category": "night",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-combat_dead_air--combat_dead_air",
+      "parentId": "activity:night:combat_dead_air",
+      "optionId": "combat_dead_air",
+      "category": "night",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-combat_debt_collectors--combat_debt_collectors",
+      "parentId": "activity:night:combat_debt_collectors",
+      "optionId": "combat_debt_collectors",
+      "category": "night",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-combat_dock_brawl--combat_dock_brawl",
+      "parentId": "activity:night:combat_dock_brawl",
+      "optionId": "combat_dock_brawl",
+      "category": "night",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-combat_gang_vault--combat_gang_vault",
+      "parentId": "activity:night:combat_gang_vault",
+      "optionId": "combat_gang_vault",
+      "category": "night",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-combat_hostage--combat_hostage",
+      "parentId": "activity:night:combat_hostage",
+      "optionId": "combat_hostage",
+      "category": "night",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-combat_marina--combat_marina",
+      "parentId": "activity:night:combat_marina",
+      "optionId": "combat_marina",
+      "category": "night",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-combat_rail_hijack--combat_rail_hijack",
+      "parentId": "activity:night:combat_rail_hijack",
+      "optionId": "combat_rail_hijack",
+      "category": "night",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-combat_terminal--combat_terminal",
+      "parentId": "activity:night:combat_terminal",
+      "optionId": "combat_terminal",
+      "category": "night",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-combat_warehouse--combat_warehouse",
+      "parentId": "activity:night:combat_warehouse",
+      "optionId": "combat_warehouse",
+      "category": "night",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_bar--night_bar",
+      "parentId": "activity:night:night_bar",
+      "optionId": "night_bar",
+      "category": "night",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_bathhouse--night_bathhouse",
+      "parentId": "activity:night:night_bathhouse",
+      "optionId": "night_bathhouse",
+      "category": "night",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_clinic--night_clinic",
+      "parentId": "activity:night:night_clinic",
+      "optionId": "night_clinic",
+      "category": "night",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_club--night_club",
+      "parentId": "activity:night:night_club",
+      "optionId": "night_club",
+      "category": "night",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_diner--night_diner",
+      "parentId": "activity:night:night_diner",
+      "optionId": "night_diner",
+      "category": "night",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_drive--night_drive",
+      "parentId": "activity:night:night_drive",
+      "optionId": "night_drive",
+      "category": "night",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_ferry--night_ferry",
+      "parentId": "activity:night:night_ferry",
+      "optionId": "night_ferry",
+      "category": "night",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_fight--night_fight",
+      "parentId": "activity:night:night_fight",
+      "optionId": "night_fight",
+      "category": "night",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_fine_dining--night_fine_dining",
+      "parentId": "activity:night:night_fine_dining",
+      "optionId": "night_fine_dining",
+      "category": "night",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_gamble--night_gamble",
+      "parentId": "activity:night:night_gamble",
+      "optionId": "night_gamble",
+      "category": "night",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_home--night_home",
+      "parentId": "activity:night:night_home",
+      "optionId": "night_home",
+      "category": "night",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_hotel--night_hotel",
+      "parentId": "activity:night:night_hotel",
+      "optionId": "night_hotel",
+      "category": "night",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_industry_host--night_industry_host",
+      "parentId": "activity:night:night_industry_host",
+      "optionId": "night_industry_host",
+      "category": "night",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_industry_patrol--night_industry_patrol",
+      "parentId": "activity:night:night_industry_patrol",
+      "optionId": "night_industry_patrol",
+      "category": "night",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_industry_problem--night_industry_problem",
+      "parentId": "activity:night:night_industry_problem",
+      "optionId": "night_industry_problem",
+      "category": "night",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_ktv--night_ktv",
+      "parentId": "activity:night:night_ktv",
+      "optionId": "night_ktv",
+      "category": "night",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_massage--night_massage",
+      "parentId": "activity:night:night_massage",
+      "optionId": "night_massage",
+      "category": "night",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_movie--night_movie",
+      "parentId": "activity:night:night_movie",
+      "optionId": "night_movie",
+      "category": "night",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_noodle_cart--night_noodle_cart",
+      "parentId": "activity:night:night_noodle_cart",
+      "optionId": "night_noodle_cart",
+      "category": "night",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_private_party--night_private_party",
+      "parentId": "activity:night:night_private_party",
+      "optionId": "night_private_party",
+      "category": "night",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_race--night_race",
+      "parentId": "activity:night:night_race",
+      "optionId": "night_race",
+      "category": "night",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_rooftop_radio--night_rooftop_radio",
+      "parentId": "activity:night:night_rooftop_radio",
+      "optionId": "night_rooftop_radio",
+      "category": "night",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_shelter--night_shelter",
+      "parentId": "activity:night:night_shelter",
+      "optionId": "night_shelter",
+      "category": "night",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_social_drink--night_social_drink",
+      "parentId": "activity:night:night_social_drink",
+      "optionId": "night_social_drink",
+      "category": "night",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_social_drive--night_social_drive",
+      "parentId": "activity:night:night_social_drive",
+      "optionId": "night_social_drive",
+      "category": "night",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_social_errand--night_social_errand",
+      "parentId": "activity:night:night_social_errand",
+      "optionId": "night_social_errand",
+      "category": "night",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_social_food--night_social_food",
+      "parentId": "activity:night:night_social_food",
+      "optionId": "night_social_food",
+      "category": "night",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_store_food--night_store_food",
+      "parentId": "activity:night:night_store_food",
+      "optionId": "night_store_food",
+      "category": "night",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-training-train_engineering--train_engineering",
+      "parentId": "activity:training:train_engineering",
+      "optionId": "train_engineering",
+      "category": "daily",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-training-train_hacking--train_hacking",
+      "parentId": "activity:training:train_hacking",
+      "optionId": "train_hacking",
+      "category": "daily",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-training-train_management--train_management",
+      "parentId": "activity:training:train_management",
+      "optionId": "train_management",
+      "category": "daily",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-training-train_perception--train_perception",
+      "parentId": "activity:training:train_perception",
+      "optionId": "train_perception",
+      "category": "daily",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-training-train_physique--train_physique",
+      "parentId": "activity:training:train_physique",
+      "optionId": "train_physique",
+      "category": "daily",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-training-train_reflex--train_reflex",
+      "parentId": "activity:training:train_reflex",
+      "optionId": "train_reflex",
+      "category": "daily",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-training-train_social--train_social",
+      "parentId": "activity:training:train_social",
+      "optionId": "train_social",
+      "category": "daily",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "activity-training-train_will--train_will",
+      "parentId": "activity:training:train_will",
+      "optionId": "train_will",
+      "category": "daily",
+      "paths": []
+    },
+    {
+      "kind": "event",
+      "key": "alley_contact",
+      "parentId": "alley_contact",
+      "category": "event",
+      "paths": [
+        "assets/images/event-alley_contact-desktop.webp",
+        "assets/images/event-alley_contact-mobile.webp"
+      ]
+    },
+    {
+      "kind": "choice",
+      "key": "alley_contact--question",
+      "parentId": "alley_contact",
+      "optionId": "question",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "alley_contact--trade",
+      "parentId": "alley_contact",
+      "optionId": "trade",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "event",
+      "key": "ambush",
+      "parentId": "ambush",
+      "category": "event",
+      "paths": [
+        "assets/images/event-ambush-desktop.webp",
+        "assets/images/event-ambush-mobile.webp"
+      ]
+    },
+    {
+      "kind": "choice",
+      "key": "ambush--fight",
+      "parentId": "ambush",
+      "optionId": "fight",
+      "category": "mainline",
+      "paths": []
+    },
+    {
+      "kind": "event",
+      "key": "asset_market",
+      "parentId": "asset_market",
+      "category": "event",
+      "paths": [
+        "assets/images/event-asset_market-desktop.webp",
+        "assets/images/event-asset_market-mobile.webp"
+      ]
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--ammo_case",
+      "parentId": "asset_market",
+      "optionId": "ammo_case",
+      "category": "market",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--apartments",
+      "parentId": "asset_market",
+      "optionId": "apartments",
+      "category": "market",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--armored_sedan",
+      "parentId": "asset_market",
+      "optionId": "armored_sedan",
+      "category": "market",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--breach_shotgun",
+      "parentId": "asset_market",
+      "optionId": "breach_shotgun",
+      "category": "market",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--clinic",
+      "parentId": "asset_market",
+      "optionId": "clinic",
+      "category": "market",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--diner",
+      "parentId": "asset_market",
+      "optionId": "diner",
+      "category": "market",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--downtown_loft",
+      "parentId": "asset_market",
+      "optionId": "downtown_loft",
+      "category": "market",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--encrypted_phone",
+      "parentId": "asset_market",
+      "optionId": "encrypted_phone",
+      "category": "market",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--forged_documents",
+      "parentId": "asset_market",
+      "optionId": "forged_documents",
+      "category": "market",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--garage",
+      "parentId": "asset_market",
+      "optionId": "garage",
+      "category": "market",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--gym",
+      "parentId": "asset_market",
+      "optionId": "gym",
+      "category": "market",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--leave",
+      "parentId": "asset_market",
+      "optionId": "leave",
+      "category": "market",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--logistics",
+      "parentId": "asset_market",
+      "optionId": "logistics",
+      "category": "market",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--luxury",
+      "parentId": "asset_market",
+      "optionId": "luxury",
+      "category": "market",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--marksman",
+      "parentId": "asset_market",
+      "optionId": "marksman",
+      "category": "market",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--media_studio",
+      "parentId": "asset_market",
+      "optionId": "media_studio",
+      "category": "market",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--night_vision",
+      "parentId": "asset_market",
+      "optionId": "night_vision",
+      "category": "market",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--nightclub",
+      "parentId": "asset_market",
+      "optionId": "nightclub",
+      "category": "market",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--pawnshop",
+      "parentId": "asset_market",
+      "optionId": "pawnshop",
+      "category": "market",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--pistol",
+      "parentId": "asset_market",
+      "optionId": "pistol",
+      "category": "market",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--property",
+      "parentId": "asset_market",
+      "optionId": "property",
+      "category": "market",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--rifle",
+      "parentId": "asset_market",
+      "optionId": "rifle",
+      "category": "market",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--safehouse_property",
+      "parentId": "asset_market",
+      "optionId": "safehouse_property",
+      "category": "market",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--security_company",
+      "parentId": "asset_market",
+      "optionId": "security_company",
+      "category": "market",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--smg",
+      "parentId": "asset_market",
+      "optionId": "smg",
+      "category": "market",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--street_bike",
+      "parentId": "asset_market",
+      "optionId": "street_bike",
+      "category": "market",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--stun_baton",
+      "parentId": "asset_market",
+      "optionId": "stun_baton",
+      "category": "market",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--suv",
+      "parentId": "asset_market",
+      "optionId": "suv",
+      "category": "market",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--trauma_kit",
+      "parentId": "asset_market",
+      "optionId": "trauma_kit",
+      "category": "market",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--travel_bag",
+      "parentId": "asset_market",
+      "optionId": "travel_bag",
+      "category": "market",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--vehicle",
+      "parentId": "asset_market",
+      "optionId": "vehicle",
+      "category": "market",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--vest",
+      "parentId": "asset_market",
+      "optionId": "vest",
+      "category": "market",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--weapon",
+      "parentId": "asset_market",
+      "optionId": "weapon",
+      "category": "market",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "battle--attack",
+      "parentId": "battle",
+      "optionId": "attack",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "battle--brawl",
+      "parentId": "battle",
+      "optionId": "brawl",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "battle--flee",
+      "parentId": "battle",
+      "optionId": "flee",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "battle--guard",
+      "parentId": "battle",
+      "optionId": "guard",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "battle--hack",
+      "parentId": "battle",
+      "optionId": "hack",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "event",
+      "key": "ch1_burner",
+      "parentId": "ch1_burner",
+      "category": "mainline",
+      "paths": [
+        "assets/images/event-ch1-burner-desktop.webp",
+        "assets/images/event-ch1-burner-mobile.webp"
+      ]
+    },
+    {
+      "kind": "choice",
+      "key": "ch1_burner--tail",
+      "parentId": "ch1_burner",
+      "optionId": "tail",
+      "category": "mainline",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "ch1_burner--verify",
+      "parentId": "ch1_burner",
+      "optionId": "verify",
+      "category": "mainline",
+      "paths": []
+    },
+    {
+      "kind": "event",
+      "key": "ch3_broadcast",
+      "parentId": "ch3_broadcast",
+      "category": "mainline",
+      "paths": [
+        "assets/images/event-ch3-broadcast-desktop.webp",
+        "assets/images/event-ch3-broadcast-mobile.webp"
+      ]
+    },
+    {
+      "kind": "choice",
+      "key": "ch3_broadcast--blackout",
+      "parentId": "ch3_broadcast",
+      "optionId": "blackout",
+      "category": "mainline",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "ch3_broadcast--inside",
+      "parentId": "ch3_broadcast",
+      "optionId": "inside",
+      "category": "mainline",
+      "paths": []
+    },
+    {
+      "kind": "event",
+      "key": "ch3_container",
+      "parentId": "ch3_container",
+      "category": "mainline",
+      "paths": [
+        "assets/images/event-ch3-container-desktop.webp",
+        "assets/images/event-ch3-container-mobile.webp"
+      ]
+    },
+    {
+      "kind": "choice",
+      "key": "ch3_container--convoy",
+      "parentId": "ch3_container",
+      "optionId": "convoy",
+      "category": "mainline",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "ch3_container--crane",
+      "parentId": "ch3_container",
+      "optionId": "crane",
+      "category": "mainline",
+      "paths": []
+    },
+    {
+      "kind": "event",
+      "key": "ch3_escape",
+      "parentId": "ch3_escape",
+      "category": "mainline",
+      "paths": [
+        "assets/images/event-ch3-escape-desktop.webp",
+        "assets/images/event-ch3-escape-mobile.webp"
+      ]
+    },
+    {
+      "kind": "choice",
+      "key": "ch3_escape--split",
+      "parentId": "ch3_escape",
+      "optionId": "split",
+      "category": "mainline",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "ch3_escape--together",
+      "parentId": "ch3_escape",
+      "optionId": "together",
+      "category": "mainline",
+      "paths": []
+    },
+    {
+      "kind": "event",
+      "key": "ch4_betrayal",
+      "parentId": "ch4_betrayal",
+      "category": "mainline",
+      "paths": [
+        "assets/images/event-ch4-betrayal-desktop.webp",
+        "assets/images/event-ch4-betrayal-mobile.webp"
+      ]
+    },
+    {
+      "kind": "choice",
+      "key": "ch4_betrayal--hunt",
+      "parentId": "ch4_betrayal",
+      "optionId": "hunt",
+      "category": "mainline",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "ch4_betrayal--trust",
+      "parentId": "ch4_betrayal",
+      "optionId": "trust",
+      "category": "mainline",
+      "paths": []
+    },
+    {
+      "kind": "event",
+      "key": "ch4_election",
+      "parentId": "ch4_election",
+      "category": "mainline",
+      "paths": [
+        "assets/images/event-ch4-election-desktop.webp",
+        "assets/images/event-ch4-election-mobile.webp"
+      ]
+    },
+    {
+      "kind": "choice",
+      "key": "ch4_election--auction",
+      "parentId": "ch4_election",
+      "optionId": "auction",
+      "category": "mainline",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "ch4_election--people",
+      "parentId": "ch4_election",
+      "optionId": "people",
+      "category": "mainline",
+      "paths": []
+    },
+    {
+      "kind": "event",
+      "key": "ch4_truth",
+      "parentId": "ch4_truth",
+      "category": "mainline",
+      "paths": [
+        "assets/images/event-ch4-truth-desktop.webp",
+        "assets/images/event-ch4-truth-mobile.webp"
+      ]
+    },
+    {
+      "kind": "choice",
+      "key": "ch4_truth--break",
+      "parentId": "ch4_truth",
+      "optionId": "break",
+      "category": "mainline",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "ch4_truth--join",
+      "parentId": "ch4_truth",
+      "optionId": "join",
+      "category": "mainline",
+      "paths": []
+    },
+    {
+      "kind": "event",
+      "key": "ch5_finale",
+      "parentId": "ch5_finale",
+      "category": "mainline",
+      "paths": [
+        "assets/images/event-ch5-finale-desktop.webp",
+        "assets/images/event-ch5-finale-mobile.webp"
+      ]
+    },
+    {
+      "kind": "choice",
+      "key": "ch5_finale--destroy",
+      "parentId": "ch5_finale",
+      "optionId": "destroy",
+      "category": "mainline",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "ch5_finale--free",
+      "parentId": "ch5_finale",
+      "optionId": "free",
+      "category": "mainline",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "ch5_finale--restore",
+      "parentId": "ch5_finale",
+      "optionId": "restore",
+      "category": "mainline",
+      "paths": []
+    },
+    {
+      "kind": "event",
+      "key": "ch5_siege",
+      "parentId": "ch5_siege",
+      "category": "mainline",
+      "paths": [
+        "assets/images/event-ch5-siege-desktop.webp",
+        "assets/images/event-ch5-siege-mobile.webp"
+      ]
+    },
+    {
+      "kind": "choice",
+      "key": "ch5_siege--convoy",
+      "parentId": "ch5_siege",
+      "optionId": "convoy",
+      "category": "mainline",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "ch5_siege--signals",
+      "parentId": "ch5_siege",
+      "optionId": "signals",
+      "category": "mainline",
+      "paths": []
+    },
+    {
+      "kind": "event",
+      "key": "ch5_tower",
+      "parentId": "ch5_tower",
+      "category": "mainline",
+      "paths": [
+        "assets/images/event-ch5-tower-desktop.webp",
+        "assets/images/event-ch5-tower-mobile.webp"
+      ]
+    },
+    {
+      "kind": "choice",
+      "key": "ch5_tower--identity",
+      "parentId": "ch5_tower",
+      "optionId": "identity",
+      "category": "mainline",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "ch5_tower--service",
+      "parentId": "ch5_tower",
+      "optionId": "service",
+      "category": "mainline",
+      "paths": []
+    },
+    {
+      "kind": "event",
+      "key": "checkpoint",
+      "parentId": "checkpoint",
+      "category": "event",
+      "paths": [
+        "assets/images/event-checkpoint-desktop.webp",
+        "assets/images/event-checkpoint-mobile.webp"
+      ]
+    },
+    {
+      "kind": "choice",
+      "key": "checkpoint--hack_gate",
+      "parentId": "checkpoint",
+      "optionId": "hack_gate",
+      "category": "mainline",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "checkpoint--lead_crowd",
+      "parentId": "checkpoint",
+      "optionId": "lead_crowd",
+      "category": "mainline",
+      "paths": []
+    },
+    {
+      "kind": "event",
+      "key": "clinic_supplies",
+      "parentId": "clinic_supplies",
+      "category": "event",
+      "paths": [
+        "assets/images/event-clinic_supplies-desktop.webp",
+        "assets/images/event-clinic_supplies-mobile.webp"
+      ]
+    },
+    {
+      "kind": "choice",
+      "key": "clinic_supplies--buyback",
+      "parentId": "clinic_supplies",
+      "optionId": "buyback",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "clinic_supplies--forge",
+      "parentId": "clinic_supplies",
+      "optionId": "forge",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "event",
+      "key": "community_kitchen",
+      "parentId": "community_kitchen",
+      "category": "event",
+      "paths": [
+        "assets/images/event-community_kitchen-desktop.webp",
+        "assets/images/event-community_kitchen-mobile.webp"
+      ]
+    },
+    {
+      "kind": "choice",
+      "key": "community_kitchen--cook",
+      "parentId": "community_kitchen",
+      "optionId": "cook",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "community_kitchen--organize",
+      "parentId": "community_kitchen",
+      "optionId": "organize",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "event",
+      "key": "corporate_offer",
+      "parentId": "corporate_offer",
+      "category": "event",
+      "paths": [
+        "assets/images/event-corporate_offer-desktop.webp",
+        "assets/images/event-corporate_offer-mobile.webp"
+      ]
+    },
+    {
+      "kind": "choice",
+      "key": "corporate_offer--accept",
+      "parentId": "corporate_offer",
+      "optionId": "accept",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "corporate_offer--refuse",
+      "parentId": "corporate_offer",
+      "optionId": "refuse",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "event",
+      "key": "difei_interview_event",
+      "parentId": "difei_interview_event",
+      "category": "character",
+      "paths": [
+        "assets/images/difei-interview-desktop.webp",
+        "assets/images/difei-interview-mobile.webp"
+      ]
+    },
+    {
+      "kind": "choice",
+      "key": "difei_interview_event--corner",
+      "parentId": "difei_interview_event",
+      "optionId": "corner",
+      "category": "character",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "difei_interview_event--witness",
+      "parentId": "difei_interview_event",
+      "optionId": "witness",
+      "category": "character",
+      "paths": []
+    },
+    {
+      "kind": "event",
+      "key": "difei_media_event",
+      "parentId": "difei_media_event",
+      "category": "character",
+      "paths": [
+        "assets/images/difei-media-desktop.webp",
+        "assets/images/difei-media-mobile.webp"
+      ]
+    },
+    {
+      "kind": "choice",
+      "key": "difei_media_event--shield",
+      "parentId": "difei_media_event",
+      "optionId": "shield",
+      "category": "character",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "difei_media_event--stand",
+      "parentId": "difei_media_event",
+      "optionId": "stand",
+      "category": "character",
+      "paths": []
+    },
+    {
+      "kind": "event",
+      "key": "difei_spar_event",
+      "parentId": "difei_spar_event",
+      "category": "character",
+      "paths": [
+        "assets/images/difei-spar-desktop.webp",
+        "assets/images/difei-spar-mobile-v2.webp"
+      ]
+    },
+    {
+      "kind": "choice",
+      "key": "difei_spar_event--lower",
+      "parentId": "difei_spar_event",
+      "optionId": "lower",
+      "category": "character",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "difei_spar_event--steady",
+      "parentId": "difei_spar_event",
+      "optionId": "steady",
+      "category": "character",
+      "paths": []
+    },
+    {
+      "kind": "event",
+      "key": "drone_scrap",
+      "parentId": "drone_scrap",
+      "category": "event",
+      "paths": [
+        "assets/images/event-drone_scrap-desktop.webp",
+        "assets/images/event-drone_scrap-mobile.webp"
+      ]
+    },
+    {
+      "kind": "choice",
+      "key": "drone_scrap--decode",
+      "parentId": "drone_scrap",
+      "optionId": "decode",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "drone_scrap--salvage",
+      "parentId": "drone_scrap",
+      "optionId": "salvage",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "faction-civic_cleaners--challenge",
+      "parentId": "faction:civic_cleaners",
+      "optionId": "challenge",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "faction-dead_air--challenge",
+      "parentId": "faction:dead_air",
+      "optionId": "challenge",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "faction-glass_snakes--challenge",
+      "parentId": "faction:glass_snakes",
+      "optionId": "challenge",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "faction-golden_ring--challenge",
+      "parentId": "faction:golden_ring",
+      "optionId": "challenge",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "faction-grey_wolves--challenge",
+      "parentId": "faction:grey_wolves",
+      "optionId": "challenge",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "faction-iron_riders--challenge",
+      "parentId": "faction:iron_riders",
+      "optionId": "challenge",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "faction-northbridge--challenge",
+      "parentId": "faction:northbridge",
+      "optionId": "challenge",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "faction-red_tide--challenge",
+      "parentId": "faction:red_tide",
+      "optionId": "challenge",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "faction-white_sharks--challenge",
+      "parentId": "faction:white_sharks",
+      "optionId": "challenge",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "event",
+      "key": "gang_toll",
+      "parentId": "gang_toll",
+      "category": "event",
+      "paths": [
+        "assets/images/event-gang_toll-desktop.webp",
+        "assets/images/event-gang_toll-mobile.webp"
+      ]
+    },
+    {
+      "kind": "choice",
+      "key": "gang_toll--challenge",
+      "parentId": "gang_toll",
+      "optionId": "challenge",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "gang_toll--pay",
+      "parentId": "gang_toll",
+      "optionId": "pay",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "event",
+      "key": "ghost_ai",
+      "parentId": "ghost_ai",
+      "category": "event",
+      "paths": [
+        "assets/images/event-ghost_ai-desktop.webp",
+        "assets/images/event-ghost_ai-mobile.webp"
+      ]
+    },
+    {
+      "kind": "choice",
+      "key": "ghost_ai--erase",
+      "parentId": "ghost_ai",
+      "optionId": "erase",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "ghost_ai--preserve",
+      "parentId": "ghost_ai",
+      "optionId": "preserve",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "event",
+      "key": "gym",
+      "parentId": "gym",
+      "category": "event",
+      "paths": [
+        "assets/images/event-gym-desktop.webp",
+        "assets/images/event-gym-mobile.webp"
+      ]
+    },
+    {
+      "kind": "choice",
+      "key": "gym--dodge",
+      "parentId": "gym",
+      "optionId": "dodge",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "gym--sprint",
+      "parentId": "gym",
+      "optionId": "sprint",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "event",
+      "key": "industry_market",
+      "parentId": "industry_market",
+      "category": "event",
+      "paths": [
+        "assets/images/event-industry_market-desktop.webp",
+        "assets/images/event-industry_market-mobile.webp"
+      ]
+    },
+    {
+      "kind": "choice",
+      "key": "industry_market--diner",
+      "parentId": "industry_market",
+      "optionId": "diner",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "industry_market--garage",
+      "parentId": "industry_market",
+      "optionId": "garage",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "industry_market--nightclub",
+      "parentId": "industry_market",
+      "optionId": "nightclub",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "event",
+      "key": "inventory",
+      "parentId": "inventory",
+      "category": "event",
+      "paths": [
+        "assets/images/event-inventory-desktop.webp",
+        "assets/images/event-inventory-mobile.webp"
+      ]
+    },
+    {
+      "kind": "choice",
+      "key": "inventory--budget",
+      "parentId": "inventory",
+      "optionId": "budget",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "inventory--maintain",
+      "parentId": "inventory",
+      "optionId": "maintain",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "event",
+      "key": "morning_patrol",
+      "parentId": "morning_patrol",
+      "category": "event",
+      "paths": [
+        "assets/images/event-morning_patrol-desktop.webp",
+        "assets/images/event-morning_patrol-mobile.webp"
+      ]
+    },
+    {
+      "kind": "choice",
+      "key": "morning_patrol--help",
+      "parentId": "morning_patrol",
+      "optionId": "help",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "morning_patrol--observe",
+      "parentId": "morning_patrol",
+      "optionId": "observe",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "event",
+      "key": "network_storm",
+      "parentId": "network_storm",
+      "category": "event",
+      "paths": [
+        "assets/images/event-network_storm-desktop.webp",
+        "assets/images/event-network_storm-mobile.webp"
+      ]
+    },
+    {
+      "kind": "choice",
+      "key": "network_storm--harvest",
+      "parentId": "network_storm",
+      "optionId": "harvest",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "network_storm--shield",
+      "parentId": "network_storm",
+      "optionId": "shield",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "event",
+      "key": "night_market",
+      "parentId": "night_market",
+      "category": "event",
+      "paths": [
+        "assets/images/event-night_market-desktop.webp",
+        "assets/images/event-night_market-mobile.webp"
+      ]
+    },
+    {
+      "kind": "choice",
+      "key": "night_market--bargain",
+      "parentId": "night_market",
+      "optionId": "bargain",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "night_market--buy",
+      "parentId": "night_market",
+      "optionId": "buy",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "event",
+      "key": "nightlife",
+      "parentId": "nightlife",
+      "category": "event",
+      "paths": [
+        "assets/images/event-nightlife-desktop.webp",
+        "assets/images/event-nightlife-mobile.webp"
+      ]
+    },
+    {
+      "kind": "choice",
+      "key": "nightlife--bar",
+      "parentId": "nightlife",
+      "optionId": "bar",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "nightlife--coffee",
+      "parentId": "nightlife",
+      "optionId": "coffee",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "event",
+      "key": "power_cut",
+      "parentId": "power_cut",
+      "category": "event",
+      "paths": [
+        "assets/images/event-power_cut-desktop.webp",
+        "assets/images/event-power_cut-mobile.webp"
+      ]
+    },
+    {
+      "kind": "choice",
+      "key": "power_cut--clinic",
+      "parentId": "power_cut",
+      "optionId": "clinic",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "power_cut--market",
+      "parentId": "power_cut",
+      "optionId": "market",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "event",
+      "key": "public_terminal",
+      "parentId": "public_terminal",
+      "category": "event",
+      "paths": [
+        "assets/images/event-public_terminal-desktop.webp",
+        "assets/images/event-public_terminal-mobile.webp"
+      ]
+    },
+    {
+      "kind": "choice",
+      "key": "public_terminal--search",
+      "parentId": "public_terminal",
+      "optionId": "search",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "public_terminal--wipe",
+      "parentId": "public_terminal",
+      "optionId": "wipe",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "event",
+      "key": "quiet_room",
+      "parentId": "quiet_room",
+      "category": "event",
+      "paths": [
+        "assets/images/event-quiet_room-desktop.webp",
+        "assets/images/event-quiet_room-mobile.webp"
+      ]
+    },
+    {
+      "kind": "choice",
+      "key": "quiet_room--meditate",
+      "parentId": "quiet_room",
+      "optionId": "meditate",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "quiet_room--rest",
+      "parentId": "quiet_room",
+      "optionId": "rest",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "event",
+      "key": "rooftop_radio",
+      "parentId": "rooftop_radio",
+      "category": "event",
+      "paths": [
+        "assets/images/event-rooftop_radio-desktop.webp",
+        "assets/images/event-rooftop_radio-mobile.webp"
+      ]
+    },
+    {
+      "kind": "choice",
+      "key": "rooftop_radio--broadcast",
+      "parentId": "rooftop_radio",
+      "optionId": "broadcast",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "rooftop_radio--listen",
+      "parentId": "rooftop_radio",
+      "optionId": "listen",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "event",
+      "key": "rumor",
+      "parentId": "rumor",
+      "category": "event",
+      "paths": [
+        "assets/images/event-rumor-desktop.webp",
+        "assets/images/event-rumor-mobile.webp"
+      ]
+    },
+    {
+      "kind": "choice",
+      "key": "rumor--call",
+      "parentId": "rumor",
+      "optionId": "call",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "rumor--monitor",
+      "parentId": "rumor",
+      "optionId": "monitor",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "event",
+      "key": "runner",
+      "parentId": "runner",
+      "category": "event",
+      "paths": [
+        "assets/images/event-runner-desktop.webp",
+        "assets/images/event-runner-mobile.webp"
+      ]
+    },
+    {
+      "kind": "choice",
+      "key": "runner--hide",
+      "parentId": "runner",
+      "optionId": "hide",
+      "category": "mainline",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "runner--take_chip",
+      "parentId": "runner",
+      "optionId": "take_chip",
+      "category": "mainline",
+      "paths": []
+    },
+    {
+      "kind": "event",
+      "key": "safehouse",
+      "parentId": "safehouse",
+      "category": "event",
+      "paths": [
+        "assets/images/event-safehouse-desktop.webp",
+        "assets/images/event-safehouse-mobile.webp"
+      ]
+    },
+    {
+      "kind": "choice",
+      "key": "safehouse--build",
+      "parentId": "safehouse",
+      "optionId": "build",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "safehouse--sell",
+      "parentId": "safehouse",
+      "optionId": "sell",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "event",
+      "key": "shooting_range",
+      "parentId": "shooting_range",
+      "category": "event",
+      "paths": [
+        "assets/images/event-shooting_range-desktop.webp",
+        "assets/images/event-shooting_range-mobile.webp"
+      ]
+    },
+    {
+      "kind": "choice",
+      "key": "shooting_range--field",
+      "parentId": "shooting_range",
+      "optionId": "field",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "shooting_range--range",
+      "parentId": "shooting_range",
+      "optionId": "range",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_armored_tip-0--quiet",
+      "parentId": "sidequest:sq_armored_tip:0",
+      "optionId": "quiet",
+      "category": "sidequest",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_armored_tip-1--take",
+      "parentId": "sidequest:sq_armored_tip:1",
+      "optionId": "take",
+      "category": "sidequest",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_blackmail-0--deal",
+      "parentId": "sidequest:sq_blackmail:0",
+      "optionId": "deal",
+      "category": "sidequest",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_blackmail-1--cash",
+      "parentId": "sidequest:sq_blackmail:1",
+      "optionId": "cash",
+      "category": "sidequest",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_blackmail-1--truth",
+      "parentId": "sidequest:sq_blackmail:1",
+      "optionId": "truth",
+      "category": "sidequest",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_delivery-0--drive",
+      "parentId": "sidequest:sq_delivery:0",
+      "optionId": "drive",
+      "category": "sidequest",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_delivery-0--look",
+      "parentId": "sidequest:sq_delivery:0",
+      "optionId": "look",
+      "category": "sidequest",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_delivery-1--finish",
+      "parentId": "sidequest:sq_delivery:1",
+      "optionId": "finish",
+      "category": "sidequest",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_eviction-0--challenge",
+      "parentId": "sidequest:sq_eviction:0",
+      "optionId": "challenge",
+      "category": "sidequest",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_eviction-1--record",
+      "parentId": "sidequest:sq_eviction:1",
+      "optionId": "record",
+      "category": "sidequest",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_kael_race-0--repair",
+      "parentId": "sidequest:sq_kael_race:0",
+      "optionId": "repair",
+      "category": "sidequest",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_kael_race-1--guide",
+      "parentId": "sidequest:sq_kael_race:1",
+      "optionId": "guide",
+      "category": "sidequest",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_mira_debt-0--pay",
+      "parentId": "sidequest:sq_mira_debt:0",
+      "optionId": "pay",
+      "category": "sidequest",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_mira_debt-0--talk",
+      "parentId": "sidequest:sq_mira_debt:0",
+      "optionId": "talk",
+      "category": "sidequest",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_mira_debt-1--expose",
+      "parentId": "sidequest:sq_mira_debt:1",
+      "optionId": "expose",
+      "category": "sidequest",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_missing_kid-0--search",
+      "parentId": "sidequest:sq_missing_kid:0",
+      "optionId": "search",
+      "category": "sidequest",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_missing_kid-1--rescue",
+      "parentId": "sidequest:sq_missing_kid:1",
+      "optionId": "rescue",
+      "category": "sidequest",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_water-0--sample",
+      "parentId": "sidequest:sq_water:0",
+      "optionId": "sample",
+      "category": "sidequest",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_water-1--public",
+      "parentId": "sidequest:sq_water:1",
+      "optionId": "public",
+      "category": "sidequest",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_water-1--settle",
+      "parentId": "sidequest:sq_water:1",
+      "optionId": "settle",
+      "category": "sidequest",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_zero_book-0--trace",
+      "parentId": "sidequest:sq_zero_book:0",
+      "optionId": "trace",
+      "category": "sidequest",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_zero_book-1--swap",
+      "parentId": "sidequest:sq_zero_book:1",
+      "optionId": "swap",
+      "category": "sidequest",
+      "paths": []
+    },
+    {
+      "kind": "event",
+      "key": "signal",
+      "parentId": "signal",
+      "category": "event",
+      "paths": [
+        "assets/images/event-signal-desktop.webp",
+        "assets/images/event-signal-mobile.webp"
+      ]
+    },
+    {
+      "kind": "choice",
+      "key": "signal--listen",
+      "parentId": "signal",
+      "optionId": "listen",
+      "category": "mainline",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "signal--trace",
+      "parentId": "signal",
+      "optionId": "trace",
+      "category": "mainline",
+      "paths": []
+    },
+    {
+      "kind": "event",
+      "key": "small_job",
+      "parentId": "small_job",
+      "category": "event",
+      "paths": [
+        "assets/images/event-small_job-desktop.webp",
+        "assets/images/event-small_job-mobile.webp"
+      ]
+    },
+    {
+      "kind": "choice",
+      "key": "small_job--accounts",
+      "parentId": "small_job",
+      "optionId": "accounts",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "small_job--repair",
+      "parentId": "small_job",
+      "optionId": "repair",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "event",
+      "key": "street_doc",
+      "parentId": "street_doc",
+      "category": "event",
+      "paths": [
+        "assets/images/event-street_doc-desktop.webp",
+        "assets/images/event-street_doc-mobile.webp"
+      ]
+    },
+    {
+      "kind": "choice",
+      "key": "street_doc--assist",
+      "parentId": "street_doc",
+      "optionId": "assist",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "street_doc--guard",
+      "parentId": "street_doc",
+      "optionId": "guard",
+      "category": "event",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "territory-chip_logistics--capture",
+      "parentId": "territory:chip_logistics",
+      "optionId": "capture",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "territory-chip_logistics--fortify",
+      "parentId": "territory:chip_logistics",
+      "optionId": "fortify",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "territory-construction_depot--capture",
+      "parentId": "territory:construction_depot",
+      "optionId": "capture",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "territory-construction_depot--fortify",
+      "parentId": "territory:construction_depot",
+      "optionId": "fortify",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "territory-cruise_terminal--capture",
+      "parentId": "territory:cruise_terminal",
+      "optionId": "capture",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "territory-cruise_terminal--fortify",
+      "parentId": "territory:cruise_terminal",
+      "optionId": "fortify",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "territory-east_chop_shop--capture",
+      "parentId": "territory:east_chop_shop",
+      "optionId": "capture",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "territory-east_chop_shop--fortify",
+      "parentId": "territory:east_chop_shop",
+      "optionId": "fortify",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "territory-finance_tower--capture",
+      "parentId": "territory:finance_tower",
+      "optionId": "capture",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "territory-finance_tower--fortify",
+      "parentId": "territory:finance_tower",
+      "optionId": "fortify",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "territory-fish_market--capture",
+      "parentId": "territory:fish_market",
+      "optionId": "capture",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "territory-fish_market--fortify",
+      "parentId": "territory:fish_market",
+      "optionId": "fortify",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "territory-marina_club--capture",
+      "parentId": "territory:marina_club",
+      "optionId": "capture",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "territory-marina_club--fortify",
+      "parentId": "territory:marina_club",
+      "optionId": "fortify",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "territory-neon_strip--capture",
+      "parentId": "territory:neon_strip",
+      "optionId": "capture",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "territory-neon_strip--fortify",
+      "parentId": "territory:neon_strip",
+      "optionId": "fortify",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "territory-north_tenements--capture",
+      "parentId": "territory:north_tenements",
+      "optionId": "capture",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "territory-north_tenements--fortify",
+      "parentId": "territory:north_tenements",
+      "optionId": "fortify",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "territory-overpass_toll--capture",
+      "parentId": "territory:overpass_toll",
+      "optionId": "capture",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "territory-overpass_toll--fortify",
+      "parentId": "territory:overpass_toll",
+      "optionId": "fortify",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "territory-pirate_station--capture",
+      "parentId": "territory:pirate_station",
+      "optionId": "capture",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "territory-pirate_station--fortify",
+      "parentId": "territory:pirate_station",
+      "optionId": "fortify",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "territory-relay_tower--capture",
+      "parentId": "territory:relay_tower",
+      "optionId": "capture",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "territory-relay_tower--fortify",
+      "parentId": "territory:relay_tower",
+      "optionId": "fortify",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "territory-river_casino--capture",
+      "parentId": "territory:river_casino",
+      "optionId": "capture",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "territory-river_casino--fortify",
+      "parentId": "territory:river_casino",
+      "optionId": "fortify",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "territory-south_docks--capture",
+      "parentId": "territory:south_docks",
+      "optionId": "capture",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "territory-south_docks--fortify",
+      "parentId": "territory:south_docks",
+      "optionId": "fortify",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "territory-west_rail_yard--capture",
+      "parentId": "territory:west_rail_yard",
+      "optionId": "capture",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "territory-west_rail_yard--fortify",
+      "parentId": "territory:west_rail_yard",
+      "optionId": "fortify",
+      "category": "battle",
+      "paths": []
+    },
+    {
+      "kind": "event",
+      "key": "vault",
+      "parentId": "vault",
+      "category": "event",
+      "paths": [
+        "assets/images/event-vault-desktop.webp",
+        "assets/images/event-vault-mobile.webp"
+      ]
+    },
+    {
+      "kind": "choice",
+      "key": "vault--destroy",
+      "parentId": "vault",
+      "optionId": "destroy",
+      "category": "mainline",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "vault--free",
+      "parentId": "vault",
+      "optionId": "free",
+      "category": "mainline",
+      "paths": []
+    },
+    {
+      "kind": "choice",
+      "key": "vault--restore",
+      "parentId": "vault",
+      "optionId": "restore",
+      "category": "mainline",
+      "paths": []
+    }
+  ],
+  "missingMappings": [
+    {
+      "kind": "choice",
+      "key": "activity-contacts-chenglan--chenglan",
+      "category": "daily"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-contacts-difei--difei",
+      "category": "daily"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-contacts-kael--kael",
+      "category": "daily"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-contacts-mira--mira",
+      "category": "daily"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-contacts-zero--zero",
+      "category": "daily"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-leisure-leisure_bar--leisure_bar",
+      "category": "daily"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-leisure-leisure_coffee--leisure_coffee",
+      "category": "daily"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-leisure-leisure_free_rest--leisure_free_rest",
+      "category": "daily"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-leisure-leisure_movie--leisure_movie",
+      "category": "daily"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-leisure-leisure_nutrition--leisure_nutrition",
+      "category": "daily"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-leisure-leisure_sleep--leisure_sleep",
+      "category": "daily"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-leisure-leisure_street_food--leisure_street_food",
+      "category": "daily"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-leisure-leisure_treatment--leisure_treatment",
+      "category": "daily"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-life-life_conflict--life_conflict",
+      "category": "daily"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-life-life_leisure--life_leisure",
+      "category": "daily"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-life-life_purchase--life_purchase",
+      "category": "daily"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-life-life_sidequest--life_sidequest",
+      "category": "daily"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-life-life_social--life_social",
+      "category": "daily"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-life-life_training--life_training",
+      "category": "daily"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-life-life_work--life_work",
+      "category": "daily"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-combat_arena_final--combat_arena_final",
+      "category": "night"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-combat_bounty--combat_bounty",
+      "category": "night"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-combat_convoy--combat_convoy",
+      "category": "night"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-combat_dead_air--combat_dead_air",
+      "category": "night"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-combat_debt_collectors--combat_debt_collectors",
+      "category": "night"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-combat_dock_brawl--combat_dock_brawl",
+      "category": "night"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-combat_gang_vault--combat_gang_vault",
+      "category": "night"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-combat_hostage--combat_hostage",
+      "category": "night"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-combat_marina--combat_marina",
+      "category": "night"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-combat_rail_hijack--combat_rail_hijack",
+      "category": "night"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-combat_terminal--combat_terminal",
+      "category": "night"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-combat_warehouse--combat_warehouse",
+      "category": "night"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_bar--night_bar",
+      "category": "night"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_bathhouse--night_bathhouse",
+      "category": "night"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_clinic--night_clinic",
+      "category": "night"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_club--night_club",
+      "category": "night"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_diner--night_diner",
+      "category": "night"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_drive--night_drive",
+      "category": "night"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_ferry--night_ferry",
+      "category": "night"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_fight--night_fight",
+      "category": "night"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_fine_dining--night_fine_dining",
+      "category": "night"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_gamble--night_gamble",
+      "category": "night"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_home--night_home",
+      "category": "night"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_hotel--night_hotel",
+      "category": "night"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_industry_host--night_industry_host",
+      "category": "night"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_industry_patrol--night_industry_patrol",
+      "category": "night"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_industry_problem--night_industry_problem",
+      "category": "night"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_ktv--night_ktv",
+      "category": "night"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_massage--night_massage",
+      "category": "night"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_movie--night_movie",
+      "category": "night"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_noodle_cart--night_noodle_cart",
+      "category": "night"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_private_party--night_private_party",
+      "category": "night"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_race--night_race",
+      "category": "night"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_rooftop_radio--night_rooftop_radio",
+      "category": "night"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_shelter--night_shelter",
+      "category": "night"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_social_drink--night_social_drink",
+      "category": "night"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_social_drive--night_social_drive",
+      "category": "night"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_social_errand--night_social_errand",
+      "category": "night"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_social_food--night_social_food",
+      "category": "night"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-night-night_store_food--night_store_food",
+      "category": "night"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-training-train_engineering--train_engineering",
+      "category": "daily"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-training-train_hacking--train_hacking",
+      "category": "daily"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-training-train_management--train_management",
+      "category": "daily"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-training-train_perception--train_perception",
+      "category": "daily"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-training-train_physique--train_physique",
+      "category": "daily"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-training-train_reflex--train_reflex",
+      "category": "daily"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-training-train_social--train_social",
+      "category": "daily"
+    },
+    {
+      "kind": "choice",
+      "key": "activity-training-train_will--train_will",
+      "category": "daily"
+    },
+    {
+      "kind": "choice",
+      "key": "alley_contact--question",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "alley_contact--trade",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "ambush--fight",
+      "category": "mainline"
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--ammo_case",
+      "category": "market"
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--apartments",
+      "category": "market"
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--armored_sedan",
+      "category": "market"
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--breach_shotgun",
+      "category": "market"
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--clinic",
+      "category": "market"
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--diner",
+      "category": "market"
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--downtown_loft",
+      "category": "market"
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--encrypted_phone",
+      "category": "market"
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--forged_documents",
+      "category": "market"
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--garage",
+      "category": "market"
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--gym",
+      "category": "market"
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--leave",
+      "category": "market"
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--logistics",
+      "category": "market"
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--luxury",
+      "category": "market"
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--marksman",
+      "category": "market"
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--media_studio",
+      "category": "market"
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--night_vision",
+      "category": "market"
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--nightclub",
+      "category": "market"
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--pawnshop",
+      "category": "market"
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--pistol",
+      "category": "market"
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--property",
+      "category": "market"
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--rifle",
+      "category": "market"
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--safehouse_property",
+      "category": "market"
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--security_company",
+      "category": "market"
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--smg",
+      "category": "market"
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--street_bike",
+      "category": "market"
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--stun_baton",
+      "category": "market"
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--suv",
+      "category": "market"
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--trauma_kit",
+      "category": "market"
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--travel_bag",
+      "category": "market"
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--vehicle",
+      "category": "market"
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--vest",
+      "category": "market"
+    },
+    {
+      "kind": "choice",
+      "key": "asset_market--weapon",
+      "category": "market"
+    },
+    {
+      "kind": "choice",
+      "key": "battle--attack",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "battle--brawl",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "battle--flee",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "battle--guard",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "battle--hack",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "ch1_burner--tail",
+      "category": "mainline"
+    },
+    {
+      "kind": "choice",
+      "key": "ch1_burner--verify",
+      "category": "mainline"
+    },
+    {
+      "kind": "choice",
+      "key": "ch3_broadcast--blackout",
+      "category": "mainline"
+    },
+    {
+      "kind": "choice",
+      "key": "ch3_broadcast--inside",
+      "category": "mainline"
+    },
+    {
+      "kind": "choice",
+      "key": "ch3_container--convoy",
+      "category": "mainline"
+    },
+    {
+      "kind": "choice",
+      "key": "ch3_container--crane",
+      "category": "mainline"
+    },
+    {
+      "kind": "choice",
+      "key": "ch3_escape--split",
+      "category": "mainline"
+    },
+    {
+      "kind": "choice",
+      "key": "ch3_escape--together",
+      "category": "mainline"
+    },
+    {
+      "kind": "choice",
+      "key": "ch4_betrayal--hunt",
+      "category": "mainline"
+    },
+    {
+      "kind": "choice",
+      "key": "ch4_betrayal--trust",
+      "category": "mainline"
+    },
+    {
+      "kind": "choice",
+      "key": "ch4_election--auction",
+      "category": "mainline"
+    },
+    {
+      "kind": "choice",
+      "key": "ch4_election--people",
+      "category": "mainline"
+    },
+    {
+      "kind": "choice",
+      "key": "ch4_truth--break",
+      "category": "mainline"
+    },
+    {
+      "kind": "choice",
+      "key": "ch4_truth--join",
+      "category": "mainline"
+    },
+    {
+      "kind": "choice",
+      "key": "ch5_finale--destroy",
+      "category": "mainline"
+    },
+    {
+      "kind": "choice",
+      "key": "ch5_finale--free",
+      "category": "mainline"
+    },
+    {
+      "kind": "choice",
+      "key": "ch5_finale--restore",
+      "category": "mainline"
+    },
+    {
+      "kind": "choice",
+      "key": "ch5_siege--convoy",
+      "category": "mainline"
+    },
+    {
+      "kind": "choice",
+      "key": "ch5_siege--signals",
+      "category": "mainline"
+    },
+    {
+      "kind": "choice",
+      "key": "ch5_tower--identity",
+      "category": "mainline"
+    },
+    {
+      "kind": "choice",
+      "key": "ch5_tower--service",
+      "category": "mainline"
+    },
+    {
+      "kind": "choice",
+      "key": "checkpoint--hack_gate",
+      "category": "mainline"
+    },
+    {
+      "kind": "choice",
+      "key": "checkpoint--lead_crowd",
+      "category": "mainline"
+    },
+    {
+      "kind": "choice",
+      "key": "clinic_supplies--buyback",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "clinic_supplies--forge",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "community_kitchen--cook",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "community_kitchen--organize",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "corporate_offer--accept",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "corporate_offer--refuse",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "difei_interview_event--corner",
+      "category": "character"
+    },
+    {
+      "kind": "choice",
+      "key": "difei_interview_event--witness",
+      "category": "character"
+    },
+    {
+      "kind": "choice",
+      "key": "difei_media_event--shield",
+      "category": "character"
+    },
+    {
+      "kind": "choice",
+      "key": "difei_media_event--stand",
+      "category": "character"
+    },
+    {
+      "kind": "choice",
+      "key": "difei_spar_event--lower",
+      "category": "character"
+    },
+    {
+      "kind": "choice",
+      "key": "difei_spar_event--steady",
+      "category": "character"
+    },
+    {
+      "kind": "choice",
+      "key": "drone_scrap--decode",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "drone_scrap--salvage",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "faction-civic_cleaners--challenge",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "faction-dead_air--challenge",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "faction-glass_snakes--challenge",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "faction-golden_ring--challenge",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "faction-grey_wolves--challenge",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "faction-iron_riders--challenge",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "faction-northbridge--challenge",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "faction-red_tide--challenge",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "faction-white_sharks--challenge",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "gang_toll--challenge",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "gang_toll--pay",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "ghost_ai--erase",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "ghost_ai--preserve",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "gym--dodge",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "gym--sprint",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "industry_market--diner",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "industry_market--garage",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "industry_market--nightclub",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "inventory--budget",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "inventory--maintain",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "morning_patrol--help",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "morning_patrol--observe",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "network_storm--harvest",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "network_storm--shield",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "night_market--bargain",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "night_market--buy",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "nightlife--bar",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "nightlife--coffee",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "power_cut--clinic",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "power_cut--market",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "public_terminal--search",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "public_terminal--wipe",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "quiet_room--meditate",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "quiet_room--rest",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "rooftop_radio--broadcast",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "rooftop_radio--listen",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "rumor--call",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "rumor--monitor",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "runner--hide",
+      "category": "mainline"
+    },
+    {
+      "kind": "choice",
+      "key": "runner--take_chip",
+      "category": "mainline"
+    },
+    {
+      "kind": "choice",
+      "key": "safehouse--build",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "safehouse--sell",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "shooting_range--field",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "shooting_range--range",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_armored_tip-0--quiet",
+      "category": "sidequest"
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_armored_tip-1--take",
+      "category": "sidequest"
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_blackmail-0--deal",
+      "category": "sidequest"
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_blackmail-1--cash",
+      "category": "sidequest"
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_blackmail-1--truth",
+      "category": "sidequest"
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_delivery-0--drive",
+      "category": "sidequest"
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_delivery-0--look",
+      "category": "sidequest"
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_delivery-1--finish",
+      "category": "sidequest"
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_eviction-0--challenge",
+      "category": "sidequest"
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_eviction-1--record",
+      "category": "sidequest"
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_kael_race-0--repair",
+      "category": "sidequest"
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_kael_race-1--guide",
+      "category": "sidequest"
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_mira_debt-0--pay",
+      "category": "sidequest"
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_mira_debt-0--talk",
+      "category": "sidequest"
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_mira_debt-1--expose",
+      "category": "sidequest"
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_missing_kid-0--search",
+      "category": "sidequest"
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_missing_kid-1--rescue",
+      "category": "sidequest"
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_water-0--sample",
+      "category": "sidequest"
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_water-1--public",
+      "category": "sidequest"
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_water-1--settle",
+      "category": "sidequest"
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_zero_book-0--trace",
+      "category": "sidequest"
+    },
+    {
+      "kind": "choice",
+      "key": "sidequest-sq_zero_book-1--swap",
+      "category": "sidequest"
+    },
+    {
+      "kind": "choice",
+      "key": "signal--listen",
+      "category": "mainline"
+    },
+    {
+      "kind": "choice",
+      "key": "signal--trace",
+      "category": "mainline"
+    },
+    {
+      "kind": "choice",
+      "key": "small_job--accounts",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "small_job--repair",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "street_doc--assist",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "street_doc--guard",
+      "category": "event"
+    },
+    {
+      "kind": "choice",
+      "key": "territory-chip_logistics--capture",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "territory-chip_logistics--fortify",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "territory-construction_depot--capture",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "territory-construction_depot--fortify",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "territory-cruise_terminal--capture",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "territory-cruise_terminal--fortify",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "territory-east_chop_shop--capture",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "territory-east_chop_shop--fortify",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "territory-finance_tower--capture",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "territory-finance_tower--fortify",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "territory-fish_market--capture",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "territory-fish_market--fortify",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "territory-marina_club--capture",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "territory-marina_club--fortify",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "territory-neon_strip--capture",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "territory-neon_strip--fortify",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "territory-north_tenements--capture",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "territory-north_tenements--fortify",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "territory-overpass_toll--capture",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "territory-overpass_toll--fortify",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "territory-pirate_station--capture",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "territory-pirate_station--fortify",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "territory-relay_tower--capture",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "territory-relay_tower--fortify",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "territory-river_casino--capture",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "territory-river_casino--fortify",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "territory-south_docks--capture",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "territory-south_docks--fortify",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "territory-west_rail_yard--capture",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "territory-west_rail_yard--fortify",
+      "category": "battle"
+    },
+    {
+      "kind": "choice",
+      "key": "vault--destroy",
+      "category": "mainline"
+    },
+    {
+      "kind": "choice",
+      "key": "vault--free",
+      "category": "mainline"
+    },
+    {
+      "kind": "choice",
+      "key": "vault--restore",
+      "category": "mainline"
+    }
+  ],
+  "missingFiles": [],
+  "wrongExtensions": [],
+  "wrongDimensions": [],
+  "duplicatePaths": []
+}
