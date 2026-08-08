@@ -137,7 +137,7 @@ test("支線牌堆九條、初次三選一，進行中時保證出現並繼續�
 });
 test("資產可無上限升級，初次必定成功且正確扣款",()=>{
   let state=newGame();state.player.resource=50;state.phase="event";state.selected="asset_market";state=resolveChoice(state,"weapon");const asset=state.assets.weapons[0];const before=state.player.resource;state.phase="activity";state.activityKind="purchase";
-  state=upgradeAsset(state,"weapons",asset.id);assert.equal(state.assets.weapons[0].level,1);assert.equal(state.player.resource,before-Math.ceil(14*.25));
+  state=upgradeAsset(state,"weapons",asset.id);assert.equal(state.assets.weapons[0].level,1);assert.equal(state.player.resource,before-Math.ceil(14*.25));assert.equal(state.lastResult.artKey,`upgrade-weapons--${asset.id}`);
 });
 
 test("夜生活牌堆包含40張，每晚抽5張且保證免費與兩張恢復",()=>{
@@ -345,4 +345,11 @@ test("direct night and work cards persist canonical inventory artKey values",()=
 
   state=newGame("x",1);state.candidates=["life_work"];
   assert.equal(selectCard(state,"life_work").lastResult.artKey,"activity-life-life_work--life_work");
+});
+
+test("內建卡覆寫依 customDirect 語意保存自訂圖片鍵",()=>{
+  let state=newGame("x",1);state.candidates=["life_work"];
+  state=saveCardDefinition(state,{baseId:"life_work",title:"覆寫工作",summary:"改成直接結算",tag:"自訂",cost:0,effects:[],result:"覆寫完成"});
+  state=selectCard(state,"life_work");
+  assert.equal(state.lastResult.artKey,"custom-life_work--life_work");
 });

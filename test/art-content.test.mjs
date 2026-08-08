@@ -17,6 +17,46 @@ test("builds stable normalized art keys", () => {
   );
 });
 
+test("customDirect 卡片圖片身分不依賴 custom_ ID 前綴", () => {
+  assert.equal(typeof artContent.cardArtIdentity, "function");
+  assert.deepEqual(artContent.cardArtIdentity({ id: "life_work", customDirect: true }, "life"), {
+    parentId: "custom:life_work",
+    optionId: "life_work",
+    category: "custom",
+  });
+});
+
+test("內建生活與夜間卡片圖片身分沿用清冊父層", () => {
+  assert.equal(typeof artContent.cardArtIdentity, "function");
+  assert.deepEqual(artContent.cardArtIdentity({ id: "life_work" }, "life"), {
+    parentId: "activity:life:life_work",
+    optionId: "life_work",
+    category: "daily",
+  });
+  assert.deepEqual(artContent.cardArtIdentity({ id: "night_shelter" }, "night"), {
+    parentId: "activity:night:night_shelter",
+    optionId: "night_shelter",
+    category: "daily",
+  });
+});
+
+test("資產升級縮圖與結果共用市場圖片身分", () => {
+  assert.equal(typeof artContent.upgradeArtIdentity, "function");
+  assert.deepEqual(artContent.upgradeArtIdentity("weapons", "weapon_sawed_shotgun"), {
+    parentId: "upgrade:weapons",
+    optionId: "weapon_sawed_shotgun",
+    category: "market",
+  });
+  assert.equal(
+    choiceArt("upgrade:weapons", "weapon_sawed_shotgun", "market").src,
+    "assets/images/fallbacks/market.webp",
+  );
+  assert.equal(
+    artContent.choiceArtByKey("upgrade-weapons--weapon_sawed_shotgun").src,
+    "assets/images/fallbacks/market.webp",
+  );
+});
+
 test("uses a custom category fallback for dynamic choices", () => {
   const art = choiceArt("custom:user-card", "custom-choice", "custom");
 

@@ -13,6 +13,19 @@ export function artKey(parentId, optionId) {
   return `${normalizeArtId(parentId)}--${normalizeArtId(optionId)}`;
 }
 
+export function cardArtIdentity(card, deckType) {
+  if (!card?.id) return null;
+  if (card.customDirect) return { parentId: `custom:${card.id}`, optionId: card.id, category: "custom" };
+  if (deckType === "life" || deckType === "night") {
+    return { parentId: `activity:${deckType}:${card.id}`, optionId: card.id, category: "daily" };
+  }
+  return null;
+}
+
+export function upgradeArtIdentity(category, assetId) {
+  return { parentId: `upgrade:${category}`, optionId: assetId, category: "market" };
+}
+
 const FALLBACK_CATEGORIES = new Set(["default", "event", "sidequest", "daily", "market", "battle", "custom"]);
 const FALLBACK_ALT = "Artwork unavailable";
 

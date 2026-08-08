@@ -5,7 +5,7 @@ import { CHAPTER_EVENTS, OFFICIAL_MAINLINE_IDS, officialMainlineMeta, chapterFor
 import { FACTIONS, TERRITORIES, factionById, territoryById } from "./faction-content.mjs?v=23";
 import { TEAM_MEMBERS, TEAM_LIMIT, teamMemberById } from "./team-content.mjs?v=24";
 import { CONTACT_PASSIVES, DIFEI_ACTIVITIES, CHENGLAN_ACTIVITIES, DIFEI_EVENTS, characterEventById } from "./character-content.mjs?v=24";
-import { artKey } from "./art-content.mjs";
+import { artKey, cardArtIdentity, upgradeArtIdentity } from "./art-content.mjs";
 
 const LIMITS = { health:[0,100], fatigue:[0,100], stress:[0,100], resource:[0,999], ability:[0,100], relation:[-100,100], world:[0,100] };
 const ASSET_BASE_PRICES={property_riverside_flat:40,property_suburban_safehouse:28,vehicle_grey_sport:22,vehicle_black_suv:18,weapon_sawed_shotgun:14,weapon_silenced_pistol:18,luxury_gold_watch:10,luxury_black_bag:12,industry_bay_diner:18,industry_east_garage:28,industry_blue_nightclub:36,industry_old_apartments:50};
@@ -494,7 +494,7 @@ export function saveCardDefinition(input,definition){
   return state;
 }
 export function deleteCustomCard(input,id){const state=clone(input);state.customCards=state.customCards.filter(card=>card.id!==id);delete state.cardOverrides[id];return state;}
-function resolveDirectCard(input,card){return withResultArt(resolveDirectCardBase(input,card),card.id,card.id);}
+function resolveDirectCard(input,card){const identity=cardArtIdentity(card,input.deckType);return withResultArt(resolveDirectCardBase(input,card),identity.parentId,identity.optionId);}
 function openNightCard(input,card){return withResultArt(openNightCardBase(input,card),`activity:night:${card.id}`,card.id);}
 export function resolveNightOption(input,id){return withResultArt(resolveNightOptionBase(input,id),input.selected,id);}
 export function resolveCharacterEventChoice(input,choiceId){return withResultArt(resolveCharacterEventChoiceBase(input,choiceId),input.selectedCharacterEvent,choiceId);}
@@ -508,7 +508,7 @@ function resolveWork(input){return withResultArt(resolveWorkBase(input),"activit
 export function declineSideQuests(input){return withResultArt(declineSideQuestsBase(input),"sidequest","decline");}
 export function resolveSideQuestChoice(input,choiceId){return withResultArt(resolveSideQuestChoiceBase(input,choiceId),`sidequest:${input.activeSideQuest.id}:${input.activeSideQuest.nodeIndex}`,choiceId);}
 export function abandonSideQuest(input){return withResultArt(abandonSideQuestBase(input),`sidequest:${input.activeSideQuest.id}`,"abandon");}
-export function upgradeAsset(input,category,assetId){return withResultArt(upgradeAssetBase(input,category,assetId),`upgrade:${category}`,assetId);}
+export function upgradeAsset(input,category,assetId){const identity=upgradeArtIdentity(category,assetId);return withResultArt(upgradeAssetBase(input,category,assetId),identity.parentId,identity.optionId);}
 export function fortifyTerritory(input,territoryId){return withResultArt(fortifyTerritoryBase(input,territoryId),`territory:${territoryId}`,"fortify");}
 export function recruitCrew(input){return withResultArt(recruitCrewBase(input),"crew","recruit");}
 export function recruitTeamMember(input,memberId){return withResultArt(recruitTeamMemberBase(input,memberId),`team:${memberId}`,"recruit");}
