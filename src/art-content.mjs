@@ -29,9 +29,8 @@ export function upgradeArtIdentity(category, assetId) {
 const FALLBACK_CATEGORIES = new Set(["default", "event", "sidequest", "daily", "market", "battle", "custom"]);
 const FALLBACK_ALT = "Artwork unavailable";
 
-// Choice mappings are deliberately empty until the generated 3:2 masters are
-// added in the later art batches. Keep every path here; the audit is the
-// single source of truth for what still needs to be generated.
+// Generated 3:2 choice masters are registered here in stable art-key order.
+// The audit remains the source of truth for incomplete later category batches.
 export const CHOICE_ART = {
   "morning_patrol--observe": { src: "assets/images/choices/morning_patrol--observe.webp", alt: "調查現場：記住監視器死角與警方動線。" },
   "morning_patrol--help": { src: "assets/images/choices/morning_patrol--help.webp", alt: "收買清潔工：讓關鍵證物在警方抵達前消失。" },
