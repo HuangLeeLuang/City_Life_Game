@@ -495,7 +495,7 @@ export function saveCardDefinition(input,definition){
 }
 export function deleteCustomCard(input,id){const state=clone(input);state.customCards=state.customCards.filter(card=>card.id!==id);delete state.cardOverrides[id];return state;}
 function resolveDirectCard(input,card){return withResultArt(resolveDirectCardBase(input,card),card.id,card.id);}
-function openNightCard(input,card){return withResultArt(openNightCardBase(input,card),card.id,card.id);}
+function openNightCard(input,card){return withResultArt(openNightCardBase(input,card),`activity:night:${card.id}`,card.id);}
 export function resolveNightOption(input,id){return withResultArt(resolveNightOptionBase(input,id),input.selected,id);}
 export function resolveCharacterEventChoice(input,choiceId){return withResultArt(resolveCharacterEventChoiceBase(input,choiceId),input.selectedCharacterEvent,choiceId);}
 function activityArtIds(input,id){
@@ -504,7 +504,7 @@ function activityArtIds(input,id){
   return [`activity:${input.activityKind}:${id}`,id];
 }
 export function resolveActivity(input,id){const [parentId,optionId]=activityArtIds(input,id);return withResultArt(resolveActivityBase(input,id),parentId,optionId);}
-function resolveWork(input){return withResultArt(resolveWorkBase(input),"activity:work","cash");}
+function resolveWork(input){return withResultArt(resolveWorkBase(input),"activity:life:life_work","life_work");}
 export function declineSideQuests(input){return withResultArt(declineSideQuestsBase(input),"sidequest","decline");}
 export function resolveSideQuestChoice(input,choiceId){return withResultArt(resolveSideQuestChoiceBase(input,choiceId),`sidequest:${input.activeSideQuest.id}:${input.activeSideQuest.nodeIndex}`,choiceId);}
 export function abandonSideQuest(input){return withResultArt(abandonSideQuestBase(input),`sidequest:${input.activeSideQuest.id}`,"abandon");}

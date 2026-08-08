@@ -338,3 +338,11 @@ test("legacy result art key remains optional when loading saves",()=>{
   const state=newGame();state.phase="result";state.lastResult={title:"legacy",choice:"choice",success:true,summary:"summary"};
   assert.doesNotThrow(()=>validateSave(state));
 });
+
+test("direct night and work cards persist canonical inventory artKey values",()=>{
+  let state=newGame("x",1);state.deckType="night";state.candidates=["night_shelter"];
+  assert.equal(selectCard(state,"night_shelter").lastResult.artKey,"activity-night-night_shelter--night_shelter");
+
+  state=newGame("x",1);state.candidates=["life_work"];
+  assert.equal(selectCard(state,"life_work").lastResult.artKey,"activity-life-life_work--life_work");
+});
