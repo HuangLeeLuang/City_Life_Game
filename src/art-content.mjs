@@ -117,6 +117,7 @@ export const BUILTIN_ART_REQUIREMENTS = [
   ...eventChoiceRequirements(EVENTS, (event) => event.id === "asset_market" ? "market" : event.main ? "mainline" : "event"),
   ...eventChoiceRequirements(CHAPTER_EVENTS, () => "mainline"),
   ...eventChoiceRequirements(DIFEI_EVENTS, () => "character"),
+  ...directActivityRequirements("life", LIFE_CARDS, "daily"),
   ...directActivityRequirements("leisure", LEISURE_CARDS, "daily"),
   ...directActivityRequirements("training", TRAINING_CARDS, "daily"),
   ...directActivityRequirements("contacts", CONTACTS, "daily"),
