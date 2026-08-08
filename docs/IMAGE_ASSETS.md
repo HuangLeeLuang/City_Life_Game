@@ -146,4 +146,27 @@ Built-in ImageGen produced 90 distinct choice masters for the `sidequest`, `dail
 - Constraints: absolutely no visible text, pseudo-writing, letters, numbers, signage, license plates, UI glyphs, brands, logos, watermarks, excessive neon, futuristic technology, gore, or graphic injury. Printed and display surfaces were requested blank or fully obscured.
 - QA: all 90 finals were reviewed together in a labeled contact sheet for semantic alignment, focal-action readability, character use, composition, and obvious prohibited marks. Night-combat entries show mission entry or pre-action tension without graphic harm. One initial basic-treatment prompt was rejected by output moderation and was safely regenerated as calm support-wrap care with no injury detail.
 
+### 2026-08-08 final coverage, offline policy, and responsive QA
+
+- Strict manifest coverage: 293 built-in requirements, comprising 42 event-image requirements and 251 choice-image requirements. Choice categories are 31 mainline, 6 character, 47 general event, 22 side quest, 28 daily, 40 night, 33 market, and 44 battle. The strict audit reported 0 missing mappings, 0 missing files, and no invalid or colliding required keys.
+- Generated library on disk: 251 dedicated `assets/images/choices/*.webp` files and 7 category fallbacks. Existing event art was preserved; every required event identity resolves to its desktop/mobile artwork pair or its established named equivalent.
+- Offline and performance policy: cache `crime-five-roads-v37` installs the application shell, manifest, bundle, icons, established event art, character art, team art, and territory art. It intentionally does not install the 251-choice library. Images use `loading="lazy"`; an image is added to the runtime cache only after that image is requested and returns a successful response.
+- Automated verification: the full Node suite passed 65/65. The strict art audit passed 293/293 with zero missing mappings or files. The production bundle rebuilt successfully at 401.4 KiB, and `git diff --check` reported no whitespace errors.
+
+Responsive QA used the served production bundle in the in-app browser at 1280px desktop and 390px mobile widths:
+
+| Flow | Desktop | Mobile / shared breakpoint evidence |
+| --- | --- | --- |
+| Standard event | Both option thumbnails measured 1.500 (3:2), remained separate from readable copy, and the result image measured 1.500. | Both choices stacked image above copy at 390px; no horizontal overflow; result image measured 1.500. |
+| Character event | `停在最後一拳` displayed the established Difei portrait and event art; both option thumbnails measured 1.500 and copy remained readable. | The character result retained Difei's portrait and a 1.500 result image without viewport overflow; its choices use the same verified 390px stack. |
+| Side quest | A selected quest node displayed its dedicated choice image at 1.500, separate from copy; its result image remained 1.500. | Side-quest choices use the same verified `.picture-choice` mobile stack and `.result-art` component. |
+| Ordinary activity | Six activity choices measured 1.500 with readable copy; the selected result remained 1.500. | Six activity choices stacked above copy at 390px with 1.500 thumbnails and no page overflow. |
+| Market purchase / upgrade | Seven purchase options and the owned-asset upgrade option measured 1.500, remained separate from copy, and both results remained 1.500. | Seven market options stacked above readable copy at 390px with no horizontal overflow. |
+| Battle | All five battle actions measured 1.500 with readable, non-overlapped copy. | All five actions stacked image above copy at 390px, retained 1.500 thumbnails, and produced no horizontal overflow. |
+
+- Result labels: observed `成功` and `失敗` as 104px desktop labels above the focal image; at 390px, `成功` measured 41.6px and remained above the 3:2 image. The automated status contract also verifies the neutral `結果` label and its dedicated high-contrast neutral style.
+- Failure-path QA: `signal--trace.webp` was deliberately made unavailable on a clean local origin. The image handler replaced it with `fallbacks/event.webp`; the option remained enabled with readable text, selection completed, the result used the fallback, and Continue remained enabled. The original file was restored immediately afterward.
+- Character coherence: the Difei character-event identity, event alternative text, result portrait, and battle roster all resolved to the established Difei visual rather than an anonymous substitute.
+- Nonblocking observation: the fixed Difei assistant can overlap a control low in a long desktop market page until the user scrolls or hides the assistant. This does not affect image layout or game state and the assistant already exposes a prominent hide control.
+
 Review fix round 1 regenerated `activity-night-night_shelter--night_shelter.webp` to match the live action "找個安全角落過夜": the player locks a hidden utility room, keeps a chair at the entrance, silences a face-down dark phone, places an unmarked bag within reach, and sleeps fully clothed on a simple cot. The replacement contains no shelter meal service, outdoor aid scene, visible text, pseudo-writing, or interface glyphs.

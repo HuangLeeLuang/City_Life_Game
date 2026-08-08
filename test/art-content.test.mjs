@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import * as artContent from "../src/art-content.mjs";
 import { artKey, BUILTIN_ART_REQUIREMENTS, choiceArt, eventArt } from "../src/art-content.mjs";
 import { EVENTS } from "../src/content.mjs";
@@ -141,4 +142,14 @@ test("covers every statically enumerable built-in option collection", () => {
     assert.ok(has(`territory:${territory.id}`, "fortify", "battle"), `territory fortify:${territory.id}`);
   }
   for (const action of ["attack", "brawl", "hack", "guard", "flee"]) assert.ok(has("battle", action, "battle"), `battle:${action}`);
+});
+
+test("service worker keeps choice art out of the install cache and caches images on demand", async () => {
+  const source = await readFile(new URL("../sw.js", import.meta.url), "utf8");
+
+  assert.match(source, /const CACHE = "crime-five-roads-v37"/);
+  assert.match(source, /\.\/dist\/game\.bundle\.js/);
+  assert.doesNotMatch(source, /FILES[\s\S]*assets\/images\/choices\/.*\.webp/);
+  assert.match(source, /request\.destination === "image"/);
+  assert.match(source, /cache\.put\(event\.request, copy\)/);
 });
