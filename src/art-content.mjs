@@ -92,7 +92,7 @@ export const CHOICE_ART = {
   "activity-night-night_ktv--night_ktv": { src: "assets/images/choices/activity-night-night_ktv--night_ktv.webp", alt: "在私人包廂與朋友拿著麥克風唱歌。" },
   "activity-night-night_massage--night_massage": { src: "assets/images/choices/activity-night-night_massage--night_massage.webp", alt: "在安靜房間接受專業肩頸按摩。" },
   "activity-night-night_fine_dining--night_fine_dining": { src: "assets/images/choices/activity-night-night_fine_dining--night_fine_dining.webp", alt: "在水岸餐廳享用精緻的深夜晚餐。" },
-  "activity-night-night_shelter--night_shelter": { src: "assets/images/choices/activity-night-night_shelter--night_shelter.webp", alt: "在夜間收容所為街坊盛裝熱食。" },
+  "activity-night-night_shelter--night_shelter": { src: "assets/images/choices/activity-night-night_shelter--night_shelter.webp", alt: "鎖好隱蔽房間、關掉手機，在安全角落短暫睡眠。" },
   "activity-night-night_club--night_club": { src: "assets/images/choices/activity-night-night_club--night_club.webp", alt: "走進地下音樂俱樂部，在人群中放鬆。" },
   "activity-night-night_drive--night_drive": { src: "assets/images/choices/activity-night-night_drive--night_drive.webp", alt: "駕車沿著雨夜海岸公路兜風。" },
   "activity-night-night_social_food--night_social_food": { src: "assets/images/choices/activity-night-night_social_food--night_social_food.webp", alt: "與熟識人物一起吃宵夜並談心。" },
