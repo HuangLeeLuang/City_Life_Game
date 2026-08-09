@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { choiceArt } from "../src/art-content.mjs";
-import { newGame, resolveChoice } from "../src/engine.mjs";
+import { newGame, getEvent, resolveChoice } from "../src/engine.mjs";
 import { FACTIONS, TERRITORIES } from "../src/faction-content.mjs";
 
 const SAVE_KEY = "crime-five-roads-save-v2";
@@ -58,26 +58,42 @@ function factionBoardState() {
   return state;
 }
 
-test("faction board renders the registered challenge and capture choice art", async () => {
+test("faction board keeps actionable challenge and capture controls text-only", async () => {
   const html = await renderSavedState(factionBoardState());
 
   for (const faction of FACTIONS) {
-    assert.match(html, new RegExp(choiceArt(`faction:${faction.id}`, "challenge", "battle").src));
+    assert.doesNotMatch(html, new RegExp(choiceArt(`faction:${faction.id}`, "challenge", "battle").src));
   }
   for (const territory of TERRITORIES) {
-    assert.match(html, new RegExp(choiceArt(`territory:${territory.id}`, "capture", "battle").src));
+    assert.doesNotMatch(html, new RegExp(choiceArt(`territory:${territory.id}`, "capture", "battle").src));
   }
 });
 
-test("faction board renders the registered fortify choice art", async () => {
+test("faction board keeps actionable fortify controls text-only", async () => {
   const state = factionBoardState();
   for (const territory of TERRITORIES) state.territories[territory.id].owner = "player";
 
   const html = await renderSavedState(state);
 
   for (const territory of TERRITORIES) {
-    assert.match(html, new RegExp(choiceArt(`territory:${territory.id}`, "fortify", "battle").src));
+    assert.doesNotMatch(html, new RegExp(choiceArt(`territory:${territory.id}`, "fortify", "battle").src));
   }
+});
+
+test("five-card and battle choices are text-only while enemy intent is visible", async () => {
+  const cards = newGame("test", 3);
+  cards.candidates = ["signal", "life_leisure", "life_training", "life_social", "life_conflict"];
+  cards.deckType = "morning";
+  const cardsHtml = await renderSavedState(cards);
+  assert.doesNotMatch(cardsHtml, /class="choice-thumb/);
+
+  let battleState = newGame("test", 4);
+  battleState.phase = "event";
+  battleState.selected = "ambush";
+  battleState = resolveChoice(battleState, getEvent("ambush").choices[0].id);
+  const battleHtml = await renderSavedState(battleState);
+  assert.doesNotMatch(battleHtml, /class="choice-thumb/);
+  assert.match(battleHtml, /敵人意圖/);
 });
 
 test("finale ending renders its result art and prominent success, failure, and neutral status", async () => {

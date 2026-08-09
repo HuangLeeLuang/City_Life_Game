@@ -10,6 +10,24 @@ import { artKey, cardArtIdentity, upgradeArtIdentity } from "./art-content.mjs?v
 const LIMITS = { health:[0,100], fatigue:[0,100], stress:[0,100], resource:[0,999], ability:[0,100], relation:[-100,100], world:[0,100] };
 const ASSET_BASE_PRICES={property_riverside_flat:40,property_suburban_safehouse:28,vehicle_grey_sport:22,vehicle_black_suv:18,weapon_sawed_shotgun:14,weapon_silenced_pistol:18,luxury_gold_watch:10,luxury_black_bag:12,industry_bay_diner:18,industry_east_garage:28,industry_blue_nightclub:36,industry_old_apartments:50};
 const CHARACTER_IDS=[...new Set([...CONTACTS.map(contact=>contact.id),...TEAM_MEMBERS.map(member=>member.id)])];
+export const CITY_STATUSES=[
+  {id:"quiet_day",name:"平靜的一天",description:"休養效果提高。",recoveryBonus:2},
+  {id:"police_sweep",name:"警方掃蕩",description:"敵人傷害提高，地盤收入降低。",enemyDamageBonus:2,turfIncomeRate:.75},
+  {id:"black_market",name:"黑市繁榮",description:"戰鬥報酬提高，產業收入略降。",battleRewardRate:1.15,industryIncomeRate:.9},
+  {id:"gang_war",name:"幫派火拼",description:"戰鬥報酬與敵人傷害同時提高。",battleRewardRate:1.2,enemyDamageBonus:1},
+  {id:"city_festival",name:"城市慶典",description:"產業收入與正向人物關係提高。",industryIncomeRate:1.15,relationBonus:1},
+  {id:"harbor_storm",name:"暴雨封港",description:"地盤收入減半，但休養效果提高。",turfIncomeRate:.5,recoveryBonus:1}
+];
+export const cityStatusById=id=>CITY_STATUSES.find(status=>status.id===id)||CITY_STATUSES[0];
+const initialCityStatusIndex=seed=>(seed>>>0)%CITY_STATUSES.length;
+export const ENEMY_INTENTS=[
+  {id:"assault",name:"猛攻",description:"本回合反擊傷害提高。"},
+  {id:"defend",name:"防守",description:"本回合受到的傷害降低。"},
+  {id:"reinforce",name:"增援",description:"若未被擊敗，恢復少量敵方戰力。"},
+  {id:"disrupt",name:"干擾",description:"反擊同時提高你的精神壓力。"}
+];
+export const enemyIntentById=id=>ENEMY_INTENTS.find(intent=>intent.id===id)||ENEMY_INTENTS[0];
+function rollEnemyIntent(state){const roll=rngNext(state.seed);state.seed=roll.seed;return ENEMY_INTENTS[Math.floor(roll.value*ENEMY_INTENTS.length)].id;}
 export class GameError extends Error { constructor(code,message){ super(message); this.code=code; } }
 export function rngNext(seed){ let x=seed|0; x^=x<<13; x^=x>>>17; x^=x<<5; return {seed:x>>>0,value:(x>>>0)/4294967296}; }
 const clone = value => structuredClone(value);
@@ -43,8 +61,9 @@ export const combinedBonuses=state=>{const sources=[teamBonuses(state),assetBonu
 export const crewPower=state=>(state.crew?.members||0)*2+Math.floor((state.crew?.morale||0)/10)+controlledTerritories(state).length*3+activeTeamMembers(state).reduce((sum,member)=>sum+2+(member.level||1),0);
 
 export function newGame(gender="不公開",seed=2026){
+  const cityStatusIndex=initialCityStatusIndex(seed);
   return {
-    version:2, contentVersion:"0.9.0-unlimited-story", seed:seed>>>0, gender, day:1, stage:0, chapter:1, phase:"cards", candidates:[], selected:null, battle:null, finished:false,postgame:false,endingShown:false,chapterTransition:null,
+    version:2, contentVersion:"0.9.0-unlimited-story", seed:seed>>>0, gender, day:1, stage:0, chapter:1, phase:"cards", candidates:[], selected:null, battle:null, finished:false,postgame:false,endingShown:false,chapterTransition:null,cityStatusIndex,cityStatus:CITY_STATUSES[cityStatusIndex].id,
     player:{health:100,fatigue:10,stress:8,resource:24,abilities:{physique:28,reflex:28,hacking:28,engineering:28,social:28,perception:28,will:28,management:28}},
     assets:{properties:[],vehicles:[],weapons:[],items:[],luxuries:[],industries:[]}, buffs:[], activeSideQuest:null, completedSideQuests:[], metContacts:{},
     factions:freshFactions(),territories:freshTerritories(),crew:{members:2,morale:50},team:{roster:[{id:"difei",level:1,recruitedDay:1}],active:["difei"]},pendingRetaliation:null,
@@ -121,15 +140,15 @@ export function applyEffects(input,effects,source="system"){
     for(const effect of effects){
       switch(effect.type){
         case "ability.add": add(state,state.player.abilities,effect.key,effect.value,LIMITS.ability,source,effect.type); break;
-        case "stat.add": add(state,state.player,effect.key,effect.value,LIMITS[effect.key],source,effect.type); break;
+        case "stat.add": {const status=cityStatusById(state.cityStatus),isRecovery=(effect.key==="health"&&effect.value>0)||(["fatigue","stress"].includes(effect.key)&&effect.value<0),bonus=isRecovery?(status.recoveryBonus||0):0,adjusted=effect.value>0?effect.value+bonus:effect.value-bonus;add(state,state.player,effect.key,adjusted,LIMITS[effect.key],source,effect.type);break;}
         case "resource.add": add(state,state.player,"resource",effect.value,LIMITS.resource,source,effect.type); break;
-        case "relation.add": add(state,state.relations,effect.key,effect.value,LIMITS.relation,source,effect.type); break;
+        case "relation.add": {const bonus=effect.value>0?(cityStatusById(state.cityStatus).relationBonus||0):0;add(state,state.relations,effect.key,effect.value+bonus,LIMITS.relation,source,effect.type);break;}
         case "world.add": {const reduction=effect.key==="security"&&effect.value>0?(combinedBonuses(state).securityReduction||0):0,adjusted=effect.value>0?Math.max(0,effect.value-reduction):effect.value;add(state,state.world,effect.key,adjusted,LIMITS.world,source,effect.type);break;}
         case "flag.set": { const before=state.flags[effect.key]; state.flags[effect.key]=effect.value; logEffect(state,source,effect.type,effect.key,before,effect.value,null); break; }
         case "buff.add": { const incoming={...effect,remaining:effect.duration}; const current=state.buffs.find(buff=>buff.id===effect.id); const before=current?`${current.label} ${current.value}/${current.remaining}`:null; if(!current) state.buffs.push(incoming); else if(effect.value>=current.value) Object.assign(current,incoming); logEffect(state,source,effect.type,effect.id,before,`${incoming.label} ${incoming.value}/${incoming.duration}`,null); break; }
         case "asset.grant": { const list=state.assets?.[effect.category]; if(!Array.isArray(list)) throw new GameError("INVALID_ASSET_CATEGORY",`未知資產類別：${effect.category}`); if(list.some(asset=>asset.id===effect.assetId)) throw new GameError("ASSET_OWNED",`已經持有：${effect.name}`); list.push({id:effect.assetId,name:effect.name,acquiredDay:state.day,dailyIncome:effect.dailyIncome||0,basePrice:effect.basePrice||1,combatPower:effect.combatPower||0,armor:effect.armor||0,bonuses:{...(effect.bonuses||{})},description:effect.description||"",level:0}); logEffect(state,source,effect.type,effect.category,null,effect.name,null); break; }
         case "asset.upgrade": { const asset=state.assets?.[effect.category]?.find(item=>item.id===effect.assetId); if(!asset) throw new GameError("UNKNOWN_ASSET",`找不到資產：${effect.assetId}`); const before=asset.level||0; if(effect.success){asset.level=before+1;if(asset.dailyIncome)asset.dailyIncome+=1+({3:2,5:3,10:5}[asset.level]||0);} logEffect(state,source,effect.type,effect.assetId,before,asset.level,effect.success?1:0); break; }
-        case "battle.start": { const armed=state.assets?.weapons?.length>0,bonuses=combinedBonuses(state),legacyWeaponPower=(state.assets?.weapons||[]).reduce((sum,asset)=>sum+(asset.level||0)*2+((asset.level||0)>=3?5:0)+((asset.level||0)>=5?8:0)+((asset.level||0)>=10?15:0),0),crewDefense=Math.floor(crewPower(state)/3); state.battle={enemy:effect.enemy,title:effect.title||"高架橋伏擊",result:effect.result||"你撐過了這場戰鬥，從現場帶走報酬與新的名聲。",reward:(effect.reward??16)+bonuses.reward,rewardAbility:effect.rewardAbility||"reflex",rewardAbilityValue:effect.rewardAbilityValue??2,rewardWorld:effect.rewardWorld,rewardWorldValue:effect.rewardWorldValue||0,rewardHealth:effect.rewardHealth||0,securityOnWin:effect.securityOnWin||0,bonusWill:effect.bonusWill||0,battleType:effect.battleType||"event",factionId:effect.factionId||null,territoryId:effect.territoryId||null,enemyDamage:effect.enemyDamage||7,medicalReduction:bonuses.medical,playerHp:45+Math.floor(state.player.abilities.physique/2)+bonuses.hp+bonuses.armor+crewDefense,enemyHp:Math.max(20,(effect.enemyHp||72)-legacyWeaponPower-bonuses.weapon),guard:false,turn:1,message:effect.opening||(armed?"你帶著整備完成的武器與核心隊員進場，搶先壓住第一批敵人。":"敵人從兩側逼近，你只能利用身邊的一切反擊。")}; state.phase="battle"; break; }
+        case "battle.start": { const armed=state.assets?.weapons?.length>0,bonuses=combinedBonuses(state),status=cityStatusById(state.cityStatus),legacyWeaponPower=(state.assets?.weapons||[]).reduce((sum,asset)=>sum+(asset.level||0)*2+((asset.level||0)>=3?5:0)+((asset.level||0)>=5?8:0)+((asset.level||0)>=10?15:0),0),crewDefense=Math.floor(crewPower(state)/3); state.battle={enemy:effect.enemy,title:effect.title||"高架橋伏擊",result:effect.result||"你撐過了這場戰鬥，從現場帶走報酬與新的名聲。",reward:Math.round(((effect.reward??16)+bonuses.reward)*(status.battleRewardRate||1)),rewardAbility:effect.rewardAbility||"reflex",rewardAbilityValue:effect.rewardAbilityValue??2,rewardWorld:effect.rewardWorld,rewardWorldValue:effect.rewardWorldValue||0,rewardHealth:effect.rewardHealth||0,securityOnWin:effect.securityOnWin||0,bonusWill:effect.bonusWill||0,battleType:effect.battleType||"event",factionId:effect.factionId||null,territoryId:effect.territoryId||null,enemyDamage:(effect.enemyDamage||7)+(status.enemyDamageBonus||0),medicalReduction:bonuses.medical,playerHp:45+Math.floor(state.player.abilities.physique/2)+bonuses.hp+bonuses.armor+crewDefense,enemyHp:Math.max(20,(effect.enemyHp||72)-legacyWeaponPower-bonuses.weapon),guard:false,turn:1,message:effect.opening||(armed?"你帶著整備完成的武器與核心隊員進場，搶先壓住第一批敵人。":"敵人從兩側逼近，你只能利用身邊的一切反擊。")};state.battle.intent=rollEnemyIntent(state); state.phase="battle"; break; }
         default: throw new GameError("UNKNOWN_EFFECT",`不支援的效果：${effect.type}`);
       }
     }
@@ -436,11 +455,11 @@ function resolveChoiceBase(input,choiceId){
 }
 function battleActionBase(input,action){
   if(input.phase!=="battle"||!input.battle) throw new GameError("WRONG_PHASE","目前不在戰鬥中");
-  let state=clone(input), b=state.battle; let message=""; b.guard=false;const support=crewPower(state),bonuses=combinedBonuses(state);
+  let state=clone(input), b=state.battle; let message=""; b.guard=false;const support=crewPower(state),bonuses=combinedBonuses(state),intent=b.intent||"assault",enemyDefending=intent==="defend";
   const n=rngNext(state.seed); state.seed=n.seed;
-  if(action==="attack"){ const damage=8+Math.floor(state.player.abilities.reflex/9)+Math.floor(support/8)+bonuses.attack+Math.floor(n.value*7); b.enemyHp-=damage; message=`你和隊伍交叉射擊，裝備與槍手專長共同造成 ${damage} 傷害。`; }
-  else if(action==="brawl"){const damage=7+Math.floor(state.player.abilities.physique/8)+Math.floor(support/7)+bonuses.brawl+Math.floor(n.value*9);b.enemyHp-=damage;message=`你帶人貼近敵陣，近戰裝備與隊員專長共同造成 ${damage} 傷害。`;}
-  else if(action==="hack"){ const damage=5+Math.floor(state.player.abilities.hacking/6)+Math.floor(support/12)+bonuses.hack; b.enemyHp-=damage; b.enemyHp=Math.max(0,b.enemyHp); message=`你利用通訊、燈光與場地設備干擾戰場，造成 ${damage} 傷害。`; }
+  if(action==="attack"){ let damage=8+Math.floor(state.player.abilities.reflex/9)+Math.floor(support/8)+bonuses.attack+Math.floor(n.value*7);if(enemyDefending)damage=Math.max(1,Math.ceil(damage*.55)); b.enemyHp-=damage; message=`你和隊伍交叉射擊，裝備與槍手專長共同造成 ${damage} 傷害。`; }
+  else if(action==="brawl"){let damage=7+Math.floor(state.player.abilities.physique/8)+Math.floor(support/7)+bonuses.brawl+Math.floor(n.value*9);if(enemyDefending)damage=Math.max(1,Math.ceil(damage*.55));b.enemyHp-=damage;message=`你帶人貼近敵陣，近戰裝備與隊員專長共同造成 ${damage} 傷害。`;}
+  else if(action==="hack"){ let damage=5+Math.floor(state.player.abilities.hacking/6)+Math.floor(support/12)+bonuses.hack;if(enemyDefending)damage=Math.max(1,Math.ceil(damage*.55)); b.enemyHp-=damage; b.enemyHp=Math.max(0,b.enemyHp); message=`你利用通訊、燈光與場地設備干擾戰場，造成 ${damage} 傷害。`; }
   else if(action==="guard"){ b.guard=true; message="你壓低身體，準備卸開衝擊。"; }
   else if(action==="flee"){
     const escaped=state.player.abilities.engineering+Math.floor(state.player.abilities.perception/2)+bonuses.flee+Math.floor(n.value*31)>=65;
@@ -448,7 +467,9 @@ function battleActionBase(input,action){
   }
   else throw new GameError("UNKNOWN_ACTION",`未知戰鬥動作：${action}`);
   if(b.enemyHp<=0){const rewards=[{type:"resource.add",value:b.reward},{type:"ability.add",key:b.rewardAbility,value:b.rewardAbilityValue},{type:"flag.set",key:"battle_won",value:true}];if(b.rewardWorld)rewards.push({type:"world.add",key:b.rewardWorld,value:b.rewardWorldValue});if(b.rewardHealth)rewards.push({type:"stat.add",key:"health",value:b.rewardHealth});if(b.securityOnWin)rewards.push({type:"world.add",key:"security",value:b.securityOnWin});if(b.bonusWill)rewards.push({type:"ability.add",key:"will",value:b.bonusWill});state=applyEffects(state,rewards,"battle:win");const title=b.title,result=b.result,reward=b.reward,territory=territoryById(b.territoryId);if(b.factionId&&state.factions[b.factionId]){const status=state.factions[b.factionId],before=`${status.hostility}/${status.respect}`;status.wins++;status.hostility=clamp(status.hostility+(b.battleType==="capture"?14:b.battleType==="defend"?10:6),[0,100]);status.respect=clamp(status.respect+(b.battleType==="capture"?12:8),[0,100]);logEffect(state,"battle:win","faction.change",b.factionId,before,`${status.hostility}/${status.respect}`,null);}if(b.battleType==="capture"&&territory){state.territories[b.territoryId].owner="player";state.territories[b.territoryId].capturedDay=state.day;}if(b.battleType==="defend")state.pendingRetaliation=null;state.crew.morale=clamp(state.crew.morale+5,[0,100]);state.battle=null;state.phase="result";state.lastResult={title,choice:b.battleType==="capture"?"奪下地盤":b.battleType==="defend"?"守住地盤":"贏下戰鬥",success:true,summary:`${result} 本次取得現金 ${reward}；隊伍士氣上升，幫派敵意與敬意也同時提高。`}; return state; }
-  const enemyRoll=rngNext(state.seed); state.seed=enemyRoll.seed; let hurt=(b.enemyDamage||7)+Math.floor(enemyRoll.value*7); if(b.guard) hurt=Math.floor(hurt/2); b.playerHp-=hurt; message+=` ${b.enemy}反擊，造成 ${hurt} 傷害。`; b.turn++;
+  if(intent==="reinforce"){const restored=Math.min(8,Math.max(0,999-b.enemyHp));b.enemyHp+=restored;message+=` 敵方增援抵達，恢復 ${restored} 戰力。`;}
+  if(intent==="disrupt"){state=applyEffects(state,[{type:"stat.add",key:"stress",value:4}],"battle:disrupt");b=state.battle;message+=" 敵方干擾通訊，你的精神壓力上升。";}
+  const enemyRoll=rngNext(state.seed); state.seed=enemyRoll.seed; let hurt=(b.enemyDamage||7)+Math.floor(enemyRoll.value*7)+(intent==="assault"?4:0); if(b.guard) hurt=Math.floor(hurt/2); b.playerHp-=hurt; message+=` ${b.enemy}反擊，造成 ${hurt} 傷害。`; b.turn++;b.intent=rollEnemyIntent(state);
   if(b.playerHp<=0){const rawMedical=Math.max(6,Math.ceil(b.reward*.15)),medicalLoss=Math.min(state.player.resource,Math.max(0,rawMedical-(b.medicalReduction||0))),territory=territoryById(b.territoryId),defenseLost=b.battleType==="defend";state=applyEffects(state,[{type:"stat.add",key:"health",value:-22},{type:"resource.add",value:-medicalLoss},{type:"flag.set",key:"battle_lost",value:true}],"battle:loss");if(state.player.health<=0)state.player.health=1;if(b.factionId&&state.factions[b.factionId]){const status=state.factions[b.factionId];status.losses++;status.hostility=clamp(status.hostility+4,[0,100]);status.respect=clamp(status.respect+1,[0,100]);}if(defenseLost&&territory){state.territories[b.territoryId].owner=b.factionId;state.territories[b.territoryId].level=Math.max(0,(state.territories[b.territoryId].level||0)-1);state.pendingRetaliation=null;}state.crew.morale=clamp(state.crew.morale-8,[0,100]);const title=b.title,enemy=b.enemy;state.battle=null;state.phase="result";state.lastResult={title,choice:defenseLost?"地盤失守":"負傷撤離",success:false,summary:`你沒能擊敗${enemy}，但同伴把你送出戰場。支付醫療與撤離費 ${medicalLoss}${b.medicalReduction?`（團隊與物品減免 ${Math.min(rawMedical,b.medicalReduction)}）`:""}。${defenseLost?`${territory.name}被奪回，地盤強化下降 1 級。`:"故事仍會繼續，你也可以日後再次挑戰。"}`}; return state; }
   b.message=message; return state;
 }
@@ -457,13 +478,14 @@ function advanceStage(input){
   if(state.stage>=STAGES.length){
     state.stage=0;state.day++;
     const ownsCar=state.assets?.vehicles?.some(asset=>asset.id==="vehicle_grey_sport"),ownsGarage=state.assets?.industries?.some(asset=>asset.id==="industry_east_garage"),vehicleSelfMaintained=(state.assets?.vehicles||[]).some(asset=>(asset.level||0)>=3);
-    const baseIndustryIncome=(state.assets?.industries||[]).reduce((sum,asset)=>sum+(asset.dailyIncome||0),0),businessBonus=baseIndustryIncome?combinedBonuses(state).income:0,industryIncome=baseIndustryIncome+businessBonus,turfIncome=territoryIncome(state);
+    const status=cityStatusById(state.cityStatus),baseIndustryIncome=(state.assets?.industries||[]).reduce((sum,asset)=>sum+(asset.dailyIncome||0),0),businessBonus=baseIndustryIncome?combinedBonuses(state).income:0,industryIncome=Math.round((baseIndustryIncome+businessBonus)*(status.industryIncomeRate||1)),turfIncome=Math.round(territoryIncome(state)*(status.turfIncomeRate||1));
     state=applyEffects(state,[{type:"resource.add",value:(state.flags.safehouse?3:0)+industryIncome+turfIncome-(ownsCar&&!ownsGarage&&!vehicleSelfMaintained?1:0)}],"day:end");
     state.lastSettlement={industryIncome,businessBonus,turfIncome,vehicleMaintenance:ownsCar&&!ownsGarage&&!vehicleSelfMaintained?1:0,day:state.day-1};
     const expiredQuestId=state.activeSideQuest?.deadlineDay&&state.day>state.activeSideQuest.deadlineDay?state.activeSideQuest.id:null;
     if(state.activeSideQuest?.deadlineDay&&state.day>state.activeSideQuest.deadlineDay){const expired=SIDE_QUESTS.find(quest=>quest.id===state.activeSideQuest.id);state=applyEffects(state,[{type:"stat.add",key:"stress",value:7},{type:"world.add",key:"people",value:-4}],`sidequest:${expired.id}:expired`);state.flags[`expired.${expired.id}`]=true;state.activeSideQuest=null;}
     if(expiredQuestId){const expired=SIDE_QUESTS.find(quest=>quest.id===expiredQuestId);state.lastResult=resultRecord(`sidequest:${expired.id}`,"expired",{title:expired.title,choice:"任務逾期",success:false,summary:"你錯過了支線任務的期限。相關人物已經各自離開，這條線不會再次出現。"});}
     const owned=controlledTerritories(state);if(owned.length&&!state.pendingRetaliation){const maxHostility=Math.max(...owned.map(territory=>state.factions[territory.factionId]?.hostility||0)),risk=Math.min(.55,.06+owned.length*.025+maxHostility/500),chance=rngNext(state.seed);state.seed=chance.seed;if(chance.value<risk){const pick=rngNext(state.seed);state.seed=pick.seed;const territory=owned[Math.floor(pick.value*owned.length)];state.pendingRetaliation={territoryId:territory.id,factionId:territory.factionId,sinceDay:state.day};}}
+    state.cityStatusIndex=((state.cityStatusIndex??initialCityStatusIndex(state.seed))+1)%CITY_STATUSES.length;state.cityStatus=CITY_STATUSES[state.cityStatusIndex].id;
   }
   return generateCards(state);
 }

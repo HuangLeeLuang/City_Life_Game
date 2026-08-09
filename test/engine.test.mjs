@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { newGame, generateCards, getEvent, selectCard, resolveChoice, resolveActivity, resolveNightOption, acceptSideQuest, declineSideQuests, resolveSideQuestChoice, abandonSideQuest, upgradeAsset, startFactionFight, startTerritoryFight, fortifyTerritory, recruitCrew, recruitTeamMember, toggleTeamMember, activeTeamMembers, teamBonuses, assetBonuses, contactBonuses, controlledTerritories, territoryIncome, crewPower, battleAction, assistantAdvice, acceptAssistantAdvice, continueStage, continueChapterTransition, continueFreePlay, pendingCharacterEvent, startCharacterEvent, resolveCharacterEventChoice, characterLevelChance, nextOfficialMainlineId, applyEffects, modifyValue, saveCardDefinition, validateSave, GameError } from "../src/engine.mjs";
+import { newGame, generateCards, getEvent, selectCard, resolveChoice, resolveActivity, resolveNightOption, acceptSideQuest, declineSideQuests, resolveSideQuestChoice, abandonSideQuest, upgradeAsset, startFactionFight, startTerritoryFight, fortifyTerritory, recruitCrew, recruitTeamMember, toggleTeamMember, activeTeamMembers, teamBonuses, assetBonuses, contactBonuses, controlledTerritories, territoryIncome, crewPower, battleAction, assistantAdvice, acceptAssistantAdvice, continueStage, continueChapterTransition, continueFreePlay, pendingCharacterEvent, startCharacterEvent, resolveCharacterEventChoice, characterLevelChance, nextOfficialMainlineId, applyEffects, modifyValue, saveCardDefinition, validateSave, CITY_STATUSES, cityStatusById, ENEMY_INTENTS, enemyIntentById, GameError } from "../src/engine.mjs";
 import { EVENTS } from "../src/content.mjs";
 import { LIFE_CARDS, LEISURE_CARDS, TRAINING_CARDS, CONTACTS, SIDE_QUESTS } from "../src/life-content.mjs";
 import { NIGHT_CARDS } from "../src/night-content.mjs";
@@ -18,6 +18,59 @@ function playCard(state,id){
   if(state.phase==="sidequestNode"){const quest=SIDE_QUESTS.find(x=>x.id===state.activeSideQuest.id);return resolveSideQuestChoice(state,quest.nodes[state.activeSideQuest.nodeIndex].choices[0].id);}
   return state;
 }
+
+test("每日城市狀態固定為六種、依種子決定並在跨日時更新",()=>{
+  const first=newGame("x",42),again=newGame("x",42);
+  assert.equal(CITY_STATUSES.length,6);
+  assert.equal(first.cityStatus,again.cityStatus);
+  assert.ok(cityStatusById(first.cityStatus));
+  const before=first.cityStatus;
+  first.phase="result";first.stage=2;
+  const next=continueStage(first);
+  assert.equal(next.day,2);
+  assert.ok(cityStatusById(next.cityStatus));
+  assert.notEqual(next.cityStatus,before);
+});
+
+test("舊存檔會補上城市狀態",()=>{
+  const legacy=newGame("x",7);
+  delete legacy.cityStatus;
+  const loaded=validateSave(legacy);
+  assert.ok(cityStatusById(loaded.cityStatus));
+});
+
+test("戰鬥建立時會預告四種敵人意圖",()=>{
+  let state=newGame("x",9);state.phase="event";state.selected="ambush";
+  state=resolveChoice(state,getEvent("ambush").choices[0].id);
+  assert.equal(ENEMY_INTENTS.length,4);
+  assert.ok(enemyIntentById(state.battle.intent));
+});
+
+test("防守意圖降低玩家傷害並在回合後換成下一個意圖",()=>{
+  let base=newGame("x",11);base.phase="event";base.selected="ambush";
+  base=resolveChoice(base,getEvent("ambush").choices[0].id);
+  base.battle.enemyHp=999;base.battle.playerHp=999;
+  const normal=structuredClone(base),defending=structuredClone(base);
+  normal.battle.intent="assault";
+  defending.battle.intent="defend";
+  const normalAfter=battleAction(normal,"hack"),defendAfter=battleAction(defending,"hack");
+  assert.ok(defendAfter.battle.enemyHp>normalAfter.battle.enemyHp);
+  assert.ok(enemyIntentById(defendAfter.battle.intent));
+});
+
+test("猛攻、增援與干擾意圖各自改變戰況",()=>{
+  let base=newGame("x",15);base.phase="event";base.selected="ambush";
+  base=resolveChoice(base,getEvent("ambush").choices[0].id);
+  base.battle.enemyHp=200;base.battle.playerHp=200;
+  const assault=structuredClone(base),reinforce=structuredClone(base),disrupt=structuredClone(base);
+  assault.battle.intent="assault";
+  reinforce.battle.intent="reinforce";
+  disrupt.battle.intent="disrupt";
+  const assaulted=battleAction(assault,"guard"),reinforced=battleAction(reinforce,"guard"),disrupted=battleAction(disrupt,"guard");
+  assert.ok(assaulted.battle.playerHp<reinforced.battle.playerHp);
+  assert.ok(reinforced.battle.enemyHp>base.battle.enemyHp);
+  assert.ok(disrupted.player.stress>base.player.stress);
+});
 
 test("介面圖示涵蓋生活牌、夜生活、支線類型與安全後備圖示",()=>{
   assert.equal(cardIconName({id:"life_training"}),"training");
@@ -83,6 +136,7 @@ test("購買資產會扣款、保存資產並阻止重複或超額購買",()=>{
 });
 test("產業會在日結產生被動現金，車庫免除轎跑保養費",()=>{
   let state=newGame(); state.player.resource=100; state.phase="event"; state.selected="asset_market";
+  assert.equal(state.cityStatus,"city_festival");
   state=resolveChoice(state,"garage");
   assert.equal(state.player.resource,72);
   assert.equal(state.assets.industries[0].dailyIncome,5);
@@ -90,9 +144,9 @@ test("產業會在日結產生被動現金，車庫免除轎跑保養費",()=>{
   const before=state.player.resource;
   state.phase="result"; state.stage=2;
   state=continueStage(state);
-  assert.equal(state.lastSettlement.industryIncome,6);
+  assert.equal(state.lastSettlement.industryIncome,7);
   assert.equal(state.lastSettlement.vehicleMaintenance,0);
-  assert.equal(state.player.resource,before+6);
+  assert.equal(state.player.resource,before+7);
 });
 test("生活牌堆每個選項都有專屬結果、能力成長與介面六值影響",()=>{
   const hudEffects=new Set(["stat.add","resource.add","relation.add","world.add"]);
