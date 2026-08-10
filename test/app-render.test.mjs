@@ -94,6 +94,11 @@ test("five-card and battle choices are text-only while enemy intent is visible",
   const battleHtml = await renderSavedState(battleState);
   assert.doesNotMatch(battleHtml, /class="choice-thumb/);
   assert.match(battleHtml, /敵人意圖/);
+  assert.match(battleHtml, /data-battle-animation-stage/);
+  assert.match(battleHtml, /data-battle-report/);
+  assert.match(battleHtml, /data-battle-damage/);
+  assert.match(battleHtml, /assets\/images\/animations\/difei\/shoot-ready\.webp/);
+  assert.match(battleHtml, /assets\/images\/animations\/difei\/brawl-kick\.webp/);
 });
 
 test("finale ending renders its result art and prominent success, failure, and neutral status", async () => {
