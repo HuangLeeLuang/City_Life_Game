@@ -167,7 +167,7 @@ export function settleDeploymentStage(input){
   state.team.deployment.defenseStrength??={};
   for(const member of state.team.roster){
     const assignment=deployment.assignments?.[member.id];
-    if(!assignment){member.readiness=clamp((member.readiness??100)+8,[0,100]);continue;}
+    if(!assignment){const settledMember=state.team.roster.find(item=>item.id===member.id);settledMember.readiness=clamp((settledMember.readiness??100)+8,[0,100]);continue;}
     const multiplier=deployment.readinessMultipliers?.[member.id]??readinessMultiplier(member.readiness??100),level=state.characterLevels[member.id]||1;
     if(assignment.type==="earn"){
       const definition=teamMemberById(member.id),cash=Math.max(1,Math.round((2+Math.floor((level-1)/3)+Math.floor((definition.bonuses.income||0)/2))*multiplier));
@@ -721,9 +721,11 @@ function battleActionBase(input,action){
 function advanceStage(input){
   let state=clone(input);state.buffs=(state.buffs||[]).map(buff=>({...buff,remaining:buff.remaining-1})).filter(buff=>buff.remaining>0);state.stage++;
   if(state.stage>=STAGES.length){
-    state.stage=0;state.day++;
+    state.stage=0;
     const ownsCar=state.assets?.vehicles?.some(asset=>asset.id==="vehicle_grey_sport"),ownsGarage=state.assets?.industries?.some(asset=>asset.id==="industry_east_garage"),vehicleSelfMaintained=(state.assets?.vehicles||[]).some(asset=>(asset.level||0)>=3);
-    const status=cityStatusById(state.cityStatus),baseIndustryIncome=(state.assets?.industries||[]).reduce((sum,asset)=>sum+(asset.dailyIncome||0),0),businessBonus=baseIndustryIncome?combinedBonuses(state).income:0,industryIncome=Math.round((baseIndustryIncome+businessBonus)*(status.industryIncomeRate||1)),turfIncome=Math.round(territoryIncome(state)*(status.turfIncomeRate||1));
+    const status=cityStatusById(state.cityStatus),baseIndustryIncome=(state.assets?.industries||[]).reduce((sum,asset)=>sum+(asset.dailyIncome||0),0),businessBonus=baseIndustryIncome?combinedBonuses(state).income:0;
+    state.day++;
+    const industryIncome=Math.round((baseIndustryIncome+businessBonus)*(status.industryIncomeRate||1)),turfIncome=Math.round(territoryIncome(state)*(status.turfIncomeRate||1));
     state=applyEffects(state,[{type:"resource.add",value:(state.flags.safehouse?3:0)+industryIncome+turfIncome-(ownsCar&&!ownsGarage&&!vehicleSelfMaintained?1:0)}],"day:end");
     state.lastSettlement={industryIncome,businessBonus,turfIncome,vehicleMaintenance:ownsCar&&!ownsGarage&&!vehicleSelfMaintained?1:0,day:state.day-1};
     const expiredQuestId=state.activeSideQuest?.deadlineDay&&state.day>state.activeSideQuest.deadlineDay?state.activeSideQuest.id:null;

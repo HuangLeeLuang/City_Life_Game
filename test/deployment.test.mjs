@@ -223,7 +223,9 @@ test("stage-two training rolls in sorted member order and clears at day turnover
 
   state.phase = "result";
   state = continueStage(state);
+  assert.equal(state.day, 2);
   assert.deepEqual(state.team.deployment.trainingProgress, {});
+  assert.deepEqual(state.team.deployment.settledStages, [0, 1, 2]);
 });
 
 test("finalizeStageResult settles result phases and leaves non-results unchanged", () => {
@@ -235,6 +237,65 @@ test("finalizeStageResult settles result phases and leaves non-results unchanged
 
   assert.deepEqual(settled.team.deployment.settledStages, [0]);
   assert.strictEqual(finalizeStageResult(cards), cards);
+});
+
+test("day-end industry income keeps the confirmed readiness snapshot", () => {
+  const finishDay = () => {
+    const draft = newGame("test", 34);
+    draft.cityStatus = "quiet_day";
+    draft.team.roster.push({ id: "ledger", level: 1, recruitedDay: 0, deployableDay: 1, readiness: 30 });
+    draft.assets.industries.push({ id: "industry_bay_diner", dailyIncome: 10 });
+    draft.team.deployment.assignments = { ledger: { type: "earn", targetId: null } };
+    let state = confirmDeployment(draft);
+    for (let stage = 0; stage < 3; stage++) {
+      state.phase = "result";
+      state = continueStage(state);
+    }
+    return state;
+  };
+
+  const first = finishDay();
+  const second = finishDay();
+
+  assert.equal(first.day, 2);
+  assert.equal(first.team.roster.find(member => member.id === "ledger").readiness, 18);
+  assert.deepEqual(first.lastSettlement, { industryIncome: 13, businessBonus: 3, turfIncome: 0, vehicleMaintenance: 0, day: 1 });
+  assert.equal(first.player.resource, 43);
+  assert.deepEqual(first, second);
+});
+
+test("idle roster members recover readiness during a settled stage", () => {
+  const draft = newGame("test", 35);
+  draft.team.roster.push({ id: "ledger", level: 1, recruitedDay: 0, deployableDay: 1, readiness: 70 });
+  draft.team.deployment.assignments = { difei: { type: "earn", targetId: null } };
+  const settled = settleDeploymentStage(confirmDeployment(draft));
+
+  assert.equal(settled.team.roster.find(member => member.id === "ledger").readiness, 78);
+  assert.equal(settled.team.roster.find(member => member.id === "difei").readiness, 96);
+  assert.deepEqual(settled.team.deployment.settledStages, [0]);
+});
+
+test("rest assignments recover readiness without generating a work result", () => {
+  const draft = newGame("test", 36);
+  draft.team.roster[0].readiness = 50;
+  draft.team.deployment.assignments = { difei: { type: "rest", targetId: null } };
+  const settled = settleDeploymentStage(confirmDeployment(draft));
+
+  assert.equal(settled.team.roster[0].readiness, 62);
+  assert.equal(settled.player.resource, 24);
+  assert.deepEqual(settled.lastResult.teamSummary, []);
+});
+
+test("manage assignments add readiness-scaled industry efficiency to the settled result", () => {
+  const draft = newGame("test", 37);
+  draft.team.roster.push({ id: "ledger", level: 1, recruitedDay: 0, deployableDay: 1, readiness: 100 });
+  draft.assets.industries.push({ id: "industry_bay_diner", dailyIncome: 10 });
+  draft.team.deployment.assignments = { ledger: { type: "manage", targetId: "industry_bay_diner" } };
+  const settled = settleDeploymentStage(confirmDeployment(draft));
+
+  assert.equal(settled.team.deployment.industryEfficiency.industry_bay_diner, 10 / 3);
+  assert.equal(settled.team.roster.find(member => member.id === "ledger").readiness, 96);
+  assert.deepEqual(settled.lastResult.teamSummary, []);
 });
 
 function staffedDeploymentState() {
