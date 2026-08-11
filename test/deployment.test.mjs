@@ -7,6 +7,10 @@ import {
   newGame,
   recommendDeployment,
   recruitTeamMember,
+  finalizeStageResult,
+  settleDeploymentStage,
+  teamBonuses,
+  continueStage,
   updateDeploymentAssignment,
   validateDeployment,
 } from "../src/engine.mjs";
@@ -161,3 +165,89 @@ test("confirmation snapshots 20–39 readiness at a 0.7 multiplier", () => {
 
   assert.equal(confirmed.team.deployment.readinessMultipliers.difei, 0.7);
 });
+
+test("deployment settlement is idempotent and changes readiness once", () => {
+  let state = newGame("test", 30);
+  state.team.deployment.assignments = { difei: { type: "earn", targetId: null } };
+  state = confirmDeployment(state);
+
+  const once = settleDeploymentStage(state);
+  const twice = settleDeploymentStage(once);
+
+  assert.deepEqual(twice, once);
+  assert.equal(once.team.roster.find(member => member.id === "difei").readiness, 96);
+  assert.deepEqual(once.team.deployment.settledStages, [0]);
+});
+
+test("low-readiness deployed members provide seventy percent bonuses", () => {
+  const state = newGame("test", 31);
+  state.team.roster[0].readiness = 30;
+  state.team.active = ["difei"];
+
+  assert.equal(teamBonuses(state).brawl, 3);
+  assert.equal(teamBonuses(state).hp, 4);
+});
+
+test("shared assignments accumulate stable 100, 60, and 35 percent contributions", () => {
+  let state = staffedDeploymentState();
+  state.team.deployment.assignments = {
+    difei: { type: "defend", targetId: "south_docks" },
+    steel_jaw: { type: "defend", targetId: "south_docks" },
+    grey_fox: { type: "defend", targetId: "south_docks" },
+  };
+
+  state = settleDeploymentStage(state);
+
+  assert.equal(state.team.deployment.defenseStrength.south_docks, 0.65);
+});
+
+test("stage-two training rolls in sorted member order and clears at day turnover", () => {
+  let state = staffedDeploymentState();
+  state.team.deployment.assignments = {
+    steel_jaw: { type: "train", targetId: null },
+    grey_fox: { type: "train", targetId: null },
+  };
+  state.team.active = ["steel_jaw", "grey_fox"];
+  state.team.deployment.readinessMultipliers = { steel_jaw: 1, grey_fox: 1 };
+
+  state = settleDeploymentStage(state);
+  state.stage = 1;
+  state = settleDeploymentStage(state);
+  state.stage = 2;
+  state.seed = 18;
+  state = settleDeploymentStage(state);
+
+  assert.equal(state.characterLevels.grey_fox, 2);
+  assert.equal(state.characterLevels.steel_jaw, 1);
+  assert.deepEqual(state.team.deployment.trainingProgress, { steel_jaw: 3, grey_fox: 3 });
+
+  state.phase = "result";
+  state = continueStage(state);
+  assert.deepEqual(state.team.deployment.trainingProgress, {});
+});
+
+test("finalizeStageResult settles result phases and leaves non-results unchanged", () => {
+  let state = newGame("test", 33);
+  state = confirmDeployment(state);
+  state.phase = "result";
+  const settled = finalizeStageResult(state);
+  const cards = { ...state, phase: "cards" };
+
+  assert.deepEqual(settled.team.deployment.settledStages, [0]);
+  assert.strictEqual(finalizeStageResult(cards), cards);
+});
+
+function staffedDeploymentState() {
+  const state = newGame("test", 32);
+  state.team.roster.push(
+    { id: "steel_jaw", level: 1, recruitedDay: 0, deployableDay: 1, readiness: 100 },
+    { id: "grey_fox", level: 1, recruitedDay: 0, deployableDay: 1, readiness: 100 },
+  );
+  state.territories.south_docks.owner = "player";
+  state.team.deployment.assignments = {
+    difei: { type: "earn", targetId: null },
+    steel_jaw: { type: "earn", targetId: null },
+    grey_fox: { type: "earn", targetId: null },
+  };
+  return confirmDeployment(state);
+}

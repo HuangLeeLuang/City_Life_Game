@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { choiceArt } from "../src/art-content.mjs";
-import { checkoutMarket, generateCards, newGame, getEvent, resolveChoice } from "../src/engine.mjs";
+import { checkoutMarket, confirmDeployment, generateCards, newGame, getEvent, resolveChoice } from "../src/engine.mjs";
 import { FACTIONS, TERRITORIES } from "../src/faction-content.mjs";
 
 const SAVE_KEY = "crime-five-roads-save-v2";
@@ -162,6 +162,7 @@ async function mountInteractiveMarket(savedState) {
   initialLoad.click();
   return {
     get html() { return html; },
+    get savedState() { return JSON.parse(storage.get(SAVE_KEY)); },
     get confirmCalls() { return confirmCalls; },
     get checkout() { return checkoutButton; },
     get marketSections() { return marketSections; },
@@ -207,6 +208,26 @@ function openMarketRenderState(cash = 100, seed = 13) {
 function marketOpeningCardsState() {
   return generateCards(newGame("test", 2));
 }
+
+function deploymentResultCardsState() {
+  const state = newGame("test", 41);
+  state.team.deployment.assignments = { difei: { type: "earn", targetId: null } };
+  const confirmed = confirmDeployment(state);
+  confirmed.stage = 2;
+  confirmed.phase = "cards";
+  confirmed.deckType = "night";
+  confirmed.candidates = ["night_shelter"];
+  return confirmed;
+}
+
+test("commit persists a settled deployment result exactly once", async () => {
+  const game = await mountInteractiveMarket(deploymentResultCardsState());
+
+  game.chooseCard("night_shelter");
+
+  assert.deepEqual(game.savedState.team.deployment.settledStages, [2]);
+  assert.equal(game.savedState.team.roster.find(member => member.id === "difei").readiness, 96);
+});
 
 test("market renders selectable items and one sticky checkout control", async () => {
   const html = await renderSavedState(openMarketRenderState());

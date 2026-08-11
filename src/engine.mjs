@@ -44,7 +44,10 @@ export const territoryIncome=state=>controlledTerritories(state).reduce((sum,ter
 export const activeTeamMembers=state=>(state.team?.active||[]).map(id=>{const roster=state.team?.roster?.find(item=>item.id===id),definition=teamMemberById(id);return roster&&definition?{...definition,level:state.characterLevels?.[id]||roster.level||1}:null;}).filter(Boolean);
 export function teamBonuses(state){
   const totals={attack:0,brawl:0,hack:0,flee:0,hp:0,armor:0,medical:0,reward:0,income:0,weapon:0};
-  for(const member of activeTeamMembers(state)){const scale=1+Math.max(0,(member.level||1)-1)*.25;for(const [key,value] of Object.entries(member.bonuses||{}))totals[key]=(totals[key]||0)+Math.round(value*scale);}
+  for(const member of activeTeamMembers(state)){
+    const readiness=rosterReadiness(state,member.id),dailyMultiplier=state.team.deployment?.confirmed&&state.team.deployment.day===state.day?state.team.deployment.readinessMultipliers?.[member.id]:null,scale=(1+Math.max(0,(member.level||1)-1)*.25)*(dailyMultiplier??readinessMultiplier(readiness));
+    for(const [key,value] of Object.entries(member.bonuses||{}))totals[key]=(totals[key]||0)+Math.round(value*scale);
+  }
   return totals;
 }
 export function assetBonuses(state){
@@ -61,10 +64,16 @@ export const combinedBonuses=state=>{const sources=[teamBonuses(state),assetBonu
 export const crewPower=state=>(state.crew?.members||0)*2+Math.floor((state.crew?.morale||0)/10)+controlledTerritories(state).length*3+activeTeamMembers(state).reduce((sum,member)=>sum+2+(member.level||1),0);
 
 export const DEPLOYMENT_TYPES=["earn","train","rest","manage","defend"];
+const SHARED_DEPLOYMENT_WEIGHTS=[1,.6,.35];
 const freshDeployment=day=>({day,assignments:{},confirmed:false,source:"difei",settledStages:[],readinessMultipliers:{},trainingProgress:{},industryEfficiency:{},defenseStrength:{}});
 const rosterReadiness=(state,id)=>state.team.roster.find(item=>item.id===id)?.readiness??100;
 export const readinessMultiplier=readiness=>readiness<20?0:readiness<40?.7:1;
 function deploymentError(code,message){throw new GameError(code,message);}
+
+function sharedWeight(assignments,memberId,type,targetId){
+  const ids=Object.entries(assignments).filter(([,assignment])=>assignment.type===type&&assignment.targetId===targetId).map(([id])=>id).sort();
+  return SHARED_DEPLOYMENT_WEIGHTS[ids.indexOf(memberId)]||0;
+}
 
 export function validateDeployment(state,assignments){
   const entries=Object.entries(assignments||{});
@@ -147,6 +156,56 @@ export function confirmDeployment(input){
   if(state.pendingRetaliation){state.phase="attackAlert";state.candidates=[];return state;}
   return generateCards(state);
 }
+
+export function settleDeploymentStage(input){
+  const deployment=input.team?.deployment;
+  if(!deployment?.confirmed||deployment.day!==input.day||(deployment.settledStages||[]).includes(input.stage))return input;
+  let state=clone(input),summaries=[];
+  state.team.deployment.settledStages??=[];
+  state.team.deployment.trainingProgress??={};
+  state.team.deployment.industryEfficiency??={};
+  state.team.deployment.defenseStrength??={};
+  for(const member of state.team.roster){
+    const assignment=deployment.assignments?.[member.id];
+    if(!assignment){member.readiness=clamp((member.readiness??100)+8,[0,100]);continue;}
+    const multiplier=deployment.readinessMultipliers?.[member.id]??readinessMultiplier(member.readiness??100),level=state.characterLevels[member.id]||1;
+    if(assignment.type==="earn"){
+      const definition=teamMemberById(member.id),cash=Math.max(1,Math.round((2+Math.floor((level-1)/3)+Math.floor((definition.bonuses.income||0)/2))*multiplier));
+      state=applyEffects(state,[{type:"resource.add",value:cash}],`deployment:${member.id}:earn`);
+      summaries.push(`${definition.name} 完成支援工作，獲得現金 ${cash}。`);
+    }
+    if(assignment.type==="train")state.team.deployment.trainingProgress[member.id]=(state.team.deployment.trainingProgress[member.id]||0)+1;
+    if(assignment.type==="manage"){
+      const weight=sharedWeight(deployment.assignments,member.id,"manage",assignment.targetId)*multiplier;
+      state.team.deployment.industryEfficiency[assignment.targetId]=(state.team.deployment.industryEfficiency[assignment.targetId]||0)+weight*(10/3);
+    }
+    if(assignment.type==="defend"){
+      const weight=sharedWeight(deployment.assignments,member.id,"defend",assignment.targetId)*multiplier;
+      state.team.deployment.defenseStrength[assignment.targetId]=Number(((state.team.deployment.defenseStrength[assignment.targetId]||0)+weight/3).toFixed(10));
+    }
+    const delta=assignment.type==="rest"?12:["train","defend"].includes(assignment.type)?-6:-4;
+    const settledMember=state.team.roster.find(item=>item.id===member.id);
+    settledMember.readiness=clamp((settledMember.readiness??100)+delta,[0,100]);
+  }
+  if(state.stage===2){
+    const trainingIds=Object.keys(state.team.deployment.trainingProgress).filter(memberId=>state.team.deployment.trainingProgress[memberId]===3&&deployment.assignments?.[memberId]?.type==="train").sort();
+    for(const memberId of trainingIds){
+      const level=state.characterLevels[memberId]||1,roll=rngNext(state.seed),multiplier=deployment.readinessMultipliers?.[memberId]??readinessMultiplier(rosterReadiness(state,memberId)),chance=Math.max(5,Math.round(characterLevelChance(level)*.3*multiplier)),success=roll.value*100<chance;
+      state.seed=roll.seed;
+      if(success){
+        state.characterLevels[memberId]=level+1;
+        const roster=state.team.roster.find(member=>member.id===memberId);if(roster)roster.level=level+1;
+      }
+      const name=teamMemberById(memberId).name;
+      summaries.push(success?`${name} 的訓練突破成功，升至 Lv.${level+1}。`:`${name} 的訓練尚未突破，目前維持 Lv.${level}。`);
+    }
+  }
+  state.team.deployment.settledStages.push(state.stage);
+  state.lastResult={...state.lastResult,teamSummary:summaries};
+  return state;
+}
+
+export function finalizeStageResult(input){return ["result","ending"].includes(input.phase)?settleDeploymentStage(input):input;}
 
 export function newGame(gender="不公開",seed=2026){
   const cityStatusIndex=initialCityStatusIndex(seed);
@@ -671,11 +730,12 @@ function advanceStage(input){
     if(state.activeSideQuest?.deadlineDay&&state.day>state.activeSideQuest.deadlineDay){const expired=SIDE_QUESTS.find(quest=>quest.id===state.activeSideQuest.id);state=applyEffects(state,[{type:"stat.add",key:"stress",value:7},{type:"world.add",key:"people",value:-4}],`sidequest:${expired.id}:expired`);state.flags[`expired.${expired.id}`]=true;state.activeSideQuest=null;}
     if(expiredQuestId){const expired=SIDE_QUESTS.find(quest=>quest.id===expiredQuestId);state.lastResult=resultRecord(`sidequest:${expired.id}`,"expired",{title:expired.title,choice:"任務逾期",success:false,summary:"你錯過了支線任務的期限。相關人物已經各自離開，這條線不會再次出現。"});}
     const owned=controlledTerritories(state);if(owned.length&&!state.pendingRetaliation){const maxHostility=Math.max(...owned.map(territory=>state.factions[territory.factionId]?.hostility||0)),risk=Math.min(.55,.06+owned.length*.025+maxHostility/500),chance=rngNext(state.seed);state.seed=chance.seed;if(chance.value<risk){const pick=rngNext(state.seed);state.seed=pick.seed;const territory=owned[Math.floor(pick.value*owned.length)];state.pendingRetaliation={territoryId:territory.id,factionId:territory.factionId,sinceDay:state.day};}}
+    state.team.deployment.trainingProgress={};
     state.cityStatusIndex=((state.cityStatusIndex??initialCityStatusIndex(state.seed))+1)%CITY_STATUSES.length;state.cityStatus=CITY_STATUSES[state.cityStatusIndex].id;
   }
   return generateCards(state);
 }
-export function continueStage(input){if(input.phase!=="result")throw new GameError("WRONG_PHASE","事件尚未結束");const state=clone(input);if(state.flags)delete state.flags.assistantActionPending;if(state.chapterTransition){state.phase="chapterTransition";state.candidates=[];return state;}return advanceStage(state);}
+export function continueStage(input){if(input.phase!=="result")throw new GameError("WRONG_PHASE","事件尚未結束");const state=clone(settleDeploymentStage(input));if(state.flags)delete state.flags.assistantActionPending;if(state.chapterTransition){state.phase="chapterTransition";state.candidates=[];return state;}return advanceStage(state);}
 export function continueChapterTransition(input){if(input.phase!=="chapterTransition"||!input.chapterTransition)throw new GameError("WRONG_PHASE","目前沒有章節轉場");const state=clone(input);state.chapterTransition=null;state.phase="result";return advanceStage(state);}
 export function continueFreePlay(input){if(input.phase!=="ending"||!input.finished)throw new GameError("WRONG_PHASE","主線尚未完成");const state=clone(input);state.postgame=true;state.phase="result";return advanceStage(state);}
 export function validateSave(data){
