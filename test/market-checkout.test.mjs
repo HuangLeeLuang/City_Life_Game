@@ -38,3 +38,30 @@ test("one checkout grants every selected asset and produces one result", () => {
   assert.equal(result.lastResult.title, "市場結帳");
   assert.equal(result.lastResult.marketLines.length, 2);
 });
+
+test("checkout rejects distinct choices that grant the same asset without mutating input", () => {
+  const state = openMarket();
+  state.cardOverrides.asset_market = {
+    choices: [
+      { id: "first_baton", text: "First baton", detail: "", cost: 10, effects: [
+        { type: "resource.add", value: -10 },
+        { type: "asset.grant", category: "weapons", assetId: "weapon_test_baton", name: "Test baton" },
+      ] },
+      { id: "second_baton", text: "Second baton", detail: "", cost: 10, effects: [
+        { type: "resource.add", value: -10 },
+        { type: "asset.grant", category: "weapons", assetId: "weapon_test_baton", name: "Test baton" },
+      ] },
+    ],
+  };
+  const before = structuredClone(state);
+
+  assert.throws(
+    () => checkoutMarket(state, [
+      { kind: "purchase", choiceId: "first_baton" },
+      { kind: "purchase", choiceId: "second_baton" },
+    ]),
+    error => error.code === "DUPLICATE_MARKET_LINE",
+  );
+  assert.deepEqual(state, before);
+  assert.equal(state.seed, before.seed);
+});

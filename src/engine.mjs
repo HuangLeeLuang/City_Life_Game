@@ -159,12 +159,15 @@ export function checkoutMarket(input,lines){
   if(!Array.isArray(lines)||!lines.length) throw new GameError("EMPTY_CART","購物車目前是空的");
   const event=getEvent("asset_market",input),keys=lines.map(marketLineKey);
   if(new Set(keys).size!==keys.length) throw new GameError("DUPLICATE_MARKET_LINE","購物車包含重複項目");
-  const purchases=[],upgrades=[],purchasedAssetIds=new Set();
+  const purchases=[],upgrades=[],purchasedAssetIds=new Set(),purchasedAssetKeys=new Set();
   for(const line of lines){
     if(line.kind==="purchase"){
       const choice=event.choices.find(item=>item.id===line.choiceId),grant=choice?.effects.find(effect=>effect.type==="asset.grant");
       if(!choice||!grant) throw new GameError("UNKNOWN_ACTIVITY",`未知市場商品：${line.choiceId}`);
       if(input.assets[grant.category].some(asset=>asset.id===grant.assetId)) throw new GameError("ASSET_OWNED",`已經持有：${grant.name}`);
+      const grantKey=`${grant.category}:${grant.assetId}`;
+      if(purchasedAssetKeys.has(grantKey)) throw new GameError("DUPLICATE_MARKET_LINE","購物車包含重複項目");
+      purchasedAssetKeys.add(grantKey);
       purchases.push({choice,grant});
       purchasedAssetIds.add(grant.assetId);
       continue;
