@@ -132,6 +132,71 @@ function marketAvailable(state){
   return Object.values(state.assets).flat().some(asset=>state.player.resource>=Math.max(1,Math.ceil((asset.basePrice||ASSET_BASE_PRICES[asset.id]||1)*.25*((asset.level||0)+1))));
 }
 export function getEvent(id,state=null){ const found=[...EVENTS,...CHAPTER_EVENTS,...LIFE_CARDS,...NIGHT_CARDS,...(state?.customCards||[])].find(e=>e.id===id); if(!found) throw new GameError("UNKNOWN_EVENT",`未知事件：${id}`); return state?.cardOverrides?.[id]?{...found,...state.cardOverrides[id],id:found.id}:found; }
+const MARKET_CATEGORY_ORDER=["weapons","items","vehicles","properties","industries","luxuries"];
+const marketLineKey=line=>line.kind==="purchase"?`purchase:${line.choiceId}`:`upgrade:${line.category}:${line.assetId}`;
+const assetUpgradeChance=level=>level===0?100:level===1?90:level===2?80:Math.max(5,80-(level-2)*5);
+export function marketUpgradeQuote(state,category,assetId){
+  const asset=state.assets?.[category]?.find(item=>item.id===assetId);
+  if(!asset) throw new GameError("UNKNOWN_ASSET",`找不到資產：${assetId}`);
+  const level=asset.level||0;
+  return {level,cost:Math.max(1,Math.ceil((asset.basePrice||1)*.25*(level+1))),chance:assetUpgradeChance(level)};
+}
+export function quoteMarketCart(input,lines){
+  const event=getEvent("asset_market",input);
+  let total=0;
+  for(const line of lines){
+    if(line.kind==="purchase"){
+      const choice=event.choices.find(item=>item.id===line.choiceId);
+      if(!choice) throw new GameError("UNKNOWN_ACTIVITY",`未知市場商品：${line.choiceId}`);
+      total+=choice.cost||0;
+    }else if(line.kind==="upgrade") total+=marketUpgradeQuote(input,line.category,line.assetId).cost;
+    else throw new GameError("INVALID_MARKET_LINE","購物車包含未知項目");
+  }
+  return {count:lines.length,total,remaining:input.player.resource-total,affordable:total<=input.player.resource};
+}
+export function checkoutMarket(input,lines){
+  if(input.phase!=="activity"||input.activityKind!=="purchase") throw new GameError("WRONG_PHASE","只能在城市市場結帳");
+  if(!Array.isArray(lines)||!lines.length) throw new GameError("EMPTY_CART","購物車目前是空的");
+  const event=getEvent("asset_market",input),keys=lines.map(marketLineKey);
+  if(new Set(keys).size!==keys.length) throw new GameError("DUPLICATE_MARKET_LINE","購物車包含重複項目");
+  const purchases=[],upgrades=[],purchasedAssetIds=new Set();
+  for(const line of lines){
+    if(line.kind==="purchase"){
+      const choice=event.choices.find(item=>item.id===line.choiceId),grant=choice?.effects.find(effect=>effect.type==="asset.grant");
+      if(!choice||!grant) throw new GameError("UNKNOWN_ACTIVITY",`未知市場商品：${line.choiceId}`);
+      if(input.assets[grant.category].some(asset=>asset.id===grant.assetId)) throw new GameError("ASSET_OWNED",`已經持有：${grant.name}`);
+      purchases.push({choice,grant});
+      purchasedAssetIds.add(grant.assetId);
+      continue;
+    }
+    if(line.kind!=="upgrade") throw new GameError("INVALID_MARKET_LINE","購物車包含未知項目");
+    const quote=marketUpgradeQuote(input,line.category,line.assetId);
+    if(quote.level!==line.expectedLevel) throw new GameError("STALE_UPGRADE",`資產等級已變更：${line.assetId}`);
+    if(purchasedAssetIds.has(line.assetId)) throw new GameError("NEW_ASSET_UPGRADE","新購資產不能在同一筆交易升級");
+    upgrades.push({...line,...quote});
+  }
+  if(upgrades.some(line=>purchasedAssetIds.has(line.assetId))) throw new GameError("NEW_ASSET_UPGRADE","新購資產不能在同一筆交易升級");
+  const quote=quoteMarketCart(input,lines);
+  if(!quote.affordable) throw new GameError("INSUFFICIENT_CASH",`結帳需要現金 ${quote.total}`);
+  let state=structuredClone(input);
+  const marketOrder=choice=>{const grant=choice.effects.find(effect=>effect.type==="asset.grant");return MARKET_CATEGORY_ORDER.indexOf(grant.category)*1000+event.choices.indexOf(choice);};
+  const results=[];
+  for(const {choice} of purchases.sort((left,right)=>marketOrder(left.choice)-marketOrder(right.choice))){
+    const effects=choice.effects.map(effect=>effect.type==="asset.grant"?{...effect,basePrice:choice.cost}:effect);
+    state=applyEffects(state,effects,`market:checkout:${choice.id}`);
+    results.push({kind:"purchase",id:choice.id,label:choice.text,detail:choice.detail,cost:choice.cost,success:true});
+  }
+  for(const line of upgrades.sort((left,right)=>`${left.category}:${left.assetId}`.localeCompare(`${right.category}:${right.assetId}`))){
+    state=applyEffects(state,[{type:"resource.add",value:-line.cost}],`market:upgrade:${line.assetId}`);
+    const roll=rngNext(state.seed);state.seed=roll.seed;
+    const success=roll.value*100<line.chance;
+    state=applyEffects(state,[{type:"asset.upgrade",category:line.category,assetId:line.assetId,success}],`market:upgrade:${line.assetId}`);
+    results.push({kind:"upgrade",id:line.assetId,label:state.assets[line.category].find(asset=>asset.id===line.assetId).name,detail:success?`升級至 +${line.level+1}`:`升級失敗，維持 +${line.level}`,cost:line.cost,success,fromLevel:line.level,toLevel:success?line.level+1:line.level});
+  }
+  state.phase="result";
+  state.lastResult={title:"市場結帳",choice:`一次結帳 ${results.length} 項`,success:true,marketLines:results,totalCost:quote.total,remainingCash:state.player.resource,summary:`本次共支出現金 ${quote.total}，剩餘 ${state.player.resource}。`};
+  return withResultArt(state,"asset_market","checkout");
+}
 function logEffect(state,source,type,target,before,after,delta){ state.log.push({sequence:++state.sequence,day:state.day,stage:state.stage,source,type,target,before,after,delta}); }
 function add(state,container,key,value,limit,source,type){ const before=container[key]??0; const after=clamp(before+value,limit); container[key]=after; logEffect(state,source,type,key,before,after,after-before); }
 export function applyEffects(input,effects,source="system"){
@@ -394,7 +459,7 @@ function abandonSideQuestBase(input){
   if(!input.activeSideQuest) throw new GameError("NO_SIDE_QUEST","目前沒有支線可以放棄");const quest=SIDE_QUESTS.find(item=>item.id===input.activeSideQuest.id);let state=applyEffects(input,[{type:"stat.add",key:"stress",value:5},{type:"world.add",key:"people",value:-3}],`sidequest:${quest.id}:abandon`);state.flags[`abandoned.${quest.id}`]=true;state.activeSideQuest=null;state.phase="result";state.lastResult={title:quest.title,choice:"放棄任務",success:false,summary:"你主動切斷了這條線。相關人物不會忘記，這項支線也不會再次出現。"};return state;
 }
 function upgradeAssetBase(input,category,assetId){
-  if(input.phase!=="activity"||input.activityKind!=="purchase") throw new GameError("WRONG_PHASE","只能在購買卡牌中升級資產");const asset=input.assets?.[category]?.find(item=>item.id===assetId);if(!asset)throw new GameError("UNKNOWN_ASSET","找不到這項資產");const level=asset.level||0;const cost=Math.max(1,Math.ceil((asset.basePrice||1)*.25*(level+1)));if(input.player.resource<cost)throw new GameError("INSUFFICIENT_CASH",`升級需要現金 ${cost}`);const chance=level===0?100:level===1?90:level===2?80:Math.max(5,80-(level-2)*5);let state=applyEffects(input,[{type:"resource.add",value:-cost}],`upgrade:${assetId}`);const n=rngNext(state.seed);state.seed=n.seed;const success=n.value*100<chance;state=applyEffects(state,[{type:"asset.upgrade",category,assetId,success}],`upgrade:${assetId}`);state.phase="result";state.lastResult={title:"升級資產",choice:`${asset.name} +${level} → +${success?level+1:level}`,success,summary:success?`升級成功。資產提升至 +${level+1}；基礎效果增強，里程碑等級會解鎖額外功能。`:`升級失敗。花費現金 ${cost}，資產維持 +${level}，不會降級或損壞。`};return state;
+  if(input.phase!=="activity"||input.activityKind!=="purchase") throw new GameError("WRONG_PHASE","只能在購買卡牌中升級資產");const asset=input.assets?.[category]?.find(item=>item.id===assetId);if(!asset)throw new GameError("UNKNOWN_ASSET","找不到這項資產");const level=asset.level||0;const cost=Math.max(1,Math.ceil((asset.basePrice||1)*.25*(level+1)));if(input.player.resource<cost)throw new GameError("INSUFFICIENT_CASH",`升級需要現金 ${cost}`);const chance=assetUpgradeChance(level);let state=applyEffects(input,[{type:"resource.add",value:-cost}],`upgrade:${assetId}`);const n=rngNext(state.seed);state.seed=n.seed;const success=n.value*100<chance;state=applyEffects(state,[{type:"asset.upgrade",category,assetId,success}],`upgrade:${assetId}`);state.phase="result";state.lastResult={title:"升級資產",choice:`${asset.name} +${level} → +${success?level+1:level}`,success,summary:success?`升級成功。資產提升至 +${level+1}；基礎效果增強，里程碑等級會解鎖額外功能。`:`升級失敗。花費現金 ${cost}，資產維持 +${level}，不會降級或損壞。`};return state;
 }
 export const factionFightCost=factionId=>Math.max(0,Math.ceil((factionById(factionId)?.strength||50)/25)-2);
 export const territoryFortifyCost=(state,territoryId)=>6+((state.territories?.[territoryId]?.level||0)+1)*5;
