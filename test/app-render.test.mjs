@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { choiceArt } from "../src/art-content.mjs";
-import { newGame, getEvent, resolveChoice } from "../src/engine.mjs";
+import { checkoutMarket, newGame, getEvent, resolveChoice } from "../src/engine.mjs";
 import { FACTIONS, TERRITORIES } from "../src/faction-content.mjs";
 
 const SAVE_KEY = "crime-five-roads-save-v2";
@@ -57,6 +57,40 @@ function factionBoardState() {
   state.player.health = 100;
   return state;
 }
+
+function openMarketRenderState(cash = 100) {
+  const state = newGame("test", 13);
+  state.phase = "activity";
+  state.selected = "life_purchase";
+  state.activityKind = "purchase";
+  state.activityOptions = getEvent("asset_market", state).choices.map(choice => choice.id);
+  state.player.resource = cash;
+  return state;
+}
+
+test("market renders selectable items and one sticky checkout control", async () => {
+  const html = await renderSavedState(openMarketRenderState());
+
+  assert.match(html, /data-market-purchase="stun_baton"/);
+  assert.equal([...html.matchAll(/data-market-checkout/g)].length, 1);
+  assert.equal([...html.matchAll(/class="market-cart-bar/g)].length, 1);
+  assert.match(html, /aria-live="polite"/);
+  assert.doesNotMatch(html, /data-activity="stun_baton"/);
+});
+
+test("market checkout result lists every purchased line and total", async () => {
+  const state = checkoutMarket(openMarketRenderState(), [
+    { kind: "purchase", choiceId: "stun_baton" },
+    { kind: "purchase", choiceId: "street_bike" },
+  ]);
+  const html = await renderSavedState(state);
+
+  assert.match(html, /結帳明細/);
+  assert.match(html, /購買電擊伸縮棍/);
+  assert.match(html, /購買街頭重機/);
+  assert.match(html, /總花費 36/);
+  assert.match(html, /data-continue/);
+});
 
 test("faction board keeps actionable challenge and capture controls text-only", async () => {
   const html = await renderSavedState(factionBoardState());
