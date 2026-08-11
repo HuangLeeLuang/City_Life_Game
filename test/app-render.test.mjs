@@ -169,7 +169,7 @@ async function mountInteractiveMarket(savedState) {
     get activeMarketFocus() { return activeElement?.dataset?.marketFocus || null; },
     purchase(id) { const control = purchaseButtons.find(item => item.dataset.marketPurchase === id); assert.ok(control, `missing market purchase ${id}`); control.click(); },
     focusPurchase(id) { const control = purchaseButtons.find(item => item.dataset.marketPurchase === id); assert.ok(control, `missing market purchase ${id}`); control.focus(); },
-    setViewport(x, y) { viewport.x = x; viewport.y = y; },
+    setViewport(x, y) { viewport.x = x; viewport.y = y; viewport.calls = []; },
     upgrade(category, assetId) { const control = upgradeButtons.find(item => item.dataset.marketUpgrade.startsWith(`${category}:${assetId}:`)); assert.ok(control, `missing market upgrade ${category}:${assetId}`); return control; },
     clear() { assert.ok(clearButton, "missing market clear control"); clearButton.click(); },
     leave() { assert.ok(leaveButton, "missing market leave control"); leaveButton.click(); },
@@ -262,6 +262,24 @@ test("market selection keeps open category focus and viewport scroll through its
   assert.equal(market.marketSections[0].open, true);
   assert.equal(market.activeMarketFocus, "purchase:stun_baton");
   assert.deepEqual(market.viewport, { x: 31, y: 173, calls: [[31, 173]] });
+});
+
+test("market checkout and confirmed leave do not restore market viewport onto results", async () => {
+  const checkoutMarket = await mountInteractiveMarket(openMarketRenderState());
+  checkoutMarket.purchase("stun_baton");
+  checkoutMarket.setViewport(31, 173);
+  checkoutMarket.checkout.click();
+
+  assert.match(checkoutMarket.html, /phase-result/);
+  assert.deepEqual(checkoutMarket.viewport, { x: 0, y: 0, calls: [] });
+
+  const leaveMarket = await mountInteractiveMarket(openMarketRenderState());
+  leaveMarket.purchase("stun_baton");
+  leaveMarket.setViewport(47, 251);
+  leaveMarket.leave();
+
+  assert.match(leaveMarket.html, /phase-result/);
+  assert.deepEqual(leaveMarket.viewport, { x: 0, y: 0, calls: [] });
 });
 
 test("market result renders the exact applied effect summary for each line", async () => {
