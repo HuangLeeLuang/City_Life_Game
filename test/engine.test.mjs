@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { newGame, confirmDeployment, generateCards, getEvent, selectCard, resolveChoice, resolveActivity, resolveNightOption, acceptSideQuest, declineSideQuests, resolveSideQuestChoice, abandonSideQuest, upgradeAsset, startFactionFight, startTerritoryFight, fortifyTerritory, recruitCrew, recruitTeamMember, toggleTeamMember, activeTeamMembers, teamBonuses, assetBonuses, contactBonuses, controlledTerritories, territoryIncome, crewPower, battleAction, assistantAdvice, acceptAssistantAdvice, continueStage, continueChapterTransition, continueFreePlay, pendingCharacterEvent, startCharacterEvent, resolveCharacterEventChoice, characterLevelChance, nextOfficialMainlineId, applyEffects, modifyValue, saveCardDefinition, validateSave, CITY_STATUSES, cityStatusById, ENEMY_INTENTS, enemyIntentById, GameError } from "../src/engine.mjs";
+import { newGame, confirmDeployment, generateCards, getEvent, selectCard, resolveChoice, resolveActivity, resolveNightOption, acceptSideQuest, declineSideQuests, resolveSideQuestChoice, abandonSideQuest, upgradeAsset, startFactionFight, startTerritoryFight, fortifyTerritory, recruitCrew, recruitTeamMember, activeTeamMembers, teamBonuses, assetBonuses, contactBonuses, controlledTerritories, territoryIncome, crewPower, battleAction, assistantAdvice, acceptAssistantAdvice, continueStage, continueChapterTransition, continueFreePlay, pendingCharacterEvent, startCharacterEvent, resolveCharacterEventChoice, characterLevelChance, nextOfficialMainlineId, applyEffects, modifyValue, saveCardDefinition, validateSave, CITY_STATUSES, cityStatusById, ENEMY_INTENTS, enemyIntentById, GameError } from "../src/engine.mjs";
 import { EVENTS } from "../src/content.mjs";
 import { LIFE_CARDS, LEISURE_CARDS, TRAINING_CARDS, CONTACTS, SIDE_QUESTS } from "../src/life-content.mjs";
 import { NIGHT_CARDS } from "../src/night-content.mjs";
@@ -20,6 +20,7 @@ function playCard(state,id){
 }
 
 const confirmedGame=(...args)=>confirmDeployment(newGame(...args));
+const confirmNextDeployment=state=>state.phase==="deployment"?confirmDeployment(state):state;
 
 test("每日城市狀態固定為六種、依種子決定並在跨日時更新",()=>{
   const first=newGame("x",42),again=newGame("x",42);
@@ -107,9 +108,9 @@ test("可由固定策略完整通關，風險失敗也不中斷主線",()=>{
     state=playCard(state,preferred);
     while(state.phase==="battle") state=battleAction(state,"attack");
     if(state.phase==="ending")break;
-    state=continueStage(state);if(state.phase==="chapterTransition")state=continueChapterTransition(state);
+    state=confirmNextDeployment(continueStage(state));if(state.phase==="chapterTransition")state=confirmNextDeployment(continueChapterTransition(state));
   }
-  assert.equal(state.finished,true);assert.equal(state.phase,"ending");assert.ok(state.flags.ending_free||state.flags.ending_restore||state.flags.ending_destroy);state=continueFreePlay(state);assert.equal(state.postgame,true);assert.equal(state.phase,"cards");
+  assert.equal(state.finished,true);assert.equal(state.phase,"ending");assert.ok(state.flags.ending_free||state.flags.ending_restore||state.flags.ending_destroy);state=confirmNextDeployment(continueFreePlay(state));assert.equal(state.postgame,true);assert.equal(state.phase,"cards");
   assert.ok(state.log.length>20);
 });
 test("兩百個種子的主線優先策略皆不會卡死",()=>{
@@ -120,7 +121,7 @@ test("兩百個種子的主線優先策略皆不會卡死",()=>{
       state=playCard(state,selected);
       while(state.phase==="battle") state=battleAction(state,"guard");
       if(state.phase==="ending")break;
-      state=continueStage(state);if(state.phase==="chapterTransition")state=continueChapterTransition(state);
+      state=confirmNextDeployment(continueStage(state));if(state.phase==="chapterTransition")state=confirmNextDeployment(continueChapterTransition(state));
     }
     assert.equal(state.finished,true,`seed ${seed} 未完成`);
     assert.ok(state.flags.ending_free||state.flags.ending_restore||state.flags.ending_destroy,`seed ${seed} 無結局`);
@@ -243,11 +244,10 @@ test("城市勢力地圖同時涵蓋十五塊地盤的桌機與手機座標",()=
   for(const position of Object.values(TERRITORY_MAP_POSITIONS))for(const key of ["x","y","mx","my"])assert.ok(position[key]>0&&position[key]<100,`${key} 必須位於地圖範圍內`);
 });
 
-test("共有十名核心隊員、五人出勤上限，升級統一透過見面",()=>{
+test("共有十名核心隊員，新成員翌日才能派遣且升級統一透過見面",()=>{
   assert.equal(TEAM_MEMBERS.length,10);let state=confirmedGame("x",1);state.day=20;state.player.resource=999;assert.deepEqual(state.team.active,["difei"]);const recruits=TEAM_MEMBERS.filter(member=>member.recruitable!==false).slice(0,6);
   for(const member of recruits){state.phase="factionBoard";state.selected="life_conflict";state=recruitTeamMember(state,member.id);}
-  assert.equal(state.team.roster.length,7);assert.equal(activeTeamMembers(state).length,TEAM_LIMIT);assert.throws(()=>{const board={...state,phase:"factionBoard",selected:"life_conflict"};toggleTeamMember(board,recruits[4].id);},error=>error.code==="ACTIVE_TEAM_FULL");
-  state.phase="factionBoard";state.selected="life_conflict";state=toggleTeamMember(state,recruits[0].id);state=toggleTeamMember(state,recruits[4].id);assert.equal(state.team.active.length,5);assert.ok(state.team.active.includes(recruits[4].id));
+  assert.equal(state.team.roster.length,7);assert.equal(activeTeamMembers(state).length,1);assert.ok(state.team.roster.filter(member=>member.id!=="difei").every(member=>member.deployableDay===21));
   const social=LIFE_CARDS.find(card=>card.hub==="social");state.phase="cards";state.candidates=[social.id];state=selectCard(state,social.id);const target=recruits[1].id,beforeCash=state.player.resource,beforeRelation=state.relations[target];state.seed=1;state=resolveActivity(state,target);assert.ok(state.player.resource<beforeCash);assert.equal(state.relations[target],beforeRelation+4);assert.equal(state.characterLevels[target],2);assert.equal(state.lastResult.characterId,target);
 });
 
@@ -292,7 +292,7 @@ test("前三個官方任務嚴格依序，第一章完成後程嵐加入並顯�
 });
 
 test("日數沒有上限，等待到第1000天仍保留下一個主線",()=>{
-  let state=newGame("x",505);state.day=999;state.stage=2;state.phase="result";state=continueStage(state);assert.equal(state.day,1000);assert.equal(state.finished,false);assert.ok(state.candidates.includes("signal"));state=modifyValue(state,"day",12345);assert.equal(state.day,12345);
+  let state=newGame("x",505);state.day=999;state.stage=2;state.phase="result";state=confirmNextDeployment(continueStage(state));assert.equal(state.day,1000);assert.equal(state.finished,false);assert.ok(state.candidates.includes("signal"));state=modifyValue(state,"day",12345);assert.equal(state.day,12345);
 });
 
 test("聯絡人提供常駐且隨等級縮放的支援，程嵐降低警方戒備增幅",()=>{
@@ -325,13 +325,13 @@ test("助理建議完成後可由對話框繼續，效果等同行動結果的�
 
 test("連續接受免費安全角落休息與助理繼續不會卡住階段",()=>{
   let state=generateCards(newGame("x",9));const selection=["recover:leisure_free_rest"];
-  for(let step=0;step<9;step++){const advice=assistantAdvice(state,selection);assert.equal(advice.id,"recover:leisure_free_rest");state=acceptAssistantAdvice(state,advice.id,selection);assert.equal(state.phase,"result");assert.equal(state.flags.assistantActionPending,true);const followup=assistantAdvice(state,selection);assert.equal(followup.id,"continue:stage");state=acceptAssistantAdvice(state,followup.id,selection);assert.equal(state.phase,"cards");assert.equal(state.flags.assistantActionPending,undefined);}
+  for(let step=0;step<9;step++){const advice=assistantAdvice(state,selection);assert.equal(advice.id,"recover:leisure_free_rest");state=acceptAssistantAdvice(state,advice.id,selection);assert.equal(state.phase,"result");assert.equal(state.flags.assistantActionPending,true);const followup=assistantAdvice(state,selection);assert.equal(followup.id,"continue:stage");state=confirmNextDeployment(acceptAssistantAdvice(state,followup.id,selection));assert.equal(state.phase,"cards");assert.equal(state.flags.assistantActionPending,undefined);}
   assert.equal(state.day,4);assert.equal(state.stage,0);
 });
 
 test("從零現金連續接受各類助理建議時現金不會成為負數或卡死",()=>{
   let state=generateCards(newGame("x",614));state.player.resource=0;const selection=[...TRAINING_CARDS.map(option=>`train:${option.id}`),...LEISURE_CARDS.map(option=>`recover:${option.id}`),"work:cash"];
-  for(let step=0;step<120;step++){const advice=assistantAdvice(state,selection);assert.equal(advice.actionable,true);state=acceptAssistantAdvice(state,advice.id,selection);assert.ok(state.player.resource>=0);assert.equal(state.phase,"result");const followup=assistantAdvice(state,selection);assert.equal(followup.id,"continue:stage");state=acceptAssistantAdvice(state,followup.id,selection);assert.ok(state.player.resource>=0);assert.equal(state.phase,"cards");}
+  for(let step=0;step<120;step++){const advice=assistantAdvice(state,selection);assert.equal(advice.actionable,true);state=acceptAssistantAdvice(state,advice.id,selection);assert.ok(state.player.resource>=0);assert.equal(state.phase,"result");const followup=assistantAdvice(state,selection);assert.equal(followup.id,"continue:stage");state=confirmNextDeployment(acceptAssistantAdvice(state,followup.id,selection));assert.ok(state.player.resource>=0);assert.equal(state.phase,"cards");}
   assert.ok(state.day>30);
 });
 
@@ -345,7 +345,7 @@ test("讀取異常舊存檔時會把負數現金修復為零",()=>{
 });
 
 test("夜生活的找個安全角落過夜完成後可正常進入隔天",()=>{
-  let state=newGame("x",613);state.stage=2;state=generateCards(state);assert.ok(state.candidates.includes("night_shelter"));state=selectCard(state,"night_shelter");assert.equal(state.phase,"result");const beforeDay=state.day;state=continueStage(state);assert.equal(state.phase,"cards");assert.equal(state.day,beforeDay+1);assert.equal(state.stage,0);
+  let state=newGame("x",613);state.stage=2;state=generateCards(state);assert.ok(state.candidates.includes("night_shelter"));state=selectCard(state,"night_shelter");assert.equal(state.phase,"result");const beforeDay=state.day;state=confirmNextDeployment(continueStage(state));assert.equal(state.phase,"cards");assert.equal(state.day,beforeDay+1);assert.equal(state.stage,0);
 });
 
 test("狄菲會優先處理急迫狀態，並能直接執行恢復與支線建議",()=>{

@@ -2,17 +2,21 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   GameError,
+  acknowledgeAttack,
   beginDeployment,
   confirmDeployment,
+  generateCards,
   newGame,
   recommendDeployment,
   recruitTeamMember,
   finalizeStageResult,
   settleDeploymentStage,
   teamBonuses,
+  toggleTeamMember,
   continueStage,
   updateDeploymentAssignment,
   validateDeployment,
+  validateSave,
 } from "../src/engine.mjs";
 
 function recruitMembersForDeployment(state, memberIds) {
@@ -24,6 +28,7 @@ function recruitMembersForDeployment(state, memberIds) {
     next.selected = "life_conflict";
     next = recruitTeamMember(next, memberId);
   }
+  next.day += 1;
   return beginDeployment(next);
 }
 
@@ -225,7 +230,7 @@ test("stage-two training rolls in sorted member order and clears at day turnover
   state = continueStage(state);
   assert.equal(state.day, 2);
   assert.deepEqual(state.team.deployment.trainingProgress, {});
-  assert.deepEqual(state.team.deployment.settledStages, [0, 1, 2]);
+  assert.deepEqual(state.team.deployment.settledStages, []);
 });
 
 test("finalizeStageResult settles result phases and leaves non-results unchanged", () => {
@@ -296,6 +301,118 @@ test("manage assignments add readiness-scaled industry efficiency to the settled
   assert.equal(settled.team.deployment.industryEfficiency.industry_bay_diner, 10 / 3);
   assert.equal(settled.team.roster.find(member => member.id === "ledger").readiness, 96);
   assert.deepEqual(settled.lastResult.teamSummary, []);
+});
+
+test("night completion applies industry efficiency before entering the next deployment", () => {
+  const draft = newGame("test", 38);
+  draft.cityStatus = "quiet_day";
+  draft.assets.industries.push({ id: "industry_test", name: "測試產業", dailyIncome: 30, level: 0, basePrice: 20, bonuses: {} });
+  draft.team.deployment.assignments = { difei: { type: "manage", targetId: "industry_test" } };
+  let state = confirmDeployment(draft);
+  state.stage = 2;
+  state.phase = "result";
+
+  state = continueStage(state);
+
+  assert.equal(state.day, 2);
+  assert.equal(state.stage, 0);
+  assert.equal(state.phase, "deployment");
+  assert.equal(state.lastSettlement.day, 1);
+  assert.equal(state.lastSettlement.industryIncome, 32);
+  assert.equal(state.team.deployment.day, 2);
+  assert.equal(state.team.deployment.confirmed, false);
+});
+
+test("a pending retaliation becomes a defense battle only after deployment confirmation", () => {
+  const draft = newGame("test", 39);
+  draft.territories.south_docks.owner = "player";
+  draft.pendingRetaliation = { territoryId: "south_docks", factionId: "red_tide", sinceDay: 1 };
+
+  const alert = confirmDeployment(beginDeployment(draft));
+  const battle = acknowledgeAttack(alert);
+
+  assert.equal(alert.phase, "attackAlert");
+  assert.equal(battle.phase, "battle");
+  assert.equal(battle.battle.battleType, "defend");
+  assert.equal(battle.battle.territoryId, "south_docks");
+});
+
+test("defense strength weights retaliation targets, lowers defense HP, and rewards morale when no attack comes", () => {
+  let weightedTargetChanged = false;
+  for (let seed = 1; seed <= 500; seed += 1) {
+    const baseline = newGame("test", seed);
+    baseline.phase = "result";
+    baseline.stage = 2;
+    baseline.territories.south_docks.owner = "player";
+    baseline.territories.fish_market.owner = "player";
+    const defended = structuredClone(baseline);
+    defended.team.deployment.defenseStrength = { south_docks: 2 };
+    const plainNext = continueStage(baseline);
+    const defendedNext = continueStage(defended);
+    if (plainNext.pendingRetaliation && defendedNext.pendingRetaliation && plainNext.pendingRetaliation.territoryId !== defendedNext.pendingRetaliation.territoryId) {
+      weightedTargetChanged = true;
+      break;
+    }
+  }
+  const alert = newGame("test", 40);
+  alert.territories.south_docks.owner = "player";
+  alert.pendingRetaliation = { territoryId: "south_docks", factionId: "red_tide", sinceDay: 1 };
+  alert.team.deployment.defenseStrength = { south_docks: 2 };
+  const baseline = structuredClone(alert);
+  baseline.team.deployment.defenseStrength = {};
+  const defendedBattle = acknowledgeAttack(confirmDeployment(alert));
+  const baselineBattle = acknowledgeAttack(confirmDeployment(baseline));
+  const morale = newGame("test", 41);
+  morale.phase = "result";
+  morale.stage = 2;
+  morale.crew.morale = 50;
+  morale.team.deployment.defenseStrength = { south_docks: 1, fish_market: 1 };
+  const settledMorale = continueStage(morale);
+
+  assert.equal(weightedTargetChanged, true);
+  assert.ok(defendedBattle.battle.enemyHp < baselineBattle.battle.enemyHp);
+  assert.equal(settledMorale.crew.morale, 52);
+});
+
+test("version-two saves gain deployment readiness without changing their current phase", () => {
+  const legacy = generateCards(newGame("test", 42));
+  legacy.phase = "cards";
+  delete legacy.team.deployment;
+  delete legacy.team.roster[0].readiness;
+  delete legacy.team.roster[0].deployableDay;
+
+  const loaded = validateSave(legacy);
+
+  assert.equal(loaded.phase, "cards");
+  assert.equal(loaded.team.roster[0].readiness, 100);
+  assert.equal(loaded.team.roster[0].deployableDay, loaded.day);
+  assert.equal(loaded.team.deployment.day, loaded.day);
+  assert.equal(loaded.team.deployment.confirmed, false);
+});
+
+test("new recruits wait until the next morning and active toggles stay locked outside deployment", () => {
+  let state = newGame("test", 43);
+  state.day = 20;
+  state.phase = "factionBoard";
+  state.selected = "life_conflict";
+  state.player.resource = 999;
+  state = recruitTeamMember(state, "steel_jaw");
+  const recruit = state.team.roster.find(member => member.id === "steel_jaw");
+  const sameDayDraft = beginDeployment(state);
+
+  assert.equal(recruit.readiness, 100);
+  assert.equal(recruit.deployableDay, 21);
+  assert.equal(sameDayDraft.team.active.includes("steel_jaw"), false);
+  assert.throws(
+    () => updateDeploymentAssignment(sameDayDraft, "steel_jaw", { type: "earn", targetId: null }),
+    error => error instanceof GameError && error.code === "TEAM_MEMBER_NOT_READY",
+  );
+  assert.throws(
+    () => toggleTeamMember({ ...state, phase: "factionBoard", selected: "life_conflict" }, "difei"),
+    error => error instanceof GameError && error.code === "WRONG_PHASE",
+  );
+  const nextDayDraft = beginDeployment({ ...state, day: 21 });
+  assert.doesNotThrow(() => updateDeploymentAssignment(nextDayDraft, "steel_jaw", { type: "earn", targetId: null }));
 });
 
 function staffedDeploymentState() {
