@@ -928,6 +928,11 @@ test("five-card and battle choices are text-only while enemy intent is visible",
   assert.match(battleHtml, /data-battle-animation-stage/);
   assert.match(battleHtml, /data-battle-report/);
   assert.match(battleHtml, /data-battle-damage/);
+  assert.match(battleHtml, /data-battle-tactic/);
+  assert.match(battleHtml, /data-battle-enemy-morale/);
+  assert.match(battleHtml, /data-battle-player-morale/);
+  assert.match(battleHtml, /data-battle-team-skill/);
+  assert.match(battleHtml, /戰術目標/);
   assert.match(battleHtml, /assets\/images\/animations\/difei\/shoot-ready\.webp/);
   assert.match(battleHtml, /assets\/images\/animations\/difei\/brawl-kick\.webp/);
 });

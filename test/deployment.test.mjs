@@ -18,7 +18,7 @@ import {
   validateDeployment,
   validateSave,
 } from "../src/engine.mjs";
-import { territoryById } from "../src/faction-content.mjs?v=23";
+import { territoryById } from "../src/faction-content.mjs?v=24";
 
 function recruitMembersForDeployment(state, memberIds) {
   let next = state;

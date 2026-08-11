@@ -1,13 +1,13 @@
 export const FACTIONS = [
-  {id:"red_tide",name:"赤潮會",short:"赤潮",style:"掌控碼頭工會與走私船班，擅長人海、棍棒與近距離火力。",color:"#dc575f",baseHostility:22,strength:42,rewardAbility:"physique",unlockDay:1},
-  {id:"iron_riders",name:"鐵騎盟",short:"鐵騎",style:"由地下車手與改裝技師組成，總在引擎聲之後迅速包圍目標。",color:"#d88745",baseHostility:18,strength:50,rewardAbility:"engineering",unlockDay:3},
-  {id:"white_sharks",name:"白鯊幫",short:"白鯊",style:"控制海濱夜店、保全與娛樂藥物流通，重視面子也懂得談判。",color:"#74c9dc",baseHostility:28,strength:58,rewardAbility:"social",unlockDay:5},
-  {id:"northbridge",name:"北橋家族",short:"北橋",style:"盤據老城多年的放款與地下賭場家族，成員紀律嚴密、報復心強。",color:"#b783d7",baseHostility:32,strength:66,rewardAbility:"will",unlockDay:8},
-  {id:"glass_snakes",name:"玻璃蛇",short:"玻璃蛇",style:"侵入物流、監控與加密帳戶的新型科技幫派，喜歡讓環境替他們殺人。",color:"#66d98b",baseHostility:24,strength:74,rewardAbility:"hacking",unlockDay:11},
-  {id:"civic_cleaners",name:"市政清道夫",short:"清道夫",style:"替權貴處理不能留下紀錄的私人武裝，配備最好，也最不容許失敗。",color:"#d6c76d",baseHostility:38,strength:84,rewardAbility:"perception",unlockDay:15},
-  {id:"grey_wolves",name:"灰狼聯盟",short:"灰狼",style:"由鐵路工班、建築包商與失業拳手組成，擅長封路、伏擊和集體施壓。",color:"#98a1aa",baseHostility:20,strength:54,rewardAbility:"management",unlockDay:5},
-  {id:"dead_air",name:"死訊台",short:"死訊",style:"經營地下電台與影音勒索的媒體幫派，會在開戰前先摧毀對手的名聲。",color:"#e26f9d",baseHostility:26,strength:70,rewardAbility:"hacking",unlockDay:10},
-  {id:"golden_ring",name:"金環會",short:"金環",style:"遊艇、免稅品與高級會所背後的白領犯罪集團，保鑣和律師同樣危險。",color:"#f1bd4d",baseHostility:30,strength:78,rewardAbility:"social",unlockDay:12}
+  {id:"red_tide",name:"赤潮會",short:"赤潮",style:"掌控碼頭工會與走私船班，擅長人海、棍棒與近距離火力。",color:"#dc575f",baseHostility:22,strength:42,rewardAbility:"physique",unlockDay:1,battleProfile:{name:"碼頭人海壓迫",objective:"包圍前線並用增援拖垮你的隊伍",weakness:"attack",intents:["assault","reinforce","assault","defend"]}},
+  {id:"iron_riders",name:"鐵騎盟",short:"鐵騎",style:"由地下車手與改裝技師組成，總在引擎聲之後迅速包圍目標。",color:"#d88745",baseHostility:18,strength:50,rewardAbility:"engineering",unlockDay:3,battleProfile:{name:"高速包夾",objective:"封鎖撤離路線並從側翼反覆衝擊",weakness:"hack",intents:["assault","disrupt","assault","defend"]}},
+  {id:"white_sharks",name:"白鯊幫",short:"白鯊",style:"控制海濱夜店、保全與娛樂藥物流通，重視面子也懂得談判。",color:"#74c9dc",baseHostility:28,strength:58,rewardAbility:"social",unlockDay:5,battleProfile:{name:"保全封鎖線",objective:"守住出口並迫使你在眾目睽睽下退讓",weakness:"brawl",intents:["defend","disrupt","assault","defend"]}},
+  {id:"northbridge",name:"北橋家族",short:"北橋",style:"盤據老城多年的放款與地下賭場家族，成員紀律嚴密、報復心強。",color:"#b783d7",baseHostility:32,strength:66,rewardAbility:"will",unlockDay:8,battleProfile:{name:"家族縱深防線",objective:"消耗你的資源，再由第二線成員收尾",weakness:"attack",intents:["defend","reinforce","defend","assault"]}},
+  {id:"glass_snakes",name:"玻璃蛇",short:"玻璃蛇",style:"侵入物流、監控與加密帳戶的新型科技幫派，喜歡讓環境替他們殺人。",color:"#66d98b",baseHostility:24,strength:74,rewardAbility:"hacking",unlockDay:11,battleProfile:{name:"環境接管",objective:"控制設備、視線與通訊後逐步分割隊伍",weakness:"brawl",intents:["disrupt","defend","disrupt","reinforce"]}},
+  {id:"civic_cleaners",name:"市政清道夫",short:"清道夫",style:"替權貴處理不能留下紀錄的私人武裝，配備最好，也最不容許失敗。",color:"#d6c76d",baseHostility:38,strength:84,rewardAbility:"perception",unlockDay:15,battleProfile:{name:"制式火力推進",objective:"以精準火力逐區清除目標並封存現場",weakness:"hack",intents:["assault","defend","assault","disrupt"]}},
+  {id:"grey_wolves",name:"灰狼聯盟",short:"灰狼",style:"由鐵路工班、建築包商與失業拳手組成，擅長封路、伏擊和集體施壓。",color:"#98a1aa",baseHostility:20,strength:54,rewardAbility:"management",unlockDay:5,battleProfile:{name:"工地封路伏擊",objective:"堵死通道並把戰鬥拖進近距離消耗",weakness:"hack",intents:["reinforce","assault","defend","assault"]}},
+  {id:"dead_air",name:"死訊台",short:"死訊",style:"經營地下電台與影音勒索的媒體幫派，會在開戰前先摧毀對手的名聲。",color:"#e26f9d",baseHostility:26,strength:70,rewardAbility:"hacking",unlockDay:10,battleProfile:{name:"輿論與訊號戰",objective:"擾亂判斷、提高壓力並把失誤公開播送",weakness:"brawl",intents:["disrupt","disrupt","defend","reinforce"]}},
+  {id:"golden_ring",name:"金環會",short:"金環",style:"遊艇、免稅品與高級會所背後的白領犯罪集團，保鑣和律師同樣危險。",color:"#f1bd4d",baseHostility:30,strength:78,rewardAbility:"social",unlockDay:12,battleProfile:{name:"分層護衛網",objective:"用精銳保鑣守住高價目標並等待援軍",weakness:"attack",intents:["defend","reinforce","disrupt","defend"]}}
 ];
 
 export const TERRITORIES = [

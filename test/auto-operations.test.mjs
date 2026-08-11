@@ -4,6 +4,7 @@ import {
   GameError,
   autoOperationChoice,
   confirmDeployment,
+  continueStage,
   newGame,
   resolveAutoOperation,
 } from "../src/engine.mjs";
@@ -188,4 +189,34 @@ test("自動恢復透過既有直接解析器保留結果中繼資料與非負�
   assert.deepEqual(result.seen, before.seen);
   assert.equal(result.activeSideQuest, before.activeSideQuest);
   assert.equal(result.battle, before.battle);
+});
+
+test("連續安全運作三十天不會進行主支線，敵襲出現時停在人工確認邊界", () => {
+  let state = newGame("test", 1801);
+  const firstMainline = "signal";
+
+  for (let completedDays = 0; completedDays < 30; completedDays += 1) {
+    assert.equal(state.phase, "deployment");
+    state = confirmDeployment(state);
+    const currentDay = state.day;
+    let guard = 0;
+    while (state.day === currentDay && guard++ < 12) {
+      if (state.phase === "cards") state = resolveAutoOperation(state, ["work:cash", "recover:leisure_free_rest"]);
+      else if (state.phase === "result") state = continueStage(state);
+      else assert.fail(`第 ${currentDay} 日出現非安全自動階段：${state.phase}`);
+    }
+    assert.ok(guard < 12, `第 ${currentDay} 日自動運作沒有收斂`);
+    assert.ok(state.player.resource >= 0);
+    assert.equal(state.seen[firstMainline], undefined);
+    assert.equal(state.activeSideQuest, null);
+    assert.equal(state.battle, null);
+  }
+
+  state.territories.south_docks.owner = "player";
+  state.pendingRetaliation = { territoryId: "south_docks", factionId: "red_tide", sinceDay: state.day };
+  const alert = confirmDeployment(state);
+  assert.equal(alert.phase, "attackAlert");
+  assert.equal(alert.battle, null);
+  assert.equal(alert.seen[firstMainline], undefined);
+  assert.throws(() => resolveAutoOperation(alert, ["work:cash"]), error => error instanceof GameError && error.code === "WRONG_PHASE");
 });
