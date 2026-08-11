@@ -105,3 +105,78 @@ test("自動解析只走既有直接解析器，不會推進主線或支線", ()
   assert.equal(result.battle, null);
   assert.equal(result.flags.assistantActionPending, true);
 });
+
+test("只有禁止的勾選會被正規化為安全回退，而非採用任何禁止動作", () => {
+  const state = cards(59);
+  state.player.resource = 0;
+  state.player.fatigue = 50;
+  const prohibited = [
+    "main:signal",
+    "sidequest:continue",
+    "purchase:asset_market",
+    "social:mira",
+    "conflict:south_docks",
+    "battle:attack",
+  ];
+
+  assert.deepEqual(autoOperationChoice(state, prohibited), {
+    id: "recover:leisure_free_rest", kind: "leisure", optionId: "leisure_free_rest",
+  });
+  assert.deepEqual(autoOperationChoice(state, prohibited), autoOperationChoice(state, []));
+});
+
+test("自動訓練透過既有直接解析器保留結果中繼資料與階段邊界", () => {
+  const state = cards(71);
+  const before = structuredClone(state);
+
+  const result = resolveAutoOperation(state, ["train:train_reflex"]);
+
+  assert.equal(result.phase, "result");
+  assert.equal(result.selected, "life_training");
+  assert.equal(result.flags.assistantActionPending, true);
+  assert.deepEqual(result.lastResult, {
+    title: "進行訓練",
+    choice: "訓練槍法",
+    success: true,
+    summary: "彈著逐漸集中，扣扳機時的呼吸也重新穩定。",
+    artKey: "activity-training-train_reflex--train_reflex",
+  });
+  assert.equal(result.player.resource, 19);
+  assert.equal(result.player.fatigue, 16);
+  assert.equal(result.player.stress, 5);
+  assert.equal(result.player.abilities.reflex, 31);
+  assert.ok(result.player.resource >= 0);
+  assert.equal(result.day, before.day);
+  assert.equal(result.stage, before.stage);
+  assert.deepEqual(result.seen, before.seen);
+  assert.equal(result.activeSideQuest, before.activeSideQuest);
+  assert.equal(result.battle, before.battle);
+});
+
+test("自動恢復透過既有直接解析器保留結果中繼資料與非負現金", () => {
+  const state = cards(71);
+  const before = structuredClone(state);
+
+  const result = resolveAutoOperation(state, ["recover:leisure_free_rest"]);
+
+  assert.equal(result.phase, "result");
+  assert.equal(result.selected, "life_leisure");
+  assert.equal(result.flags.assistantActionPending, true);
+  assert.deepEqual(result.lastResult, {
+    title: "處理日常需求",
+    choice: "找地方短暫午休",
+    success: true,
+    summary: "你關掉手機短暫補眠，讓身體撐過下午，真正的完整休息仍要等到晚上。",
+    artKey: "activity-leisure-leisure_free_rest--leisure_free_rest",
+  });
+  assert.equal(result.player.resource, 24);
+  assert.equal(result.player.fatigue, 1);
+  assert.equal(result.player.stress, 4);
+  assert.equal(result.player.abilities.will, 29);
+  assert.ok(result.player.resource >= 0);
+  assert.equal(result.day, before.day);
+  assert.equal(result.stage, before.stage);
+  assert.deepEqual(result.seen, before.seen);
+  assert.equal(result.activeSideQuest, before.activeSideQuest);
+  assert.equal(result.battle, before.battle);
+});
