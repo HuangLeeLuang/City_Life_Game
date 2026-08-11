@@ -148,7 +148,7 @@ test("covers every statically enumerable built-in option collection", () => {
 test("service worker keeps choice art out of the install cache and caches images on demand", async () => {
   const source = await readFile(new URL("../sw.js", import.meta.url), "utf8");
 
-  assert.match(source, /const CACHE = "crime-five-roads-v43"/);
+  assert.match(source, /const CACHE = "crime-five-roads-v44"/);
   assert.match(source, /\.\/dist\/game\.bundle\.js/);
   for (const frame of ["shoot-ready", "shoot-fire", "shoot-recoil", "brawl-guard", "brawl-jab", "brawl-chamber", "brawl-kick"]) {
     assert.match(source, new RegExp(`assets/images/animations/difei/${frame}\\.webp`));
