@@ -159,7 +159,14 @@ export function checkoutMarket(input,lines){
   if(!Array.isArray(lines)||!lines.length) throw new GameError("EMPTY_CART","購物車目前是空的");
   const event=getEvent("asset_market",input),keys=lines.map(marketLineKey);
   if(new Set(keys).size!==keys.length) throw new GameError("DUPLICATE_MARKET_LINE","購物車包含重複項目");
-  const purchases=[],upgrades=[],purchasedAssetIds=new Set(),purchasedAssetKeys=new Set();
+  const purchasedAssetIds=new Set(lines
+    .filter(line=>line.kind==="purchase")
+    .map(line=>event.choices.find(choice=>choice.id===line.choiceId))
+    .filter(Boolean)
+    .map(choice=>choice.effects.find(effect=>effect.type==="asset.grant")?.assetId)
+    .filter(Boolean));
+  if(lines.some(line=>line.kind==="upgrade"&&purchasedAssetIds.has(line.assetId))) throw new GameError("NEW_ASSET_UPGRADE","新購資產不能在同一筆交易升級");
+  const purchases=[],upgrades=[],purchasedAssetKeys=new Set();
   for(const line of lines){
     if(line.kind==="purchase"){
       const choice=event.choices.find(item=>item.id===line.choiceId),grant=choice?.effects.find(effect=>effect.type==="asset.grant");
@@ -169,16 +176,13 @@ export function checkoutMarket(input,lines){
       if(purchasedAssetKeys.has(grantKey)) throw new GameError("DUPLICATE_MARKET_LINE","購物車包含重複項目");
       purchasedAssetKeys.add(grantKey);
       purchases.push({choice,grant});
-      purchasedAssetIds.add(grant.assetId);
       continue;
     }
     if(line.kind!=="upgrade") throw new GameError("INVALID_MARKET_LINE","購物車包含未知項目");
     const quote=marketUpgradeQuote(input,line.category,line.assetId);
     if(quote.level!==line.expectedLevel) throw new GameError("STALE_UPGRADE",`資產等級已變更：${line.assetId}`);
-    if(purchasedAssetIds.has(line.assetId)) throw new GameError("NEW_ASSET_UPGRADE","新購資產不能在同一筆交易升級");
     upgrades.push({...line,...quote});
   }
-  if(upgrades.some(line=>purchasedAssetIds.has(line.assetId))) throw new GameError("NEW_ASSET_UPGRADE","新購資產不能在同一筆交易升級");
   const quote=quoteMarketCart(input,lines);
   if(!quote.affordable) throw new GameError("INSUFFICIENT_CASH",`結帳需要現金 ${quote.total}`);
   let state=structuredClone(input);

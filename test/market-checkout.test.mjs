@@ -65,3 +65,64 @@ test("checkout rejects distinct choices that grant the same asset without mutati
   assert.deepEqual(state, before);
   assert.equal(state.seed, before.seed);
 });
+
+test("invalid carts preserve the complete original state and seed", () => {
+  const state = openMarket(35);
+  const before = structuredClone(state);
+  assert.throws(() => checkoutMarket(state, [
+    { kind: "purchase", choiceId: "stun_baton" },
+    { kind: "purchase", choiceId: "street_bike" },
+  ]), error => error.code === "INSUFFICIENT_CASH");
+  assert.deepEqual(state, before);
+});
+
+test("duplicate and unknown market lines are rejected before mutation", () => {
+  const state = openMarket();
+  const duplicate = { kind: "purchase", choiceId: "stun_baton" };
+  assert.throws(() => checkoutMarket(state, [duplicate, duplicate]), error => error.code === "DUPLICATE_MARKET_LINE");
+  assert.throws(() => checkoutMarket(state, [{ kind: "purchase", choiceId: "missing" }]), error => error.code === "UNKNOWN_ACTIVITY");
+});
+
+test("an existing asset can receive one deterministic paid upgrade", () => {
+  let state = checkoutMarket(openMarket(), [{ kind: "purchase", choiceId: "stun_baton" }]);
+  state.phase = "activity";
+  state.activityKind = "purchase";
+  state.player.resource = 100;
+  const line = { kind: "upgrade", category: "weapons", assetId: "weapon_stun_baton", expectedLevel: 0 };
+  const first = checkoutMarket(state, [line]);
+  const second = checkoutMarket(state, [line]);
+  assert.deepEqual(first.lastResult.marketLines, second.lastResult.marketLines);
+  assert.equal(first.assets.weapons[0].level, 1);
+  assert.equal(first.player.resource, 96);
+});
+
+test("new purchases cannot be upgraded in the same transaction", () => {
+  assert.throws(() => checkoutMarket(openMarket(), [
+    { kind: "purchase", choiceId: "stun_baton" },
+    { kind: "upgrade", category: "weapons", assetId: "weapon_stun_baton", expectedLevel: 0 },
+  ]), error => error.code === "UNKNOWN_ASSET" || error.code === "NEW_ASSET_UPGRADE");
+});
+
+test("new-asset conflicts are rejected before stale upgrade validation in either cart order", () => {
+  const state = checkoutMarket(openMarket(), [{ kind: "purchase", choiceId: "stun_baton" }]);
+  state.phase = "activity";
+  state.activityKind = "purchase";
+  state.cardOverrides.asset_market = {
+    choices: [{
+      id: "duplicate_asset_id",
+      text: "Duplicate asset ID",
+      detail: "",
+      cost: 10,
+      effects: [
+        { type: "resource.add", value: -10 },
+        { type: "asset.grant", category: "items", assetId: "weapon_stun_baton", name: "Duplicate asset ID" },
+      ],
+    }],
+  };
+  const purchase = { kind: "purchase", choiceId: "duplicate_asset_id" };
+  const staleUpgrade = { kind: "upgrade", category: "weapons", assetId: "weapon_stun_baton", expectedLevel: 99 };
+
+  for (const lines of [[purchase, staleUpgrade], [staleUpgrade, purchase]]) {
+    assert.throws(() => checkoutMarket(state, lines), error => error.code === "NEW_ASSET_UPGRADE");
+  }
+});
