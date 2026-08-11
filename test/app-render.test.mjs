@@ -393,14 +393,14 @@ test("deployment controls accept only rendered enabled options and name each mem
 
   game.selectMember("difei", "manage");
   const industryTarget = game.targetControl("difei");
-  assert.equal(industryTarget.ariaLabel, "狄菲 的產業目標");
+  assert.equal(industryTarget.ariaLabel, "狄菲的產業目標");
   assert.deepEqual(industryTarget.options.map(option => option.value), ["industry_first", "industry_second"]);
   game.selectTarget("difei", "industry_second");
   assert.deepEqual(game.savedState.team.deployment.assignments.difei, { type: "manage", targetId: "industry_second" });
 
   game.selectMember("difei", "defend");
   const defenseTarget = game.targetControl("difei");
-  assert.equal(defenseTarget.ariaLabel, "狄菲 的防守地盤");
+  assert.equal(defenseTarget.ariaLabel, "狄菲的防守地盤");
   assert.deepEqual(defenseTarget.options.map(option => option.value), ["south_docks", "fish_market"]);
   game.selectTarget("difei", "fish_market");
   assert.deepEqual(game.savedState.team.deployment.assignments.difei, { type: "defend", targetId: "fish_market" });
