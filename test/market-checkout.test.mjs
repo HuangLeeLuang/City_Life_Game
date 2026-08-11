@@ -244,3 +244,30 @@ test("purchase lines report exact clamped applied ability stat and world effects
   ]);
   assert.match(result.lastResult.marketLines[0].appliedSummary, /體能 \+2.*健康 \+2.*平靜的一天 \+2.*治安 \+2/);
 });
+
+test("purchase summaries consume repeated ability logs in application order", () => {
+  const state = openMarket();
+  state.cardOverrides.asset_market = {
+    choices: [{
+      id: "repeated-ability-effects",
+      text: "Repeated ability effects",
+      detail: "Two valid effects target the same ability.",
+      cost: 10,
+      effects: [
+        { type: "resource.add", value: -10 },
+        { type: "asset.grant", category: "weapons", assetId: "weapon_repeated_ability_effects", name: "Repeated ability weapon" },
+        { type: "ability.add", key: "physique", value: 2 },
+        { type: "ability.add", key: "physique", value: 3 },
+      ],
+    }],
+  };
+
+  const result = checkoutMarket(state, [{ kind: "purchase", choiceId: "repeated-ability-effects" }]);
+  const line = result.lastResult.marketLines[0];
+  assert.equal(result.player.abilities.physique, 33);
+  assert.deepEqual(line.appliedEffects, [
+    { type: "ability.add", key: "physique", requested: 2, adjusted: 2, before: 28, after: 30, delta: 2, clamped: false, label: "體能" },
+    { type: "ability.add", key: "physique", requested: 3, adjusted: 3, before: 30, after: 33, delta: 3, clamped: false, label: "體能" },
+  ]);
+  assert.equal(line.appliedSummary, "體能 +2（28→30）；體能 +3（30→33）");
+});

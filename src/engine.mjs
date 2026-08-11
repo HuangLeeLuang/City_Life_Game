@@ -147,10 +147,11 @@ function marketPurchaseChoice(choices,state,choiceId){
   return {choice,grant};
 }
 function marketAppliedEffects(before,state,effects){
-  const logs=state.log.slice(before.log.length);
+  const logs=state.log.slice(before.log.length);let logCursor=0;
   return effects.filter(effect=>["ability.add","stat.add","world.add"].includes(effect.type)).map(effect=>{
-    const group=effect.type.split(".")[0],log=logs.find(entry=>entry.type===effect.type&&entry.target===effect.key);
+    const group=effect.type.split(".")[0],offset=logs.slice(logCursor).findIndex(entry=>entry.type===effect.type&&entry.target===effect.key),log=offset<0?null:logs[logCursor+offset];
     if(!log)throw new GameError("TRANSACTION_FAILED",`市場效果未套用：${effect.key}`);
+    logCursor+=offset+1;
     let adjusted=effect.value,statusAdjustment=0,statusName="";
     if(effect.type==="stat.add"){
       const status=cityStatusById(before.cityStatus),isRecovery=(effect.key==="health"&&effect.value>0)||(["fatigue","stress"].includes(effect.key)&&effect.value<0);

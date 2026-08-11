@@ -65,6 +65,7 @@ async function mountInteractiveMarket(savedState) {
   let marketScroll = null;
   let marketFocusControls = new Map();
   let activeElement = null;
+  const viewport = { x: 0, y: 0, calls: [] };
   let confirmResult = true;
   let confirmCalls = 0;
   let onStorageWrite = null;
@@ -75,6 +76,8 @@ async function mountInteractiveMarket(savedState) {
     set innerHTML(value) {
       html = value;
       activeElement = null;
+      viewport.x = 0;
+      viewport.y = 0;
       marketSections = [...html.matchAll(/<details class="market-section"[^>]*data-market-section="([^"]+)"[^>]*>/g)].map(([, key]) => ({ dataset: { marketSection: key }, open: false }));
       marketScroll = html.includes("data-market-scroll") ? { scrollTop: 0, scrollLeft: 0 } : null;
       marketFocusControls = new Map([...html.matchAll(/data-market-focus="([^"]+)"/g)].map(([, key]) => [key, button({ marketFocus: key })]));
@@ -138,11 +141,17 @@ async function mountInteractiveMarket(savedState) {
     removeItem: key => storage.delete(key),
   };
 
+  const window = {
+    addEventListener() {},
+    get scrollX() { return viewport.x; },
+    get scrollY() { return viewport.y; },
+    scrollTo(x, y) { viewport.calls.push([x, y]); viewport.x = x; viewport.y = y; },
+  };
   Object.assign(globalThis, {
     document,
     localStorage,
     location: { protocol: "file:" },
-    window: { addEventListener() {} },
+    window,
     HTMLImageElement: class {},
     confirm: () => { confirmCalls++; return confirmResult; },
   });
@@ -156,10 +165,11 @@ async function mountInteractiveMarket(savedState) {
     get confirmCalls() { return confirmCalls; },
     get checkout() { return checkoutButton; },
     get marketSections() { return marketSections; },
-    get marketScroll() { return marketScroll; },
+    get viewport() { return { x: viewport.x, y: viewport.y, calls: [...viewport.calls] }; },
     get activeMarketFocus() { return activeElement?.dataset?.marketFocus || null; },
     purchase(id) { const control = purchaseButtons.find(item => item.dataset.marketPurchase === id); assert.ok(control, `missing market purchase ${id}`); control.click(); },
     focusPurchase(id) { const control = purchaseButtons.find(item => item.dataset.marketPurchase === id); assert.ok(control, `missing market purchase ${id}`); control.focus(); },
+    setViewport(x, y) { viewport.x = x; viewport.y = y; },
     upgrade(category, assetId) { const control = upgradeButtons.find(item => item.dataset.marketUpgrade.startsWith(`${category}:${assetId}:`)); assert.ok(control, `missing market upgrade ${category}:${assetId}`); return control; },
     clear() { assert.ok(clearButton, "missing market clear control"); clearButton.click(); },
     leave() { assert.ok(leaveButton, "missing market leave control"); leaveButton.click(); },
@@ -240,19 +250,18 @@ test("market controls toggle selections, totals, budget state, and clear cart", 
   assert.match(market.html, /0 項／總計 0/);
 });
 
-test("market selection keeps open category focus and scroll context through its real handler", async () => {
+test("market selection keeps open category focus and viewport scroll through its real handler", async () => {
   const market = await mountInteractiveMarket(openMarketRenderState());
-  assert.ok(market.marketScroll, "market scroll container should be available");
   assert.ok(market.marketSections.length, "market category details should be available");
   market.marketSections[0].open = true;
-  market.marketScroll.scrollTop = 173;
+  market.setViewport(31, 173);
   market.focusPurchase("stun_baton");
 
   market.purchase("stun_baton");
 
   assert.equal(market.marketSections[0].open, true);
-  assert.equal(market.marketScroll.scrollTop, 173);
   assert.equal(market.activeMarketFocus, "purchase:stun_baton");
+  assert.deepEqual(market.viewport, { x: 31, y: 173, calls: [[31, 173]] });
 });
 
 test("market result renders the exact applied effect summary for each line", async () => {

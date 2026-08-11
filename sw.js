@@ -1,4 +1,4 @@
-const CACHE = "crime-five-roads-v40";
+const CACHE = "crime-five-roads-v41";
 const FILES = [
   "./", "./index.html", "./play.html", "./styles.css", "./manifest.webmanifest", "./dist/game.bundle.js",
   "./assets/icons/icon-192.png", "./assets/icons/icon-512.png", "./assets/icons/icon-maskable-512.png", "./assets/icons/apple-touch-icon.png", "./assets/icons/favicon-32.png",
