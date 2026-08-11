@@ -48,6 +48,104 @@ async function renderSavedState(savedState) {
   return app.innerHTML;
 }
 
+async function mountInteractiveMarket(savedState) {
+  let html = "";
+  let initialLoad;
+  let initialStart;
+  let startModifier;
+  let purchaseButtons = [];
+  let upgradeButtons = [];
+  let clearButton;
+  let checkoutButton;
+  let leaveButton;
+  let modifierButton;
+  let confirmResult = true;
+  let confirmCalls = 0;
+  let onStorageWrite = null;
+  const storage = new Map([[SAVE_KEY, JSON.stringify(savedState)]]);
+  const app = {
+    addEventListener() {},
+    get innerHTML() { return html; },
+    set innerHTML(value) { html = value; },
+  };
+  const button = (dataset = {}, disabled = false) => {
+    let click;
+    return {
+      dataset,
+      disabled,
+      addEventListener(type, listener) { if (type === "click") click = listener; },
+      click() { if (!disabled) click?.({ currentTarget: this, target: this }); },
+    };
+  };
+  const valuedButtons = (attribute, datasetKey) => [...html.matchAll(new RegExp(`<button\\b([^>]*)\\s${attribute}="([^"]*)"([^>]*)>`, "g"))]
+    .map(([, before, value, after]) => button({ [datasetKey]: value }, /\bdisabled\b/.test(`${before}${after}`)));
+  const bareButton = attribute => {
+    const match = html.match(new RegExp(`<button\\b([^>]*)\\s${attribute}(?=\\s|>)([^>]*)>`));
+    return match ? button({}, /\bdisabled\b/.test(`${match[1]}${match[2]}`)) : null;
+  };
+  const document = {
+    querySelector(selector) {
+      if (selector === "#app") return app;
+      if (selector === ".actions") return { append(element) { startModifier = element; } };
+      if (selector === "[data-start-modifier]") return startModifier || null;
+      if (selector === "[data-load]" && html.includes("data-load")) {
+        const control = button();
+        if (!initialLoad) initialLoad = control;
+        return control;
+      }
+      if (selector === "[data-start]" && html.includes("data-start")) {
+        const control = button();
+        if (!initialStart) initialStart = control;
+        return control;
+      }
+      if (selector === "[data-market-clear]") return clearButton = bareButton("data-market-clear");
+      if (selector === "[data-market-checkout]") return checkoutButton = bareButton("data-market-checkout");
+      if (selector === "[data-market-leave]") return leaveButton = bareButton("data-market-leave");
+      if (selector === "[data-modifier]" && html.includes("data-modifier")) return modifierButton = button();
+      return null;
+    },
+    querySelectorAll(selector) {
+      if (selector === "[data-market-purchase]") return purchaseButtons = valuedButtons("data-market-purchase", "marketPurchase");
+      if (selector === "[data-market-upgrade]") return upgradeButtons = valuedButtons("data-market-upgrade", "marketUpgrade");
+      return [];
+    },
+    createElement() { return button(); },
+  };
+  const localStorage = {
+    getItem: key => storage.get(key) ?? null,
+    setItem(key, value) { storage.set(key, String(value)); onStorageWrite?.(key, String(value)); },
+    removeItem: key => storage.delete(key),
+  };
+
+  Object.assign(globalThis, {
+    document,
+    localStorage,
+    location: { protocol: "file:" },
+    window: { addEventListener() {} },
+    HTMLImageElement: class {},
+    confirm: () => { confirmCalls++; return confirmResult; },
+  });
+
+  await import(`../src/app.mjs?interactive-render-test=${importSequence++}`);
+  assert.ok(initialLoad, "saved game load control should be interactive");
+  initialLoad.click();
+  return {
+    get html() { return html; },
+    get confirmCalls() { return confirmCalls; },
+    get checkout() { return checkoutButton; },
+    purchase(id) { const control = purchaseButtons.find(item => item.dataset.marketPurchase === id); assert.ok(control, `missing market purchase ${id}`); control.click(); },
+    upgrade(category, assetId) { const control = upgradeButtons.find(item => item.dataset.marketUpgrade.startsWith(`${category}:${assetId}:`)); assert.ok(control, `missing market upgrade ${category}:${assetId}`); return control; },
+    clear() { assert.ok(clearButton, "missing market clear control"); clearButton.click(); },
+    leave() { assert.ok(leaveButton, "missing market leave control"); leaveButton.click(); },
+    startNew() { assert.ok(initialStart, "missing new game control"); initialStart.click(); },
+    openTitleModifier() { assert.ok(startModifier, "missing title modifier control"); startModifier.click(); },
+    closeModifier() { assert.ok(modifierButton, "missing modifier close control"); modifierButton.click(); },
+    load(state) { storage.set(SAVE_KEY, JSON.stringify(state)); initialLoad.click(); },
+    setConfirm(value) { confirmResult = value; },
+    reenterOnNextSave(callback) { onStorageWrite = (key, value) => { onStorageWrite = null; callback(key, value); }; },
+  };
+}
+
 function factionBoardState() {
   const state = newGame("test", 1);
   state.phase = "factionBoard";
@@ -90,6 +188,83 @@ test("market checkout result lists every purchased line and total", async () => 
   assert.match(html, /購買街頭重機/);
   assert.match(html, /總花費 36/);
   assert.match(html, /data-continue/);
+});
+
+test("market controls toggle selections, totals, budget state, and clear cart", async () => {
+  const market = await mountInteractiveMarket(openMarketRenderState(20));
+
+  market.purchase("stun_baton");
+  assert.match(market.html, /market-choice selected" data-market-purchase="stun_baton" aria-pressed="true"/);
+  assert.match(market.html, /1 項／總計 16/);
+  assert.match(market.html, /現金 20／結帳後 4/);
+
+  market.purchase("street_bike");
+  assert.match(market.html, /market-cart-bar over-budget/);
+  assert.match(market.html, /2 項／總計 36/);
+  assert.match(market.html, /現金 20／結帳後 -16/);
+
+  market.clear();
+  assert.match(market.html, /market-choice " data-market-purchase="stun_baton" aria-pressed="false"/);
+  assert.match(market.html, /0 項／總計 0/);
+});
+
+test("market leave keeps cart when discard is cancelled and resolves when confirmed", async () => {
+  const market = await mountInteractiveMarket(openMarketRenderState());
+  market.purchase("stun_baton");
+  market.setConfirm(false);
+  market.leave();
+
+  assert.equal(market.confirmCalls, 1);
+  assert.match(market.html, /market-choice selected" data-market-purchase="stun_baton" aria-pressed="true"/);
+
+  market.setConfirm(true);
+  market.leave();
+  assert.equal(market.confirmCalls, 2);
+  assert.match(market.html, /phase-result/);
+});
+
+test("market checkout prevents a reentrant second submit", async () => {
+  const market = await mountInteractiveMarket(openMarketRenderState());
+  market.purchase("stun_baton");
+  const firstCheckout = market.checkout;
+  market.reenterOnNextSave(() => firstCheckout.click());
+  firstCheckout.click();
+
+  assert.match(market.html, /phase-result/);
+  assert.doesNotMatch(market.html, /只能在城市市場結帳/);
+  assert.match(market.html, /一次結帳 1 項/);
+});
+
+test("failed market checkout unlocks while preserving the selected line", async () => {
+  let state = checkoutMarket(openMarketRenderState(), [{ kind: "purchase", choiceId: "stun_baton" }]);
+  state.phase = "activity";
+  state.activityKind = "purchase";
+  state.player.resource = 100;
+  const market = await mountInteractiveMarket(state);
+  const staleUpgrade = market.upgrade("weapons", "weapon_stun_baton");
+  staleUpgrade.dataset.marketUpgrade = "weapons:weapon_stun_baton:99";
+  staleUpgrade.click();
+  const originalError = console.error;
+  console.error = () => {};
+  try { market.checkout.click(); } finally { console.error = originalError; }
+
+  assert.match(market.html, /phase-activity/);
+  assert.match(market.html, /market-upgrade selected" data-market-upgrade="weapons:weapon_stun_baton:0" aria-pressed="true"/);
+  assert.match(market.html, /data-market-checkout\s*>/);
+});
+
+test("market reset controls reopen a market without prior cart selections", async () => {
+  const market = await mountInteractiveMarket(openMarketRenderState());
+  market.purchase("stun_baton");
+  market.startNew();
+  market.load(openMarketRenderState());
+  assert.match(market.html, /data-market-purchase="stun_baton" aria-pressed="false"/);
+
+  market.purchase("stun_baton");
+  market.openTitleModifier();
+  market.closeModifier();
+  market.load(openMarketRenderState());
+  assert.match(market.html, /data-market-purchase="stun_baton" aria-pressed="false"/);
 });
 
 test("faction board keeps actionable challenge and capture controls text-only", async () => {
