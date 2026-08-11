@@ -560,7 +560,11 @@ test("loading a saved game resets the session-only automation mode", async () =>
   const game = await mountInteractiveAutomation(confirmDeployment(newGame("test", 71)));
 
   game.click("data-auto-continuous");
+  assert.equal(game.timerCount, 1);
+  assert.match(game.html, /data-auto-stop/);
   game.replaceSave(confirmDeployment(newGame("test", 72)));
+
+  assert.equal(game.timerCount, 0);
   assert.match(game.html, /data-auto-day/);
   assert.doesNotMatch(game.html, /data-auto-stop/);
 });
