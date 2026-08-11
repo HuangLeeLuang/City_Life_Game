@@ -173,6 +173,15 @@ test("自動恢復透過既有直接解析器保留結果中繼資料與非負�
   assert.equal(result.player.fatigue, 1);
   assert.equal(result.player.stress, 4);
   assert.equal(result.player.abilities.will, 29);
+  assert.deepEqual(result.buffs, [{
+    type: "buff.add",
+    id: "rested",
+    label: "短暫休息",
+    ability: "will",
+    value: 1,
+    duration: 5,
+    remaining: 5,
+  }]);
   assert.ok(result.player.resource >= 0);
   assert.equal(result.day, before.day);
   assert.equal(result.stage, before.stage);
