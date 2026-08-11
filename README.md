@@ -49,7 +49,7 @@ npm run build
 
 ### 手機遊戲圖示
 
-`assets/icons/icon-master.png` 是 1024×1024 的不透明主圖。若要重新產生 PWA、Android maskable、Apple Touch 與 favicon 圖示，請使用專案附帶的 Python/Pillow 執行：
+`assets/icons/icon-master.png` 是 1024×1024 的不透明主圖。若要重新產生 PWA、Android maskable、Apple Touch 與 favicon 圖示，請使用已安裝 Pillow 的 Python 執行：
 
 ```powershell
 python scripts\build-icon-assets.py
