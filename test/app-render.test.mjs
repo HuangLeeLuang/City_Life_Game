@@ -172,6 +172,101 @@ async function mountInteractiveDeployment(savedState) {
   };
 }
 
+async function mountInteractiveAutomation(savedState) {
+  let html = "";
+  let load;
+  let nextTimerId = 1;
+  const timers = new Map();
+  const windowListeners = new Map();
+  let renderedControls = new Map();
+  const storage = new Map([[SAVE_KEY, JSON.stringify(savedState)]]);
+  const control = dataset => {
+    const listeners = new Map();
+    return {
+      dataset,
+      addEventListener(type, listener) { listeners.set(type, listener); },
+      click() { listeners.get("click")?.({ currentTarget: this, target: this }); },
+    };
+  };
+  const selectorControl = selector => {
+    const attribute = selector.match(/^\[([^\]]+)\]$/)?.[1];
+    if (!attribute || !new RegExp(`\\b${attribute}(?:=|\\s|>)`).test(html)) return null;
+    if (renderedControls.has(attribute)) return renderedControls.get(attribute);
+    const datasetKey = attribute.replace(/^data-/, "").replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+    const item = control({ [datasetKey]: "" });
+    renderedControls.set(attribute, item);
+    return item;
+  };
+  const app = {
+    addEventListener() {},
+    get innerHTML() { return html; },
+    set innerHTML(value) { html = value; renderedControls = new Map(); },
+  };
+  const document = {
+    querySelector(selector) {
+      if (selector === "#app") return app;
+      if (selector === ".actions") return { append() {} };
+      if (selector === "[data-load]" && html.includes("data-load")) {
+        const item = control({});
+        const addEventListener = item.addEventListener;
+        item.addEventListener = (type, listener) => {
+          if (type === "click") load = listener;
+          addEventListener.call(item, type, listener);
+        };
+        return item;
+      }
+      return selectorControl(selector);
+    },
+    querySelectorAll() { return []; },
+    createElement() { return control({}); },
+  };
+  const localStorage = {
+    getItem: key => storage.get(key) ?? null,
+    setItem(key, value) { storage.set(key, String(value)); },
+    removeItem(key) { storage.delete(key); },
+  };
+  const fakeSetTimeout = callback => {
+    const id = nextTimerId++;
+    timers.set(id, callback);
+    return id;
+  };
+  const fakeClearTimeout = id => timers.delete(id);
+  Object.assign(globalThis, {
+    document,
+    localStorage,
+    location: { protocol: "file:" },
+    window: { addEventListener(type, listener) { windowListeners.set(type, listener); } },
+    HTMLImageElement: class {},
+    setTimeout: fakeSetTimeout,
+    clearTimeout: fakeClearTimeout,
+  });
+  await import(`../src/app.mjs?automation-interaction-test=${importSequence++}`);
+  assert.equal(typeof load, "function", "saved game load handler should be registered");
+  load();
+  const click = attribute => {
+    const item = document.querySelector(`[${attribute}]`);
+    assert.ok(item, `missing ${attribute} control`);
+    item.click();
+  };
+  return {
+    get html() { return html; },
+    get savedState() { return JSON.parse(storage.get(SAVE_KEY)); },
+    get timerCount() { return timers.size; },
+    click,
+    async tick() {
+      const [id, callback] = timers.entries().next().value || [];
+      assert.ok(callback, "expected one scheduled automation step");
+      timers.delete(id);
+      callback();
+      await Promise.resolve();
+      await Promise.resolve();
+    },
+    async ticks(count) { for (let index = 0; index < count; index += 1) await this.tick(); },
+    raiseGlobalError() { windowListeners.get("error")?.(new Error("test global error")); },
+    replaceSave(next) { storage.set(SAVE_KEY, JSON.stringify(next)); load(); },
+  };
+}
+
 async function mountInteractiveMarket(savedState) {
   let html = "";
   let initialLoad;
@@ -356,6 +451,109 @@ test("deployment view shows roster readiness, assignments, and a sticky morning 
   assert.match(html, /data-deployment-recommend/);
   assert.match(html, /data-deployment-confirm/);
   assert.match(html, /deployment-controls/);
+});
+
+test("confirmed morning cards expose one-day and continuous Difei controls", async () => {
+  const html = await renderSavedState(confirmDeployment(newGame("test", 61)));
+
+  assert.match(html, /data-auto-day/);
+  assert.match(html, /data-auto-continuous/);
+  assert.match(html, /狄菲/);
+});
+
+test("one-day automation completes remaining stages and stops at the next deployment", async () => {
+  const game = await mountInteractiveAutomation(confirmDeployment(newGame("test", 62)));
+
+  game.click("data-auto-day");
+  await game.ticks(6);
+
+  assert.equal(game.savedState.day, 2);
+  assert.equal(game.savedState.phase, "deployment");
+  assert.match(game.html, /data-auto-day/);
+  assert.equal(game.timerCount, 0);
+});
+
+test("continuous automation confirms Difei's draft and advances into a resolved action", async () => {
+  const game = await mountInteractiveAutomation(newGame("test", 63));
+
+  game.click("data-auto-continuous");
+  await game.ticks(2);
+
+  assert.equal(game.savedState.team.deployment.confirmed, true);
+  assert.equal(game.savedState.phase, "result");
+  assert.match(game.html, /data-auto-stop/);
+  game.click("data-auto-stop");
+  await game.tick();
+  assert.equal(game.timerCount, 0);
+});
+
+test("a stop request waits for the current result boundary", async () => {
+  const game = await mountInteractiveAutomation(confirmDeployment(newGame("test", 64)));
+
+  game.click("data-auto-continuous");
+  await game.tick();
+  assert.equal(game.savedState.phase, "result");
+  game.click("data-auto-stop");
+  await game.tick();
+
+  assert.equal(game.savedState.phase, "result");
+  assert.doesNotMatch(game.html, /data-auto-stop/);
+  assert.equal(game.timerCount, 0);
+});
+
+test("automation stops immediately while idle on cards or deployment", async () => {
+  for (const state of [confirmDeployment(newGame("test", 65)), newGame("test", 66)]) {
+    const game = await mountInteractiveAutomation(state);
+    game.click("data-auto-continuous");
+    game.click("data-auto-stop");
+
+    assert.equal(game.timerCount, 0);
+    assert.match(game.html, /data-auto-day/);
+  }
+});
+
+test("attack alerts, pending automation interruptions, and global errors clear automation timers", async () => {
+  const alertState = newGame("test", 67);
+  alertState.territories.south_docks.owner = "player";
+  alertState.pendingRetaliation = { territoryId: "south_docks", factionId: "red_tide", sinceDay: 1 };
+  const alert = await mountInteractiveAutomation(alertState);
+  alert.click("data-auto-continuous");
+  await alert.tick();
+  assert.equal(alert.savedState.phase, "attackAlert");
+  assert.equal(alert.timerCount, 0);
+
+  const interruptedState = confirmDeployment(newGame("test", 68));
+  interruptedState.pendingRetaliation = { territoryId: "south_docks", factionId: "red_tide", sinceDay: 1 };
+  const interrupted = await mountInteractiveAutomation(interruptedState);
+  interrupted.click("data-auto-continuous");
+  await interrupted.tick();
+  assert.equal(interrupted.savedState.phase, "cards");
+  assert.equal(interrupted.timerCount, 0);
+
+  const global = await mountInteractiveAutomation(confirmDeployment(newGame("test", 69)));
+  global.click("data-auto-continuous");
+  global.raiseGlobalError();
+  assert.equal(global.timerCount, 0);
+  assert.match(global.html, /data-auto-day/);
+});
+
+test("automation controls stay visible with live status and deployment team summaries during results", async () => {
+  const game = await mountInteractiveAutomation(confirmDeployment(newGame("test", 70)));
+
+  game.click("data-auto-continuous");
+  await game.tick();
+
+  assert.match(game.html, /class="automation-running"[^>]*aria-live="polite"/);
+  assert.match(game.html, /team-summary/);
+});
+
+test("automation mode is session-only and resets for loading, new games, and the title modifier", async () => {
+  const game = await mountInteractiveAutomation(confirmDeployment(newGame("test", 71)));
+
+  game.click("data-auto-continuous");
+  game.replaceSave(confirmDeployment(newGame("test", 72)));
+  assert.match(game.html, /data-auto-day/);
+  assert.doesNotMatch(game.html, /data-auto-stop/);
 });
 
 test("deployment controls update task targets, reserve removal, and Difei recommendations through real change handlers", async () => {
