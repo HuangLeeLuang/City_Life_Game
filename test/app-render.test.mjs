@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { choiceArt } from "../src/art-content.mjs";
-import { checkoutMarket, newGame, getEvent, resolveChoice } from "../src/engine.mjs";
+import { checkoutMarket, generateCards, newGame, getEvent, resolveChoice } from "../src/engine.mjs";
 import { FACTIONS, TERRITORIES } from "../src/faction-content.mjs";
 
 const SAVE_KEY = "crime-five-roads-save-v2";
@@ -59,6 +59,8 @@ async function mountInteractiveMarket(savedState) {
   let checkoutButton;
   let leaveButton;
   let modifierButton;
+  let continueButton;
+  let cardButtons = [];
   let confirmResult = true;
   let confirmCalls = 0;
   let onStorageWrite = null;
@@ -102,11 +104,13 @@ async function mountInteractiveMarket(savedState) {
       if (selector === "[data-market-checkout]") return checkoutButton = bareButton("data-market-checkout");
       if (selector === "[data-market-leave]") return leaveButton = bareButton("data-market-leave");
       if (selector === "[data-modifier]" && html.includes("data-modifier")) return modifierButton = button();
+      if (selector === "[data-continue]") return continueButton = bareButton("data-continue");
       return null;
     },
     querySelectorAll(selector) {
       if (selector === "[data-market-purchase]") return purchaseButtons = valuedButtons("data-market-purchase", "marketPurchase");
       if (selector === "[data-market-upgrade]") return upgradeButtons = valuedButtons("data-market-upgrade", "marketUpgrade");
+      if (selector === "[data-card]") return cardButtons = valuedButtons("data-card", "card");
       return [];
     },
     createElement() { return button(); },
@@ -137,9 +141,11 @@ async function mountInteractiveMarket(savedState) {
     upgrade(category, assetId) { const control = upgradeButtons.find(item => item.dataset.marketUpgrade.startsWith(`${category}:${assetId}:`)); assert.ok(control, `missing market upgrade ${category}:${assetId}`); return control; },
     clear() { assert.ok(clearButton, "missing market clear control"); clearButton.click(); },
     leave() { assert.ok(leaveButton, "missing market leave control"); leaveButton.click(); },
-    startNew() { assert.ok(initialStart, "missing new game control"); initialStart.click(); },
-    openTitleModifier() { assert.ok(startModifier, "missing title modifier control"); startModifier.click(); },
+    startNew(seed) { assert.ok(initialStart, "missing new game control"); const originalNow = Date.now; Date.now = () => seed; try { initialStart.click(); } finally { Date.now = originalNow; } },
+    openTitleModifier(seed) { assert.ok(startModifier, "missing title modifier control"); const originalNow = Date.now; Date.now = () => seed; try { startModifier.click(); } finally { Date.now = originalNow; } },
     closeModifier() { assert.ok(modifierButton, "missing modifier close control"); modifierButton.click(); },
+    continue() { assert.ok(continueButton, "missing continue control"); continueButton.click(); },
+    chooseCard(id) { const control = cardButtons.find(item => item.dataset.card === id); assert.ok(control, `missing card ${id}`); control.click(); },
     load(state) { storage.set(SAVE_KEY, JSON.stringify(state)); initialLoad.click(); },
     setConfirm(value) { confirmResult = value; },
     reenterOnNextSave(callback) { onStorageWrite = (key, value) => { onStorageWrite = null; callback(key, value); }; },
@@ -156,14 +162,18 @@ function factionBoardState() {
   return state;
 }
 
-function openMarketRenderState(cash = 100) {
-  const state = newGame("test", 13);
+function openMarketRenderState(cash = 100, seed = 13) {
+  const state = newGame("test", seed);
   state.phase = "activity";
   state.selected = "life_purchase";
   state.activityKind = "purchase";
   state.activityOptions = getEvent("asset_market", state).choices.map(choice => choice.id);
   state.player.resource = cash;
   return state;
+}
+
+function marketOpeningCardsState() {
+  return generateCards(newGame("test", 2));
 }
 
 test("market renders selectable items and one sticky checkout control", async () => {
@@ -209,7 +219,7 @@ test("market controls toggle selections, totals, budget state, and clear cart", 
 });
 
 test("market leave keeps cart when discard is cancelled and resolves when confirmed", async () => {
-  const market = await mountInteractiveMarket(openMarketRenderState());
+  const market = await mountInteractiveMarket(openMarketRenderState(100, 1));
   market.purchase("stun_baton");
   market.setConfirm(false);
   market.leave();
@@ -221,6 +231,10 @@ test("market leave keeps cart when discard is cancelled and resolves when confir
   market.leave();
   assert.equal(market.confirmCalls, 2);
   assert.match(market.html, /phase-result/);
+  market.continue();
+  market.chooseCard("life_purchase");
+  assert.match(market.html, /data-market-purchase="stun_baton" aria-pressed="false"/);
+  assert.match(market.html, /0 項／總計 0/);
 });
 
 test("market checkout prevents a reentrant second submit", async () => {
@@ -233,6 +247,17 @@ test("market checkout prevents a reentrant second submit", async () => {
   assert.match(market.html, /phase-result/);
   assert.doesNotMatch(market.html, /只能在城市市場結帳/);
   assert.match(market.html, /一次結帳 1 項/);
+});
+
+test("successful market checkout returns to an empty cart through public navigation", async () => {
+  const market = await mountInteractiveMarket(openMarketRenderState(100, 1));
+  market.purchase("stun_baton");
+  market.checkout.click();
+  market.continue();
+  market.chooseCard("life_purchase");
+
+  assert.match(market.html, /data-market-purchase="stun_baton" aria-pressed="false"/);
+  assert.match(market.html, /0 項／總計 0/);
 });
 
 test("failed market checkout unlocks while preserving the selected line", async () => {
@@ -253,18 +278,32 @@ test("failed market checkout unlocks while preserving the selected line", async 
   assert.match(market.html, /data-market-checkout\s*>/);
 });
 
-test("market reset controls reopen a market without prior cart selections", async () => {
+test("new game clears the cart before a public market re-entry", async () => {
   const market = await mountInteractiveMarket(openMarketRenderState());
   market.purchase("stun_baton");
-  market.startNew();
-  market.load(openMarketRenderState());
+  market.startNew(2);
+  market.chooseCard("life_purchase");
   assert.match(market.html, /data-market-purchase="stun_baton" aria-pressed="false"/);
+  assert.match(market.html, /0 項／總計 0/);
+});
 
+test("loading a save clears the cart before a public market re-entry", async () => {
+  const market = await mountInteractiveMarket(openMarketRenderState());
   market.purchase("stun_baton");
-  market.openTitleModifier();
-  market.closeModifier();
-  market.load(openMarketRenderState());
+  market.load(marketOpeningCardsState());
+  market.chooseCard("life_purchase");
   assert.match(market.html, /data-market-purchase="stun_baton" aria-pressed="false"/);
+  assert.match(market.html, /0 項／總計 0/);
+});
+
+test("title modifier entry clears the cart before a public market re-entry", async () => {
+  const market = await mountInteractiveMarket(openMarketRenderState());
+  market.purchase("stun_baton");
+  market.openTitleModifier(2);
+  market.closeModifier();
+  market.chooseCard("life_purchase");
+  assert.match(market.html, /data-market-purchase="stun_baton" aria-pressed="false"/);
+  assert.match(market.html, /0 項／總計 0/);
 });
 
 test("faction board keeps actionable challenge and capture controls text-only", async () => {
