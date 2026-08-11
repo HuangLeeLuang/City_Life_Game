@@ -18,6 +18,7 @@ import {
   validateDeployment,
   validateSave,
 } from "../src/engine.mjs";
+import { territoryById } from "../src/faction-content.mjs?v=23";
 
 function recruitMembersForDeployment(state, memberIds) {
   let next = state;
@@ -335,6 +336,53 @@ test("a pending retaliation becomes a defense battle only after deployment confi
   assert.equal(battle.phase, "battle");
   assert.equal(battle.battle.battleType, "defend");
   assert.equal(battle.battle.territoryId, "south_docks");
+});
+
+test("a confirmed defender immediately lowers pending retaliation HP without a settled defense record", () => {
+  const draft = assignment => {
+    const state = newGame("test", 44);
+    state.territories.south_docks.owner = "player";
+    state.pendingRetaliation = { territoryId: "south_docks", factionId: "red_tide", sinceDay: 1 };
+    return updateDeploymentAssignment(beginDeployment(state), "difei", assignment);
+  };
+  const plainBattle = acknowledgeAttack(confirmDeployment(draft({ type: "earn", targetId: null })));
+  const defendedAlert = confirmDeployment(draft({ type: "defend", targetId: "south_docks" }));
+  const defendedBattle = acknowledgeAttack(defendedAlert);
+
+  assert.deepEqual(defendedAlert.team.deployment.defenseStrength, {});
+  assert.equal(plainBattle.battle.enemyHp, 68);
+  assert.equal(defendedBattle.battle.enemyHp, 66);
+});
+
+test("three confirmed defenders preserve the 42 HP floor without injected defense strength", () => {
+  let draft = recruitMembersForDeployment(newGame("test", 45), ["steel_jaw", "ghost"]);
+  draft.territories.south_docks.owner = "player";
+  draft.pendingRetaliation = { territoryId: "south_docks", factionId: "red_tide", sinceDay: draft.day };
+  for (const memberId of ["difei", "steel_jaw", "ghost"]) {
+    draft = updateDeploymentAssignment(draft, memberId, { type: "defend", targetId: "south_docks" });
+  }
+  const territory = territoryById("south_docks");
+  const originalHp = territory.enemyHp;
+  territory.enemyHp = 36;
+  try {
+    const battle = acknowledgeAttack(confirmDeployment(draft));
+    assert.deepEqual(battle.team.deployment.defenseStrength, {});
+    assert.equal(battle.battle.enemyHp, 42);
+  } finally {
+    territory.enemyHp = originalHp;
+  }
+});
+
+test("an already settled defense stage is not counted again when the attack is acknowledged", () => {
+  const state = newGame("test", 46);
+  state.territories.south_docks.owner = "player";
+  state.pendingRetaliation = { territoryId: "south_docks", factionId: "red_tide", sinceDay: 1 };
+  const alert = confirmDeployment(updateDeploymentAssignment(beginDeployment(state), "difei", { type: "defend", targetId: "south_docks" }));
+  const settledAlert = settleDeploymentStage(alert);
+  const battle = acknowledgeAttack(settledAlert);
+
+  assert.equal(settledAlert.team.deployment.defenseStrength.south_docks, 0.3333333333);
+  assert.equal(battle.battle.enemyHp, 66);
 });
 
 test("defense strength weights retaliation targets, lowers defense HP, and rewards morale when no attack comes", () => {

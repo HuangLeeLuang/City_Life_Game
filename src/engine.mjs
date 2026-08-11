@@ -81,6 +81,16 @@ function sharedWeight(assignments,memberId,type,targetId){
   const ids=Object.entries(assignments).filter(([,assignment])=>assignment.type===type&&assignment.targetId===targetId).map(([id])=>id).sort();
   return SHARED_DEPLOYMENT_WEIGHTS[ids.indexOf(memberId)]||0;
 }
+function effectiveDefenseStrength(state,territoryId){
+  const deployment=state.team?.deployment,stored=deployment?.defenseStrength?.[territoryId]||0;
+  if(!deployment?.confirmed||deployment.day!==state.day||(deployment.settledStages||[]).includes(state.stage))return stored;
+  const currentStageStrength=Object.entries(deployment.assignments||{}).reduce((total,[memberId,assignment])=>{
+    if(assignment?.type!=="defend"||assignment.targetId!==territoryId)return total;
+    const multiplier=deployment.readinessMultipliers?.[memberId]??readinessMultiplier(rosterReadiness(state,memberId));
+    return total+sharedWeight(deployment.assignments,memberId,"defend",territoryId)*multiplier/3;
+  },0);
+  return stored+currentStageStrength;
+}
 
 export function validateDeployment(state,assignments){
   const entries=Object.entries(assignments||{});
@@ -667,7 +677,7 @@ export function startFactionFight(input,factionId){
 export function startTerritoryFight(input,territoryId){
   factionBoardReady(input);const territory=territoryById(territoryId),control=input.territories?.[territoryId];if(!territory||!control)throw new GameError("UNKNOWN_TERRITORY","找不到這塊地盤");if(input.day<territory.unlockDay)throw new GameError("TERRITORY_LOCKED",`第 ${territory.unlockDay} 日後才有足夠情報進攻這裡`);
   const defending=control.owner==="player"&&input.pendingRetaliation?.territoryId===territoryId;if(control.owner==="player"&&!defending)throw new GameError("TERRITORY_OWNED","這已經是你的地盤");const factionId=defending?input.pendingRetaliation.factionId:control.owner,faction=factionById(factionId)||factionById(territory.factionId),status=input.factions[faction.id],cost=defending?0:territory.entryCost;if(input.player.resource<cost)throw new GameError("INSUFFICIENT_CASH",`準備這次行動需要現金 ${cost}`);
-  const level=control.level||0,defenseStrength=input.team.deployment?.defenseStrength?.[territoryId]||0,enemyHp=Math.max(42,territory.enemyHp+Math.floor(status.hostility/8)+(defending?8-level*7-Math.round(defenseStrength*6):level*4)),reward=defending?Math.ceil(territory.reward*.65):territory.reward;
+  const level=control.level||0,defenseStrength=effectiveDefenseStrength(input,territoryId),enemyHp=Math.max(42,territory.enemyHp+Math.floor(status.hostility/8)+(defending?8-level*7-Math.round(defenseStrength*6):level*4)),reward=defending?Math.ceil(territory.reward*.65):territory.reward;
   return applyEffects(input,[...(cost?[{type:"resource.add",value:-cost}]:[]),{type:"battle.start",battleType:defending?"defend":"capture",factionId:faction.id,territoryId,enemy:`${faction.name}${defending?"反攻隊":"地盤守衛"}`,title:defending?`防守地盤：${territory.name}`:`攻佔地盤：${territory.name}`,result:defending?`你守住${territory.name}，反攻隊留下裝備與一筆緊急軍資。`:`${territory.name}的守衛撤退，從今天起這裡的收入、眼線與麻煩都歸你。`,reward,enemyHp,enemyDamage:6+Math.floor(territory.enemyHp/38),rewardAbility:faction.rewardAbility,rewardAbilityValue:defending?2:3,rewardWorld:"gangs",rewardWorldValue:defending?-2:-4,securityOnWin:defending?1:3,opening:territory.opening}],`territory:${territoryId}:${defending?"defend":"capture"}`);
 }
 function fortifyTerritoryBase(input,territoryId){
