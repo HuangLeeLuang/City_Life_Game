@@ -60,16 +60,104 @@ export function contactBonuses(state){
 export const combinedBonuses=state=>{const sources=[teamBonuses(state),assetBonuses(state),contactBonuses(state)],keys=new Set(sources.flatMap(source=>Object.keys(source)));return Object.fromEntries([...keys].map(key=>[key,sources.reduce((sum,source)=>sum+(source[key]||0),0)]));};
 export const crewPower=state=>(state.crew?.members||0)*2+Math.floor((state.crew?.morale||0)/10)+controlledTerritories(state).length*3+activeTeamMembers(state).reduce((sum,member)=>sum+2+(member.level||1),0);
 
+export const DEPLOYMENT_TYPES=["earn","train","rest","manage","defend"];
+const freshDeployment=day=>({day,assignments:{},confirmed:false,source:"difei",settledStages:[],readinessMultipliers:{},trainingProgress:{},industryEfficiency:{},defenseStrength:{}});
+const rosterReadiness=(state,id)=>state.team.roster.find(item=>item.id===id)?.readiness??100;
+export const readinessMultiplier=readiness=>readiness<20?0:readiness<40?.7:1;
+function deploymentError(code,message){throw new GameError(code,message);}
+
+export function validateDeployment(state,assignments){
+  const entries=Object.entries(assignments||{});
+  if(entries.length>TEAM_LIMIT)deploymentError("TEAM_LIMIT",`每日最多只能指派 ${TEAM_LIMIT} 名核心隊員`);
+  const recruited=new Set(state.team.roster.map(member=>member.id)),sharedCounts=new Map();
+  for(const [memberId,assignment] of entries){
+    if(!recruited.has(memberId))deploymentError("TEAM_MEMBER_NOT_RECRUITED",`隊員 ${memberId} 尚未加入團隊`);
+    const rosterMember=state.team.roster.find(member=>member.id===memberId),definition=teamMemberById(memberId);
+    if((rosterMember.deployableDay??state.day)>state.day)deploymentError("TEAM_MEMBER_NOT_READY",`${definition.name} 尚未能在今天出勤`);
+    if(rosterReadiness(state,memberId)<20)deploymentError("MEMBER_EXHAUSTED",`${definition.name} 的備戰度低於 20，無法出勤`);
+    if(!DEPLOYMENT_TYPES.includes(assignment?.type))deploymentError("INVALID_DEPLOYMENT_TYPE",`無效的派遣類型：${assignment?.type??"未指定"}`);
+    if(assignment.type==="manage"&&!state.assets.industries.some(asset=>asset.id===assignment.targetId))deploymentError("UNKNOWN_ASSET","找不到指定的產業資產");
+    if(assignment.type==="defend"&&state.territories?.[assignment.targetId]?.owner!=="player")deploymentError("UNKNOWN_TERRITORY","只能防守自己控制的地盤");
+    if(["manage","defend"].includes(assignment.type)){
+      const key=`${assignment.type}:${assignment.targetId}`,count=(sharedCounts.get(key)||0)+1;
+      if(count>3)deploymentError("SHARED_TASK_LIMIT","同一項防守或經營工作最多指派 3 名隊員");
+      sharedCounts.set(key,count);
+    }
+  }
+  return true;
+}
+
+function assignmentScore(state,member,assignment){
+  const definition=teamMemberById(member.id),lowCash=state.player.resource<12,lowReadiness=member.readiness<45;
+  if(assignment.type==="rest")return lowReadiness?100-member.readiness:8;
+  if(assignment.type==="defend")return(state.pendingRetaliation?.territoryId===assignment.targetId?120:35)+(definition.bonuses.hp||0)+(definition.bonuses.attack||0)+(definition.bonuses.brawl||0);
+  if(assignment.type==="manage")return 28+(definition.bonuses.income||0)*8+(definition.bonuses.reward||0)*2;
+  if(assignment.type==="earn")return(lowCash?70:22)+(definition.bonuses.income||0)*8+(definition.bonuses.reward||0)*2;
+  if(assignment.type==="train")return 26-Math.min(20,(state.characterLevels[member.id]||1)*2);
+  return -1;
+}
+
+export function recommendDeployment(state){
+  const eligible=state.team.roster.filter(member=>(member.readiness??100)>=20&&(member.deployableDay??state.day)<=state.day),assignments={};
+  const optionsFor=member=>[
+    {type:"rest",targetId:null},{type:"earn",targetId:null},{type:"train",targetId:null},
+    ...state.assets.industries.map(asset=>({type:"manage",targetId:asset.id})),
+    ...controlledTerritories(state).map(territory=>({type:"defend",targetId:territory.id})),
+  ];
+  const priority=eligible.map(member=>{
+    const best=Math.max(...optionsFor(member).map(option=>assignmentScore(state,member,option)));
+    return {member,best:best+(member.id==="difei"?12:0)};
+  }).sort((left,right)=>right.best-left.best||left.member.id.localeCompare(right.member.id));
+  for(const {member} of priority.slice(0,TEAM_LIMIT)){
+    const ranked=optionsFor(member)
+      .filter(option=>!["manage","defend"].includes(option.type)||Object.values(assignments).filter(item=>item.type===option.type&&item.targetId===option.targetId).length<3)
+      .map(option=>({option,score:assignmentScore(state,member,option)}))
+      .sort((left,right)=>right.score-left.score||`${left.option.type}:${left.option.targetId||""}`.localeCompare(`${right.option.type}:${right.option.targetId||""}`));
+    assignments[member.id]=ranked[0].option;
+  }
+  return Object.fromEntries(Object.entries(assignments).slice(0,TEAM_LIMIT));
+}
+
+export function beginDeployment(input){
+  const state=clone(input);
+  state.phase="deployment";
+  state.candidates=[];
+  state.selected=null;
+  state.team.deployment={...freshDeployment(state.day),assignments:recommendDeployment(state)};
+  return state;
+}
+
+export function updateDeploymentAssignment(input,memberId,assignment){
+  if(input.phase!=="deployment")throw new GameError("WRONG_PHASE","目前不在每日派遣階段");
+  const state=clone(input);
+  if(assignment===null)delete state.team.deployment.assignments[memberId];
+  else state.team.deployment.assignments[memberId]=assignment;
+  validateDeployment(state,state.team.deployment.assignments);
+  state.team.deployment.source="player-edited";
+  return state;
+}
+
+export function confirmDeployment(input){
+  if(input.phase!=="deployment")throw new GameError("WRONG_PHASE","目前不在每日派遣階段");
+  validateDeployment(input,input.team.deployment.assignments);
+  const state=clone(input);
+  state.team.active=Object.keys(state.team.deployment.assignments);
+  state.team.deployment.confirmed=true;
+  state.team.deployment.readinessMultipliers=Object.fromEntries(state.team.active.map(id=>[id,readinessMultiplier(rosterReadiness(state,id))]));
+  if(state.pendingRetaliation){state.phase="attackAlert";state.candidates=[];return state;}
+  return generateCards(state);
+}
+
 export function newGame(gender="不公開",seed=2026){
   const cityStatusIndex=initialCityStatusIndex(seed);
-  return {
+  return beginDeployment({
     version:2, contentVersion:"0.9.0-unlimited-story", seed:seed>>>0, gender, day:1, stage:0, chapter:1, phase:"cards", candidates:[], selected:null, battle:null, finished:false,postgame:false,endingShown:false,chapterTransition:null,cityStatusIndex,cityStatus:CITY_STATUSES[cityStatusIndex].id,
     player:{health:100,fatigue:10,stress:8,resource:24,abilities:{physique:28,reflex:28,hacking:28,engineering:28,social:28,perception:28,will:28,management:28}},
     assets:{properties:[],vehicles:[],weapons:[],items:[],luxuries:[],industries:[]}, buffs:[], activeSideQuest:null, completedSideQuests:[], metContacts:{},
-    factions:freshFactions(),territories:freshTerritories(),crew:{members:2,morale:50},team:{roster:[{id:"difei",level:1,recruitedDay:1}],active:["difei"]},pendingRetaliation:null,
+    factions:freshFactions(),territories:freshTerritories(),crew:{members:2,morale:50},team:{roster:[{id:"difei",level:1,recruitedDay:1,readiness:100,deployableDay:1}],active:[],deployment:freshDeployment(1)},pendingRetaliation:null,
     relations:Object.fromEntries(CHARACTER_IDS.map(id=>[id,id==="difei"?35:id==="chenglan"?20:0])),characterLevels:Object.fromEntries(CHARACTER_IDS.map(id=>[id,1])),knownContacts:["mira","kael","zero","difei"],unlockedCharacterEvents:[],completedCharacterEvents:[],selectedCharacterEvent:null,
     world:{corporate:55,gangs:45,security:58,people:42,ai:35}, flags:{}, seen:{}, cooldown:{}, customCards:[], cardOverrides:{}, unlockedSideQuests:[], log:[], sequence:0
-  };
+  });
 }
 
 export const nextOfficialMainlineId=state=>OFFICIAL_MAINLINE_IDS.find(id=>!state.seen?.[id])||null;

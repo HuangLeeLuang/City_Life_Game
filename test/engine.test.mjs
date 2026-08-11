@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { newGame, generateCards, getEvent, selectCard, resolveChoice, resolveActivity, resolveNightOption, acceptSideQuest, declineSideQuests, resolveSideQuestChoice, abandonSideQuest, upgradeAsset, startFactionFight, startTerritoryFight, fortifyTerritory, recruitCrew, recruitTeamMember, toggleTeamMember, activeTeamMembers, teamBonuses, assetBonuses, contactBonuses, controlledTerritories, territoryIncome, crewPower, battleAction, assistantAdvice, acceptAssistantAdvice, continueStage, continueChapterTransition, continueFreePlay, pendingCharacterEvent, startCharacterEvent, resolveCharacterEventChoice, characterLevelChance, nextOfficialMainlineId, applyEffects, modifyValue, saveCardDefinition, validateSave, CITY_STATUSES, cityStatusById, ENEMY_INTENTS, enemyIntentById, GameError } from "../src/engine.mjs";
+import { newGame, confirmDeployment, generateCards, getEvent, selectCard, resolveChoice, resolveActivity, resolveNightOption, acceptSideQuest, declineSideQuests, resolveSideQuestChoice, abandonSideQuest, upgradeAsset, startFactionFight, startTerritoryFight, fortifyTerritory, recruitCrew, recruitTeamMember, toggleTeamMember, activeTeamMembers, teamBonuses, assetBonuses, contactBonuses, controlledTerritories, territoryIncome, crewPower, battleAction, assistantAdvice, acceptAssistantAdvice, continueStage, continueChapterTransition, continueFreePlay, pendingCharacterEvent, startCharacterEvent, resolveCharacterEventChoice, characterLevelChance, nextOfficialMainlineId, applyEffects, modifyValue, saveCardDefinition, validateSave, CITY_STATUSES, cityStatusById, ENEMY_INTENTS, enemyIntentById, GameError } from "../src/engine.mjs";
 import { EVENTS } from "../src/content.mjs";
 import { LIFE_CARDS, LEISURE_CARDS, TRAINING_CARDS, CONTACTS, SIDE_QUESTS } from "../src/life-content.mjs";
 import { NIGHT_CARDS } from "../src/night-content.mjs";
@@ -18,6 +18,8 @@ function playCard(state,id){
   if(state.phase==="sidequestNode"){const quest=SIDE_QUESTS.find(x=>x.id===state.activeSideQuest.id);return resolveSideQuestChoice(state,quest.nodes[state.activeSideQuest.nodeIndex].choices[0].id);}
   return state;
 }
+
+const confirmedGame=(...args)=>confirmDeployment(newGame(...args));
 
 test("每日城市狀態固定為六種、依種子決定並在跨日時更新",()=>{
   const first=newGame("x",42),again=newGame("x",42);
@@ -226,14 +228,14 @@ test("城市勢力包含九個幫派與十五塊地盤，玩家可主動挑戰",
 });
 
 test("攻佔地盤後產生每日收益，並可花錢強化",()=>{
-  let state=newGame("x",202);state.day=5;state.stage=1;state.player.resource=100;state.player.abilities.physique=100;state.crew={members:20,morale:100};state.candidates=["life_conflict"];state=selectCard(state,"life_conflict");state=startTerritoryFight(state,"south_docks");let guard=0;while(state.phase==="battle"&&guard++<20)state=battleAction(state,"brawl");assert.equal(state.lastResult.success,true);assert.equal(state.territories.south_docks.owner,"player");assert.equal(controlledTerritories(state).length,1);assert.equal(territoryIncome(state),4);
+  let state=confirmedGame("x",202);state.day=5;state.stage=1;state.player.resource=100;state.player.abilities.physique=100;state.crew={members:20,morale:100};state.candidates=["life_conflict"];state=selectCard(state,"life_conflict");state=startTerritoryFight(state,"south_docks");let guard=0;while(state.phase==="battle"&&guard++<20)state=battleAction(state,"brawl");assert.equal(state.lastResult.success,true);assert.equal(state.territories.south_docks.owner,"player");assert.equal(controlledTerritories(state).length,1);assert.equal(territoryIncome(state),4);
   state.phase="factionBoard";state.selected="life_conflict";const before=state.player.resource;state=fortifyTerritory(state,"south_docks");assert.equal(state.territories.south_docks.level,1);assert.equal(state.player.resource,before-11);assert.equal(territoryIncome(state),6);
   state.phase="result";state.stage=2;const beforeSettlement=state.player.resource;state=continueStage(state);assert.equal(state.lastSettlement.turfIncome,6);assert.ok(state.player.resource>=beforeSettlement+6);
 });
 
 test("隊伍可招募；舊版存檔只保留能力、現金與資產並重置故事",()=>{
   let state=newGame();state.phase="factionBoard";state.selected="life_conflict";state.player.resource=100;const before=state.player.resource;state=recruitCrew(state);assert.equal(state.crew.members,3);assert.equal(state.player.resource,before-12);assert.equal(state.phase,"result");
-  const old={...newGame(),version:1,day:19};old.player.resource=77;old.player.abilities.hacking=91;old.assets.weapons=[{id:"weapon_sawed_shotgun",name:"短管霰彈槍"}];old.seen.signal=true;old.team={roster:[{id:"grey_fox",level:9}],active:["grey_fox"]};old.customCards=[{id:"legacy"}];const restored=validateSave(old);assert.equal(restored.version,2);assert.equal(restored.day,1);assert.equal(restored.player.resource,77);assert.equal(restored.player.abilities.hacking,91);assert.equal(restored.seen.signal,undefined);assert.deepEqual(restored.team.active,["difei"]);assert.equal(restored.assets.weapons[0].combatPower,6);assert.deepEqual(restored.customCards,[]);
+  const old={...newGame(),version:1,day:19};old.player.resource=77;old.player.abilities.hacking=91;old.assets.weapons=[{id:"weapon_sawed_shotgun",name:"短管霰彈槍"}];old.seen.signal=true;old.team={roster:[{id:"grey_fox",level:9}],active:["grey_fox"]};old.customCards=[{id:"legacy"}];const restored=validateSave(old),confirmed=confirmDeployment(restored);assert.equal(restored.version,2);assert.equal(restored.day,1);assert.equal(restored.player.resource,77);assert.equal(restored.player.abilities.hacking,91);assert.equal(restored.seen.signal,undefined);assert.deepEqual(confirmed.team.active,["difei"]);assert.equal(restored.assets.weapons[0].combatPower,6);assert.deepEqual(restored.customCards,[]);
 });
 
 test("城市勢力地圖同時涵蓋十五塊地盤的桌機與手機座標",()=>{
@@ -242,7 +244,7 @@ test("城市勢力地圖同時涵蓋十五塊地盤的桌機與手機座標",()=
 });
 
 test("共有十名核心隊員、五人出勤上限，升級統一透過見面",()=>{
-  assert.equal(TEAM_MEMBERS.length,10);let state=newGame("x",1);state.day=20;state.player.resource=999;assert.deepEqual(state.team.active,["difei"]);const recruits=TEAM_MEMBERS.filter(member=>member.recruitable!==false).slice(0,6);
+  assert.equal(TEAM_MEMBERS.length,10);let state=confirmedGame("x",1);state.day=20;state.player.resource=999;assert.deepEqual(state.team.active,["difei"]);const recruits=TEAM_MEMBERS.filter(member=>member.recruitable!==false).slice(0,6);
   for(const member of recruits){state.phase="factionBoard";state.selected="life_conflict";state=recruitTeamMember(state,member.id);}
   assert.equal(state.team.roster.length,7);assert.equal(activeTeamMembers(state).length,TEAM_LIMIT);assert.throws(()=>{const board={...state,phase:"factionBoard",selected:"life_conflict"};toggleTeamMember(board,recruits[4].id);},error=>error.code==="ACTIVE_TEAM_FULL");
   state.phase="factionBoard";state.selected="life_conflict";state=toggleTeamMember(state,recruits[0].id);state=toggleTeamMember(state,recruits[4].id);assert.equal(state.team.active.length,5);assert.ok(state.team.active.includes(recruits[4].id));
@@ -281,7 +283,7 @@ test("修改器可改數值並新增離線自訂卡",()=>{
 });
 
 test("新遊戲有五名聯絡人，狄菲預設為 Lv.1 出勤核心隊員",()=>{
-  const state=newGame();assert.equal(CONTACTS.length,5);assert.deepEqual(state.knownContacts,["mira","kael","zero","difei"]);assert.equal(state.relations.difei,35);assert.equal(state.characterLevels.difei,1);assert.deepEqual(state.team.active,["difei"]);assert.equal(nextOfficialMainlineId(state),"signal");
+  const state=confirmedGame();assert.equal(CONTACTS.length,5);assert.deepEqual(state.knownContacts,["mira","kael","zero","difei"]);assert.equal(state.relations.difei,35);assert.equal(state.characterLevels.difei,1);assert.deepEqual(state.team.active,["difei"]);assert.equal(nextOfficialMainlineId(state),"signal");
 });
 
 test("前三個官方任務嚴格依序，第一章完成後程嵐加入並顯示轉場",()=>{
@@ -298,7 +300,7 @@ test("聯絡人提供常駐且隨等級縮放的支援，程嵐降低警方戒�
 });
 
 test("角色升級機率依等級下降至5%下限，專長每級增加基礎值25%",()=>{
-  assert.equal(characterLevelChance(1),90);assert.equal(characterLevelChance(2),80);assert.equal(characterLevelChance(3),75);assert.equal(characterLevelChance(99),5);const state=newGame();state.characterLevels.difei=5;assert.equal(teamBonuses(state).brawl,8);assert.equal(teamBonuses(state).hp,12);
+  assert.equal(characterLevelChance(1),90);assert.equal(characterLevelChance(2),80);assert.equal(characterLevelChance(3),75);assert.equal(characterLevelChance(99),5);const state=confirmedGame();state.characterLevels.difei=5;assert.equal(teamBonuses(state).brawl,8);assert.equal(teamBonuses(state).hp,12);
 });
 
 test("狄菲人物事件達門檻後永久保留，且三段事件必須依序完成",()=>{
@@ -394,15 +396,15 @@ test("legacy result art key remains optional when loading saves",()=>{
 });
 
 test("direct night and work cards persist canonical inventory artKey values",()=>{
-  let state=newGame("x",1);state.deckType="night";state.candidates=["night_shelter"];
+  let state=confirmedGame("x",1);state.deckType="night";state.candidates=["night_shelter"];
   assert.equal(selectCard(state,"night_shelter").lastResult.artKey,"activity-night-night_shelter--night_shelter");
 
-  state=newGame("x",1);state.candidates=["life_work"];
+  state=confirmedGame("x",1);state.candidates=["life_work"];
   assert.equal(selectCard(state,"life_work").lastResult.artKey,"activity-life-life_work--life_work");
 });
 
 test("內建卡覆寫依 customDirect 語意保存自訂圖片鍵",()=>{
-  let state=newGame("x",1);state.candidates=["life_work"];
+  let state=confirmedGame("x",1);state.candidates=["life_work"];
   state=saveCardDefinition(state,{baseId:"life_work",title:"覆寫工作",summary:"改成直接結算",tag:"自訂",cost:0,effects:[],result:"覆寫完成"});
   state=selectCard(state,"life_work");
   assert.equal(state.lastResult.artKey,"custom-life_work--life_work");
