@@ -615,13 +615,29 @@ function assistantGeneralAdvice(state,selection){
 function markAssistantAction(result){const state=clone(result);state.flags={...(state.flags||{}),assistantActionPending:true};return state;}
 
 export function battleSupportSkill(state){
-  const battle=state?.battle,bonuses=teamBonuses(state),members=activeTeamMembers(state),sourceFor=key=>members.find(member=>(member.bonuses?.[key]||0)>0)?.name||"核心隊員";
-  if(battle&&bonuses.medical>0&&battle.playerHp<=battle.playerMaxHp*.55)return{id:"field_medic",title:"軍醫緊急救援",description:"恢復戰力與士氣，使用後冷卻 3 回合。",type:"heal",power:12+bonuses.medical,sourceName:sourceFor("medical")};
-  if(battle?.intent==="defend"&&bonuses.hack>0)return{id:"signal_breach",title:"切斷敵方防線",description:"駭入通訊並重創敵方士氣，使用後冷卻 3 回合。",type:"hack",power:6+bonuses.hack,sourceName:sourceFor("hack")};
-  if(battle?.intent==="assault"&&bonuses.armor>0)return{id:"mobile_cover",title:"展開機動掩護",description:"本回合減傷並恢復士氣，使用後冷卻 3 回合。",type:"guard",power:8+bonuses.armor,sourceName:sourceFor("armor")};
-  if(bonuses.attack>0&&bonuses.attack>=bonuses.brawl)return{id:"coordinated_volley",title:"核心隊員齊射",description:"集中射擊並削弱敵方士氣，使用後冷卻 3 回合。",type:"attack",power:6+bonuses.attack,sourceName:sourceFor("attack")};
-  if(bonuses.brawl>0)return{id:"breach_push",title:"核心隊員突破",description:"近距離突破並打亂敵方隊形，使用後冷卻 3 回合。",type:"brawl",power:6+bonuses.brawl,sourceName:sourceFor("brawl")};
-  return{id:"street_coordination",title:"街頭隊伍整隊",description:"重新穩住士氣，使用後冷卻 3 回合。",type:"morale",power:6,sourceName:"街頭成員"};
+  const battle=state?.battle,members=activeTeamMembers(state),memberById=id=>members.find(member=>member.id===id),firstOf=(...ids)=>ids.map(memberById).find(Boolean),otherMembers=members.filter(member=>member.id!=="difei");
+  let source=null;
+  if(battle&&battle.playerHp<=battle.playerMaxHp*.55)source=memberById("dove");
+  if(!source&&battle?.intent==="defend")source=firstOf("ghost","chenglan");
+  if(!source&&battle?.intent==="assault")source=firstOf("spark","steel_jaw");
+  if(!source&&battle?.intent==="reinforce")source=firstOf("eagle_eye","grey_fox");
+  if(!source&&battle?.intent==="disrupt")source=firstOf("counsel","ledger","chenglan");
+  source??=otherMembers[0]||memberById("difei")||null;
+  if(!source)return{id:"street_coordination",title:"街頭隊伍整隊",description:"重新穩住士氣，使用後冷卻 3 回合。",type:"morale",power:6,sourceId:null,sourceName:"街頭成員"};
+
+  const definitions={
+    difei:{id:"breach_push",title:"核心隊員突破",description:"近距離突破並打亂敵方隊形，使用後冷卻 3 回合。",type:"brawl",base:6,key:"brawl"},
+    chenglan:{id:"signal_breach",title:"封鎖敵方頻道",description:"切斷通訊並重創敵方士氣，使用後冷卻 3 回合。",type:"hack",base:7,key:"hack"},
+    steel_jaw:{id:"bodyguard_breach",title:"護隊強行突破",description:"撕開前線並壓低敵方士氣，使用後冷卻 3 回合。",type:"brawl",base:7,key:"brawl"},
+    grey_fox:{id:"coordinated_volley",title:"精準壓制射擊",description:"集中火力削弱敵方戰力與士氣，使用後冷卻 3 回合。",type:"attack",base:7,key:"attack"},
+    ghost:{id:"signal_breach",title:"接管戰場設備",description:"駭入通訊並重創敵方士氣，使用後冷卻 3 回合。",type:"hack",base:8,key:"hack"},
+    spark:{id:"mobile_cover",title:"開闢機動掩護",description:"本回合減傷並恢復士氣，使用後冷卻 3 回合。",type:"guard",base:8,key:"armor"},
+    dove:{id:"field_medic",title:"軍醫緊急救援",description:"恢復戰力與士氣，使用後冷卻 3 回合。",type:"heal",base:12,key:"medical"},
+    eagle_eye:{id:"target_mark",title:"標定敵方弱點",description:"標出增援路線並發動精準打擊，使用後冷卻 3 回合。",type:"attack",base:7,key:"attack"},
+    counsel:{id:"safe_exit",title:"交涉安全通道",description:"穩住局勢與隊伍士氣，使用後冷卻 3 回合。",type:"morale",base:12,key:"flee"},
+    ledger:{id:"emergency_resupply",title:"調度緊急補給",description:"補充戰力並穩住士氣，使用後冷卻 3 回合。",type:"resupply",base:8,key:"income"}
+  },definition=definitions[source.id]||definitions.difei,level=state.characterLevels?.[source.id]||1,roster=state.team?.roster?.find(member=>member.id===source.id),readiness=(roster?.readiness??100)>=40?1:.7,bonus=Math.round((source.bonuses?.[definition.key]||0)*(1+Math.max(0,level-1)*.25)*readiness);
+  const{base,key,...skill}=definition;return{...skill,power:base+bonus,sourceId:source.id,sourceName:source.name};
 }
 
 export function assistantAdvice(state,selection=DEFAULT_ASSISTANT_ACTIONS){
@@ -786,6 +802,7 @@ function battleActionBase(input,action){
     if(skill.type==="heal"){const before=b.playerHp;b.playerHp=clamp(b.playerHp+skill.power,[0,b.playerMaxHp]);b.playerMorale=clamp(b.playerMorale+6,[0,100]);message=`${skill.sourceName}進行戰地急救，恢復 ${b.playerHp-before} 戰力並穩住士氣。`;}
     else if(skill.type==="guard"){b.guard=true;b.playerMorale=clamp(b.playerMorale+skill.power,[0,100]);message=`${skill.sourceName}展開機動掩護，隊伍士氣回升並準備減傷。`;}
     else if(skill.type==="morale"){b.playerMorale=clamp(b.playerMorale+skill.power,[0,100]);message=`${skill.sourceName}重新整隊，隊伍士氣回升。`;}
+    else if(skill.type==="resupply"){const before=b.playerHp;b.playerHp=clamp(b.playerHp+skill.power,[0,b.playerMaxHp]);b.playerMorale=clamp(b.playerMorale+5,[0,100]);message=`${skill.sourceName}送上緊急補給，恢復 ${b.playerHp-before} 戰力並穩住士氣。`;}
     else{const hit=strike(skill.type,skill.power,skill.type==="hack"?14:9,skill.type==="hack");message=`${skill.sourceName}發動「${skill.title}」，造成 ${hit.damage} 傷害並打亂敵方士氣。`;}
   }
   else if(action==="guard"){b.guard=true;b.playerMorale=clamp(b.playerMorale+5,[0,100]);message="你壓低身體，準備卸開衝擊，隊伍也重新穩住陣腳。";}

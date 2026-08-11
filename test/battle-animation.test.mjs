@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { battleAnimationFor, battleAnimationResult } from "../src/battle-animation.mjs";
+import { battleAnimationAftermath, battleAnimationFor, battleAnimationResult } from "../src/battle-animation.mjs";
 
 test("approved shooting and brawl actions expose playable frame timelines", () => {
   const attack = battleAnimationFor("attack");
@@ -16,7 +16,7 @@ test("approved shooting and brawl actions expose playable frame timelines", () =
   assert.ok(brawl.timeline.every(step => step.duration > 0 && step.frame in brawl.frames));
 });
 
-test("actions without approved frame packs keep immediate resolution", () => {
+test("actions without approved character frame packs expose no actor animation", () => {
   assert.equal(battleAnimationFor("hack"), null);
   assert.equal(battleAnimationFor("guard"), null);
   assert.equal(battleAnimationFor("flee"), null);
@@ -45,4 +45,43 @@ test("a finishing blow displays zero enemy HP without inventing player damage", 
     enemyHp: 0,
     playerHp: 42,
   });
+});
+
+test("enemy counterattack and player hit follow a non-finishing action", () => {
+  const before = { battle: { enemyHp: 84, playerHp: 96 } };
+  const after = { battle: { enemyHp: 57, playerHp: 88, message: "敵方反擊，造成 8 傷害。" } };
+
+  assert.deepEqual(battleAnimationAftermath(before, after).map(step => step.phase), [
+    "enemy-counter",
+    "player-hit",
+    "reset",
+  ]);
+});
+
+test("victory, morale collapse, retreat, and defeat have distinct aftermaths", () => {
+  const before = { battle: { enemyHp: 18, enemyMorale: 9, playerHp: 42 } };
+
+  assert.deepEqual(battleAnimationAftermath(before, {
+    phase: "result",
+    battle: null,
+    lastResult: { success: true, choice: "贏下戰鬥" },
+  }).map(step => step.phase), ["enemy-defeat"]);
+
+  assert.deepEqual(battleAnimationAftermath(before, {
+    phase: "result",
+    battle: null,
+    lastResult: { success: true, choice: "擊潰敵方士氣" },
+  }).map(step => step.phase), ["enemy-break", "enemy-retreat"]);
+
+  assert.deepEqual(battleAnimationAftermath(before, {
+    phase: "result",
+    battle: null,
+    lastResult: { success: false, choice: "主動撤離" },
+  }).map(step => step.phase), ["player-retreat"]);
+
+  assert.deepEqual(battleAnimationAftermath(before, {
+    phase: "result",
+    battle: null,
+    lastResult: { success: false, choice: "負傷撤離" },
+  }).map(step => step.phase), ["enemy-counter", "player-hit", "player-retreat"]);
 });

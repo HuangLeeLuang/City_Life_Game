@@ -12,6 +12,7 @@ import {
   validateSave,
 } from "../src/engine.mjs";
 import { FACTIONS } from "../src/faction-content.mjs";
+import { TEAM_MEMBERS } from "../src/team-content.mjs";
 
 function factionBattle(factionId = "red_tide", seed = 1201) {
   const state = confirmDeployment(newGame("test", seed));
@@ -75,6 +76,35 @@ test("軍醫支援能救援玩家、進入冷卻，狄菲會在危急時建議�
 
   const afterOneTurn = battleAction(next, "guard");
   assert.equal(afterOneTurn.battle.supportCooldown, 2);
+});
+
+test("其他九名核心隊員都能成為職務支援的實際來源", () => {
+  const intentByMember = {
+    chenglan: "defend",
+    steel_jaw: "assault",
+    grey_fox: "reinforce",
+    ghost: "defend",
+    spark: "assault",
+    dove: "assault",
+    eagle_eye: "reinforce",
+    counsel: "disrupt",
+    ledger: "disrupt",
+  };
+
+  for (const member of TEAM_MEMBERS.filter(item => item.id !== "difei")) {
+    const state = factionBattle("red_tide", 1550 + member.unlockDay);
+    state.team.roster = [{ id: member.id, level: 1, recruitedDay: 1, deployableDay: 1, readiness: 100 }];
+    state.team.active = [member.id];
+    state.characterLevels[member.id] = 1;
+    state.battle.intent = intentByMember[member.id];
+    if (member.id === "dove") state.battle.playerHp = 18;
+
+    const skill = battleSupportSkill(state);
+    assert.equal(skill.sourceId, member.id, `${member.name} 未成為支援來源`);
+    assert.equal(skill.sourceName, member.name);
+    assert.ok(skill.title.length > 0);
+    assert.ok(skill.power > 0);
+  }
 });
 
 test("戰鬥勝負會消耗本次出勤隊員備戰度", () => {

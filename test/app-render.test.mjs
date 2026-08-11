@@ -937,6 +937,23 @@ test("five-card and battle choices are text-only while enemy intent is visible",
   assert.match(battleHtml, /assets\/images\/animations\/difei\/brawl-kick\.webp/);
 });
 
+test("non-Difei team support renders its role cutout without replacing Difei frames", async () => {
+  let battleState = newGame("test", 404);
+  battleState.team.roster.push({ id: "grey_fox", level: 1, recruitedDay: 1, deployableDay: 1, readiness: 100 });
+  battleState.team.active = ["grey_fox"];
+  battleState.characterLevels.grey_fox = 1;
+  battleState.phase = "event";
+  battleState.selected = "ambush";
+  battleState = resolveChoice(battleState, getEvent("ambush").choices[0].id);
+  battleState.battle.intent = "reinforce";
+
+  const battleHtml = await renderSavedState(battleState);
+  assert.match(battleHtml, /data-team-support-animation="grey_fox"/);
+  assert.match(battleHtml, /assets\/images\/animations\/team\/grey_fox-support\.webp/);
+  assert.match(battleHtml, /assets\/images\/animations\/difei\/shoot-ready\.webp/);
+  assert.doesNotMatch(battleHtml, /animations\/team\/difei-support/);
+});
+
 test("finale ending renders its result art and prominent success, failure, and neutral status", async () => {
   let finale = newGame("test", 2);
   finale.phase = "event";
