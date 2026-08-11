@@ -133,8 +133,38 @@ function marketAvailable(state){
 }
 export function getEvent(id,state=null){ const found=[...EVENTS,...CHAPTER_EVENTS,...LIFE_CARDS,...NIGHT_CARDS,...(state?.customCards||[])].find(e=>e.id===id); if(!found) throw new GameError("UNKNOWN_EVENT",`未知事件：${id}`); return state?.cardOverrides?.[id]?{...found,...state.cardOverrides[id],id:found.id}:found; }
 const MARKET_CATEGORY_ORDER=["weapons","items","vehicles","properties","industries","luxuries"];
-const marketLineKey=line=>line.kind==="purchase"?`purchase:${line.choiceId}`:`upgrade:${line.category}:${line.assetId}`;
+const marketLineKey=line=>line?.kind==="purchase"?`purchase:${line.choiceId}`:`upgrade:${line?.category}:${line?.assetId}`;
 const assetUpgradeChance=level=>level===0?100:level===1?90:level===2?80:Math.max(5,80-(level-2)*5);
+const MARKET_EFFECT_LABELS={ability:{physique:"體能",reflex:"槍法",hacking:"科技",engineering:"駕駛",social:"口才",perception:"觀察",will:"膽識",management:"生意"},stat:{health:"健康",fatigue:"疲勞",stress:"精神"},world:{corporate:"企業勢力",gangs:"幫派勢力",security:"治安",people:"街坊",ai:"AI 滲透"}};
+function invalidMarketChoice(choice){throw new GameError("INVALID_MARKET_CHOICE",`市場商品資料無效：${choice?.id||"未知商品"}`);}
+function marketChoices(event){if(!Array.isArray(event?.choices))invalidMarketChoice();return event.choices;}
+function marketPurchaseChoice(choices,state,choiceId){
+  const choice=choices.find(item=>item?.id===choiceId);
+  if(!choice)throw new GameError("UNKNOWN_ACTIVITY",`未知市場商品：${choiceId}`);
+  if(!Number.isFinite(choice.cost)||choice.cost<0||!Array.isArray(choice.effects))invalidMarketChoice(choice);
+  const grant=choice.effects.find(effect=>effect?.type==="asset.grant");
+  if(!grant||typeof grant.category!=="string"||!Array.isArray(state.assets?.[grant.category])||typeof grant.assetId!=="string"||!grant.assetId||typeof grant.name!=="string"||!grant.name)invalidMarketChoice(choice);
+  return {choice,grant};
+}
+function marketAppliedEffects(before,state,effects){
+  const logs=state.log.slice(before.log.length);
+  return effects.filter(effect=>["ability.add","stat.add","world.add"].includes(effect.type)).map(effect=>{
+    const group=effect.type.split(".")[0],log=logs.find(entry=>entry.type===effect.type&&entry.target===effect.key);
+    if(!log)throw new GameError("TRANSACTION_FAILED",`市場效果未套用：${effect.key}`);
+    let adjusted=effect.value,statusAdjustment=0,statusName="";
+    if(effect.type==="stat.add"){
+      const status=cityStatusById(before.cityStatus),isRecovery=(effect.key==="health"&&effect.value>0)||(["fatigue","stress"].includes(effect.key)&&effect.value<0);
+      statusAdjustment=isRecovery?(status.recoveryBonus||0):0;
+      adjusted=effect.value>0?effect.value+statusAdjustment:effect.value-statusAdjustment;
+      statusName=statusAdjustment?status.name:"";
+    }else if(effect.type==="world.add"){
+      const reduction=effect.key==="security"&&effect.value>0?(combinedBonuses(before).securityReduction||0):0;
+      adjusted=effect.value>0?Math.max(0,effect.value-reduction):effect.value;
+    }
+    return {type:effect.type,key:effect.key,requested:effect.value,adjusted,before:log.before,after:log.after,delta:log.delta,clamped:log.delta!==adjusted,...(statusAdjustment?{statusAdjustment}:{}),...(statusName?{statusName}:{}),label:MARKET_EFFECT_LABELS[group][effect.key]||effect.key};
+  });
+}
+function marketAppliedSummary(effects){return effects.map(effect=>`${effect.label} ${effect.delta>=0?"+":""}${effect.delta}（${effect.before}→${effect.after}${effect.statusAdjustment?`，${effect.statusName} +${effect.statusAdjustment}`:""}${effect.clamped?"，已限制":""}）`).join("；");}
 export function marketUpgradeQuote(state,category,assetId){
   const asset=state.assets?.[category]?.find(item=>item.id===assetId);
   if(!asset) throw new GameError("UNKNOWN_ASSET",`找不到資產：${assetId}`);
@@ -142,14 +172,12 @@ export function marketUpgradeQuote(state,category,assetId){
   return {level,cost:Math.max(1,Math.ceil((asset.basePrice||1)*.25*(level+1))),chance:assetUpgradeChance(level)};
 }
 export function quoteMarketCart(input,lines){
-  const event=getEvent("asset_market",input);
+  if(!Array.isArray(lines))throw new GameError("INVALID_MARKET_LINE","購物車包含未知項目");
+  const choices=marketChoices(getEvent("asset_market",input));
   let total=0;
   for(const line of lines){
-    if(line.kind==="purchase"){
-      const choice=event.choices.find(item=>item.id===line.choiceId);
-      if(!choice) throw new GameError("UNKNOWN_ACTIVITY",`未知市場商品：${line.choiceId}`);
-      total+=choice.cost||0;
-    }else if(line.kind==="upgrade") total+=marketUpgradeQuote(input,line.category,line.assetId).cost;
+    if(line?.kind==="purchase") total+=marketPurchaseChoice(choices,input,line.choiceId).choice.cost;
+    else if(line?.kind==="upgrade") total+=marketUpgradeQuote(input,line.category,line.assetId).cost;
     else throw new GameError("INVALID_MARKET_LINE","購物車包含未知項目");
   }
   return {count:lines.length,total,remaining:input.player.resource-total,affordable:total<=input.player.resource};
@@ -157,27 +185,22 @@ export function quoteMarketCart(input,lines){
 export function checkoutMarket(input,lines){
   if(input.phase!=="activity"||input.activityKind!=="purchase") throw new GameError("WRONG_PHASE","只能在城市市場結帳");
   if(!Array.isArray(lines)||!lines.length) throw new GameError("EMPTY_CART","購物車目前是空的");
-  const event=getEvent("asset_market",input),keys=lines.map(marketLineKey);
+  const event=getEvent("asset_market",input),choices=marketChoices(event),keys=lines.map(marketLineKey);
   if(new Set(keys).size!==keys.length) throw new GameError("DUPLICATE_MARKET_LINE","購物車包含重複項目");
-  const purchasedAssetIds=new Set(lines
-    .filter(line=>line.kind==="purchase")
-    .map(line=>event.choices.find(choice=>choice.id===line.choiceId))
-    .filter(Boolean)
-    .map(choice=>choice.effects.find(effect=>effect.type==="asset.grant")?.assetId)
-    .filter(Boolean));
-  if(lines.some(line=>line.kind==="upgrade"&&purchasedAssetIds.has(line.assetId))) throw new GameError("NEW_ASSET_UPGRADE","新購資產不能在同一筆交易升級");
-  const purchases=[],upgrades=[],purchasedAssetKeys=new Set();
+  if(lines.some(line=>!line||typeof line!=="object"||!["purchase","upgrade"].includes(line.kind)))throw new GameError("INVALID_MARKET_LINE","購物車包含未知項目");
+  const purchases=[],upgrades=[],purchasedAssetIds=new Set();
   for(const line of lines){
     if(line.kind==="purchase"){
-      const choice=event.choices.find(item=>item.id===line.choiceId),grant=choice?.effects.find(effect=>effect.type==="asset.grant");
-      if(!choice||!grant) throw new GameError("UNKNOWN_ACTIVITY",`未知市場商品：${line.choiceId}`);
+      const {choice,grant}=marketPurchaseChoice(choices,input,line.choiceId);
       if(input.assets[grant.category].some(asset=>asset.id===grant.assetId)) throw new GameError("ASSET_OWNED",`已經持有：${grant.name}`);
-      const grantKey=`${grant.category}:${grant.assetId}`;
-      if(purchasedAssetKeys.has(grantKey)) throw new GameError("DUPLICATE_MARKET_LINE","購物車包含重複項目");
-      purchasedAssetKeys.add(grantKey);
+      if(purchasedAssetIds.has(grant.assetId)) throw new GameError("DUPLICATE_MARKET_LINE","購物車包含重複項目");
+      purchasedAssetIds.add(grant.assetId);
       purchases.push({choice,grant});
-      continue;
     }
+  }
+  if(lines.some(line=>line.kind==="upgrade"&&purchasedAssetIds.has(line.assetId))) throw new GameError("NEW_ASSET_UPGRADE","新購資產不能在同一筆交易升級");
+  for(const line of lines){
+    if(line.kind==="purchase")continue;
     if(line.kind!=="upgrade") throw new GameError("INVALID_MARKET_LINE","購物車包含未知項目");
     const quote=marketUpgradeQuote(input,line.category,line.assetId);
     if(quote.level!==line.expectedLevel) throw new GameError("STALE_UPGRADE",`資產等級已變更：${line.assetId}`);
@@ -190,8 +213,10 @@ export function checkoutMarket(input,lines){
   const results=[];
   for(const {choice} of purchases.sort((left,right)=>marketOrder(left.choice)-marketOrder(right.choice))){
     const effects=choice.effects.map(effect=>effect.type==="asset.grant"?{...effect,basePrice:choice.cost}:effect);
+    const before=state;
     state=applyEffects(state,effects,`market:checkout:${choice.id}`);
-    results.push({kind:"purchase",id:choice.id,label:choice.text,detail:choice.detail,cost:choice.cost,success:true});
+    const appliedEffects=marketAppliedEffects(before,state,effects);
+    results.push({kind:"purchase",id:choice.id,label:choice.text,detail:choice.detail,cost:choice.cost,success:true,appliedEffects,appliedSummary:marketAppliedSummary(appliedEffects)});
   }
   for(const line of upgrades.sort((left,right)=>`${left.category}:${left.assetId}`.localeCompare(`${right.category}:${right.assetId}`))){
     state=applyEffects(state,[{type:"resource.add",value:-line.cost}],`market:upgrade:${line.assetId}`);

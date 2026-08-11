@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { newGame, checkoutMarket, quoteMarketCart } from "../src/engine.mjs";
+import { GameError, newGame, checkoutMarket, quoteMarketCart } from "../src/engine.mjs";
 
 function openMarket(cash = 100) {
   const state = newGame("test", 11);
@@ -159,4 +159,88 @@ test("new-asset conflicts are rejected before stale upgrade validation in either
   for (const lines of [[purchase, staleUpgrade], [staleUpgrade, purchase]]) {
     assert.throws(() => checkoutMarket(state, lines), error => error.code === "NEW_ASSET_UPGRADE");
   }
+});
+
+test("purchase validation takes precedence over conflicting upgrades in either cart order", () => {
+  const state = checkoutMarket(openMarket(), [{ kind: "purchase", choiceId: "stun_baton" }]);
+  state.phase = "activity";
+  state.activityKind = "purchase";
+  const before = structuredClone(state);
+  const purchase = { kind: "purchase", choiceId: "stun_baton" };
+  const staleUpgrade = { kind: "upgrade", category: "weapons", assetId: "weapon_stun_baton", expectedLevel: 99 };
+
+  for (const lines of [[purchase, staleUpgrade], [staleUpgrade, purchase]]) {
+    assert.throws(() => checkoutMarket(state, lines), error => error.code === "ASSET_OWNED");
+    assert.deepEqual(state, before);
+  }
+});
+
+test("unknown purchases take precedence over unrelated stale upgrades in either cart order", () => {
+  const state = checkoutMarket(openMarket(), [{ kind: "purchase", choiceId: "stun_baton" }]);
+  state.phase = "activity";
+  state.activityKind = "purchase";
+  const before = structuredClone(state);
+  const unknownPurchase = { kind: "purchase", choiceId: "not-a-market-choice" };
+  const staleUpgrade = { kind: "upgrade", category: "weapons", assetId: "weapon_stun_baton", expectedLevel: 99 };
+
+  for (const lines of [[unknownPurchase, staleUpgrade], [staleUpgrade, unknownPurchase]]) {
+    assert.throws(() => checkoutMarket(state, lines), error => error.code === "UNKNOWN_ACTIVITY");
+    assert.deepEqual(state, before);
+  }
+});
+
+test("malformed selected market choices are classified and atomic", () => {
+  const malformedChoices = [
+    { id: "bad-effects", text: "Bad effects", cost: 1, effects: null },
+    { id: "missing-grant", text: "Missing grant", cost: 1, effects: [] },
+    { id: "bad-category", text: "Bad category", cost: 1, effects: [{ type: "asset.grant", category: "unknown", assetId: "asset", name: "Asset" }] },
+    { id: "missing-asset-id", text: "Missing asset", cost: 1, effects: [{ type: "asset.grant", category: "weapons", assetId: "", name: "Asset" }] },
+    { id: "missing-name", text: "Missing name", cost: 1, effects: [{ type: "asset.grant", category: "weapons", assetId: "asset", name: "" }] },
+    { id: "negative-cost", text: "Negative cost", cost: -1, effects: [{ type: "asset.grant", category: "weapons", assetId: "asset", name: "Asset" }] },
+    { id: "string-cost", text: "String cost", cost: "1", effects: [{ type: "asset.grant", category: "weapons", assetId: "asset", name: "Asset" }] },
+  ];
+
+  for (const choice of malformedChoices) {
+    const state = openMarket();
+    state.cardOverrides.asset_market = { choices: [choice] };
+    const before = structuredClone(state);
+    assert.throws(
+      () => checkoutMarket(state, [{ kind: "purchase", choiceId: choice.id }]),
+      error => error instanceof GameError && error.code === "INVALID_MARKET_CHOICE",
+      choice.id,
+    );
+    assert.deepEqual(state, before, choice.id);
+  }
+});
+
+test("purchase lines report exact clamped applied ability stat and world effects", () => {
+  const state = openMarket();
+  state.cityStatus = "quiet_day";
+  state.cityStatusIndex = 0;
+  state.player.abilities.physique = 98;
+  state.player.health = 98;
+  state.world.security = 98;
+  state.cardOverrides.asset_market = {
+    choices: [{
+      id: "exact-effects",
+      text: "Exact effects",
+      detail: "Marketing copy must not be the result summary.",
+      cost: 10,
+      effects: [
+        { type: "resource.add", value: -10 },
+        { type: "asset.grant", category: "weapons", assetId: "weapon_exact_effects", name: "Exact effects weapon" },
+        { type: "ability.add", key: "physique", value: 5 },
+        { type: "stat.add", key: "health", value: 7 },
+        { type: "world.add", key: "security", value: 4 },
+      ],
+    }],
+  };
+
+  const result = checkoutMarket(state, [{ kind: "purchase", choiceId: "exact-effects" }]);
+  assert.deepEqual(result.lastResult.marketLines[0].appliedEffects, [
+    { type: "ability.add", key: "physique", requested: 5, adjusted: 5, before: 98, after: 100, delta: 2, clamped: true, label: "體能" },
+    { type: "stat.add", key: "health", requested: 7, adjusted: 9, before: 98, after: 100, delta: 2, clamped: true, statusAdjustment: 2, statusName: "平靜的一天", label: "健康" },
+    { type: "world.add", key: "security", requested: 4, adjusted: 4, before: 98, after: 100, delta: 2, clamped: true, label: "治安" },
+  ]);
+  assert.match(result.lastResult.marketLines[0].appliedSummary, /體能 \+2.*健康 \+2.*平靜的一天 \+2.*治安 \+2/);
 });
