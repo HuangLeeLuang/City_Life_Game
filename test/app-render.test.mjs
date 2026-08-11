@@ -58,25 +58,40 @@ async function mountInteractiveDeployment(savedState) {
   let confirmationButton;
   let acknowledgementButton;
   const storage = new Map([[SAVE_KEY, JSON.stringify(savedState)]]);
-  const control = (dataset = {}, value = "", disabled = false) => {
+  const control = (dataset = {}, value = "", disabled = false, options = [], ariaLabel = "") => {
     const listeners = new Map();
     return {
       dataset,
       value,
       disabled,
+      options,
+      ariaLabel,
       addEventListener(type, listener) { listeners.set(type, listener); },
-      change(next) { this.value = next; listeners.get("change")?.({ currentTarget: this, target: this }); },
+      change(next) {
+        if (this.disabled) return;
+        const option = this.options.find(item => item.value === next);
+        if (this.options.length && (!option || option.disabled)) return;
+        this.value = next;
+        listeners.get("change")?.({ currentTarget: this, target: this });
+      },
       click() { if (!this.disabled) listeners.get("click")?.({ currentTarget: this, target: this }); },
     };
   };
   const controls = attribute => {
     const escaped = attribute.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    return [...html.matchAll(new RegExp(`<(?:select|button)\\b([^>]*\\s${escaped}(?:="([^"]*)")?[^>]*)>`, "g"))]
-      .map(([, attributes, value]) => control(
-        value === undefined ? {} : { [attribute.replace(/^data-/, "").replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())]: value },
-        value || "",
-        /\bdisabled\b/.test(attributes),
-      ));
+    const datasetKey = attribute.replace(/^data-/, "").replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+    const selectPattern = new RegExp(`<select\\b([^>]*\\s${escaped}="([^"]*)[^>]*)>([\\s\\S]*?)<\\/select>`, "g");
+    const selects = [...html.matchAll(selectPattern)].map(([, attributes, value, optionMarkup]) => {
+      const options = [...optionMarkup.matchAll(/<option\b([^>]*)>([^<]*)<\/option>/g)].map(([, optionAttributes]) => ({
+        value: optionAttributes.match(/\bvalue="([^"]*)"/)?.[1] || "",
+        disabled: /\bdisabled\b/.test(optionAttributes),
+      }));
+      const selected = optionMarkup.match(/<option\b([^>]*\bselected\b[^>]*)>/)?.[1]?.match(/\bvalue="([^"]*)"/)?.[1] || options[0]?.value || "";
+      return control({ [datasetKey]: value }, selected, /\bdisabled\b/.test(attributes), options, attributes.match(/\baria-label="([^"]*)"/)?.[1] || "");
+    });
+    if (selects.length) return selects;
+    return [...html.matchAll(new RegExp(`<button\\b([^>]*\\s${escaped}(?:="([^"]*)")?[^>]*)>`, "g"))]
+      .map(([, attributes, value]) => control(value === undefined ? {} : { [datasetKey]: value }, value || "", /\bdisabled\b/.test(attributes)));
   };
   const app = {
     addEventListener() {},
@@ -135,15 +150,21 @@ async function mountInteractiveDeployment(savedState) {
   return {
     get html() { return html; },
     get savedState() { return JSON.parse(storage.get(SAVE_KEY)); },
-    selectMember(memberId, type) {
+    memberControl(memberId) {
       const item = deploymentTypes.find(entry => entry.dataset.deploymentType === memberId);
       assert.ok(item, `missing deployment type control for ${memberId}`);
-      item.change(type);
+      return item;
     },
-    selectTarget(memberId, targetId) {
+    targetControl(memberId) {
       const item = deploymentTargets.find(entry => entry.dataset.deploymentTarget === memberId);
       assert.ok(item, `missing deployment target control for ${memberId}`);
-      item.change(targetId);
+      return item;
+    },
+    selectMember(memberId, type) {
+      this.memberControl(memberId).change(type);
+    },
+    selectTarget(memberId, targetId) {
+      this.targetControl(memberId).change(targetId);
     },
     recommend() { assert.ok(recommendationButton, "missing recommendation control"); recommendationButton.click(); },
     confirm() { assert.ok(confirmationButton, "missing confirmation control"); confirmationButton.click(); },
@@ -354,6 +375,52 @@ test("deployment controls update task targets, reserve removal, and Difei recomm
   game.recommend();
   assert.ok(game.savedState.team.deployment.assignments.difei, "Difei should restore a valid recommendation");
   assert.equal(game.savedState.team.deployment.source, "difei");
+});
+
+test("deployment controls accept only rendered enabled options and name each member's target", async () => {
+  const state = newGame("test", 46);
+  state.assets.industries.push(
+    { id: "industry_first", name: "第一產業", dailyIncome: 2 },
+    { id: "industry_second", name: "第二產業", dailyIncome: 3 },
+  );
+  state.territories.south_docks.owner = "player";
+  state.territories.fish_market.owner = "player";
+  const game = await mountInteractiveDeployment(state);
+
+  const taskOptions = game.memberControl("difei").options;
+  assert.equal(taskOptions.find(option => option.value === "manage").disabled, false);
+  assert.equal(taskOptions.find(option => option.value === "defend").disabled, false);
+
+  game.selectMember("difei", "manage");
+  const industryTarget = game.targetControl("difei");
+  assert.equal(industryTarget.ariaLabel, "狄菲 的產業目標");
+  assert.deepEqual(industryTarget.options.map(option => option.value), ["industry_first", "industry_second"]);
+  game.selectTarget("difei", "industry_second");
+  assert.deepEqual(game.savedState.team.deployment.assignments.difei, { type: "manage", targetId: "industry_second" });
+
+  game.selectMember("difei", "defend");
+  const defenseTarget = game.targetControl("difei");
+  assert.equal(defenseTarget.ariaLabel, "狄菲 的防守地盤");
+  assert.deepEqual(defenseTarget.options.map(option => option.value), ["south_docks", "fish_market"]);
+  game.selectTarget("difei", "fish_market");
+  assert.deepEqual(game.savedState.team.deployment.assignments.difei, { type: "defend", targetId: "fish_market" });
+
+  const noTargets = await mountInteractiveDeployment(newGame("test", 47));
+  const unavailableTaskOptions = noTargets.memberControl("difei").options;
+  assert.equal(unavailableTaskOptions.find(option => option.value === "manage").disabled, true);
+  assert.equal(unavailableTaskOptions.find(option => option.value === "defend").disabled, true);
+  const beforeInvalidChanges = structuredClone(noTargets.savedState.team.deployment.assignments);
+  noTargets.selectMember("difei", "manage");
+  noTargets.selectMember("difei", "defend");
+  assert.deepEqual(noTargets.savedState.team.deployment.assignments, beforeInvalidChanges);
+
+  const exhausted = newGame("test", 48);
+  exhausted.team.roster.push({ id: "steel_jaw", level: 1, recruitedDay: 1, deployableDay: 1, readiness: 10 });
+  const exhaustedGame = await mountInteractiveDeployment(exhausted);
+  assert.equal(exhaustedGame.memberControl("steel_jaw").disabled, true);
+  const beforeExhaustedChange = structuredClone(exhaustedGame.savedState.team.deployment.assignments);
+  exhaustedGame.selectMember("steel_jaw", "earn");
+  assert.deepEqual(exhaustedGame.savedState.team.deployment.assignments, beforeExhaustedChange);
 });
 
 test("deployment confirmation enters cards while a pending attack blocks cards until acknowledgement starts battle", async () => {
