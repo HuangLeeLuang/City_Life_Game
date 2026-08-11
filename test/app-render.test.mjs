@@ -179,6 +179,8 @@ async function mountInteractiveAutomation(savedState) {
   const timers = new Map();
   const windowListeners = new Map();
   let renderedControls = new Map();
+  let titleStartControl;
+  let titleModifierControl;
   const storage = new Map([[SAVE_KEY, JSON.stringify(savedState)]]);
   const control = dataset => {
     const listeners = new Map();
@@ -205,7 +207,12 @@ async function mountInteractiveAutomation(savedState) {
   const document = {
     querySelector(selector) {
       if (selector === "#app") return app;
-      if (selector === ".actions") return { append() {} };
+      if (selector === ".actions") return { append(control) { titleModifierControl = control; } };
+      if (selector === "[data-card-editor]" && html.includes("data-card-editor")) return { elements: {}, addEventListener() {} };
+      if (selector === "[data-start]" && html.includes("data-start")) {
+        titleStartControl ??= selectorControl(selector);
+        return titleStartControl;
+      }
       if (selector === "[data-load]" && html.includes("data-load")) {
         const item = control({});
         const addEventListener = item.addEventListener;
@@ -264,6 +271,8 @@ async function mountInteractiveAutomation(savedState) {
     async ticks(count) { for (let index = 0; index < count; index += 1) await this.tick(); },
     raiseGlobalError() { windowListeners.get("error")?.(new Error("test global error")); },
     replaceSave(next) { storage.set(SAVE_KEY, JSON.stringify(next)); load(); },
+    startNew() { assert.ok(titleStartControl, "missing title start control"); titleStartControl.click(); },
+    openTitleModifier() { assert.ok(titleModifierControl, "missing title modifier control"); titleModifierControl.click(); },
   };
 }
 
@@ -547,13 +556,39 @@ test("automation controls stay visible with live status and deployment team summ
   assert.match(game.html, /team-summary/);
 });
 
-test("automation mode is session-only and resets for loading, new games, and the title modifier", async () => {
+test("loading a saved game resets the session-only automation mode", async () => {
   const game = await mountInteractiveAutomation(confirmDeployment(newGame("test", 71)));
 
   game.click("data-auto-continuous");
   game.replaceSave(confirmDeployment(newGame("test", 72)));
   assert.match(game.html, /data-auto-day/);
   assert.doesNotMatch(game.html, /data-auto-stop/);
+});
+
+test("the title new-game handler clears a scheduled automation timer", async () => {
+  const game = await mountInteractiveAutomation(confirmDeployment(newGame("test", 73)));
+
+  game.click("data-auto-continuous");
+  assert.equal(game.timerCount, 1);
+  assert.match(game.html, /data-auto-stop/);
+  game.startNew();
+
+  assert.equal(game.timerCount, 0);
+  assert.doesNotMatch(game.html, /data-auto-stop/);
+  assert.match(game.html, /data-deployment-confirm/);
+});
+
+test("the title modifier handler clears a scheduled automation timer", async () => {
+  const game = await mountInteractiveAutomation(confirmDeployment(newGame("test", 74)));
+
+  game.click("data-auto-continuous");
+  assert.equal(game.timerCount, 1);
+  assert.match(game.html, /data-auto-stop/);
+  game.openTitleModifier();
+
+  assert.equal(game.timerCount, 0);
+  assert.doesNotMatch(game.html, /data-auto-stop/);
+  assert.match(game.html, /class="panel modifier"/);
 });
 
 test("deployment controls update task targets, reserve removal, and Difei recommendations through real change handlers", async () => {
