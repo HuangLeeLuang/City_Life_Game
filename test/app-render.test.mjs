@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { choiceArt } from "../src/art-content.mjs";
-import { checkoutMarket, confirmDeployment, generateCards, newGame, getEvent, resolveChoice } from "../src/engine.mjs";
+import { beginDeployment, checkoutMarket, confirmDeployment, generateCards, newGame, getEvent, resolveChoice } from "../src/engine.mjs";
 import { FACTIONS, TERRITORIES } from "../src/faction-content.mjs";
 
 const SAVE_KEY = "crime-five-roads-save-v2";
@@ -48,6 +48,109 @@ async function renderSavedState(savedState) {
   return app.innerHTML;
 }
 
+async function mountInteractiveDeployment(savedState) {
+  let html = "";
+  let load;
+  let loadControl;
+  let deploymentTypes = [];
+  let deploymentTargets = [];
+  let recommendationButton;
+  let confirmationButton;
+  let acknowledgementButton;
+  const storage = new Map([[SAVE_KEY, JSON.stringify(savedState)]]);
+  const control = (dataset = {}, value = "", disabled = false) => {
+    const listeners = new Map();
+    return {
+      dataset,
+      value,
+      disabled,
+      addEventListener(type, listener) { listeners.set(type, listener); },
+      change(next) { this.value = next; listeners.get("change")?.({ currentTarget: this, target: this }); },
+      click() { if (!this.disabled) listeners.get("click")?.({ currentTarget: this, target: this }); },
+    };
+  };
+  const controls = attribute => {
+    const escaped = attribute.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return [...html.matchAll(new RegExp(`<(?:select|button)\\b([^>]*\\s${escaped}(?:="([^"]*)")?[^>]*)>`, "g"))]
+      .map(([, attributes, value]) => control(
+        value === undefined ? {} : { [attribute.replace(/^data-/, "").replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())]: value },
+        value || "",
+        /\bdisabled\b/.test(attributes),
+      ));
+  };
+  const app = {
+    addEventListener() {},
+    get innerHTML() { return html; },
+    set innerHTML(value) { html = value; },
+  };
+  const document = {
+    querySelector(selector) {
+      if (selector === "#app") return app;
+      if (selector === ".actions") return { append() {} };
+      if (selector === "[data-load]" && html.includes("data-load")) {
+        if (!loadControl) {
+          loadControl = control();
+          const addEventListener = loadControl.addEventListener;
+          loadControl.addEventListener = (type, listener) => {
+            if (type === "click") load = listener;
+            addEventListener.call(loadControl, type, listener);
+          };
+        }
+        return loadControl;
+      }
+      const match = selector.match(/^\[([^\]]+)\]$/);
+      if (!match) return null;
+      const item = controls(match[1])[0] || null;
+      if (match[1] === "data-deployment-recommend") recommendationButton = item;
+      if (match[1] === "data-deployment-confirm") confirmationButton = item;
+      if (match[1] === "data-attack-acknowledge") acknowledgementButton = item;
+      return item;
+    },
+    querySelectorAll(selector) {
+      const match = selector.match(/^\[([^\]]+)\]$/);
+      if (!match) return [];
+      const items = controls(match[1]);
+      if (match[1] === "data-deployment-type") deploymentTypes = items;
+      if (match[1] === "data-deployment-target") deploymentTargets = items;
+      return items;
+    },
+    createElement() { return control(); },
+  };
+  const localStorage = {
+    getItem: key => storage.get(key) ?? null,
+    setItem(key, value) { storage.set(key, String(value)); },
+    removeItem: key => storage.delete(key),
+  };
+
+  Object.assign(globalThis, {
+    document,
+    localStorage,
+    location: { protocol: "file:" },
+    window: { addEventListener() {} },
+    HTMLImageElement: class {},
+  });
+  await import(`../src/app.mjs?deployment-interaction-test=${importSequence++}`);
+  assert.equal(typeof load, "function", "saved game load handler should be registered");
+  load();
+  return {
+    get html() { return html; },
+    get savedState() { return JSON.parse(storage.get(SAVE_KEY)); },
+    selectMember(memberId, type) {
+      const item = deploymentTypes.find(entry => entry.dataset.deploymentType === memberId);
+      assert.ok(item, `missing deployment type control for ${memberId}`);
+      item.change(type);
+    },
+    selectTarget(memberId, targetId) {
+      const item = deploymentTargets.find(entry => entry.dataset.deploymentTarget === memberId);
+      assert.ok(item, `missing deployment target control for ${memberId}`);
+      item.change(targetId);
+    },
+    recommend() { assert.ok(recommendationButton, "missing recommendation control"); recommendationButton.click(); },
+    confirm() { assert.ok(confirmationButton, "missing confirmation control"); confirmationButton.click(); },
+    acknowledge() { assert.ok(acknowledgementButton, "missing attack acknowledgement control"); acknowledgementButton.click(); },
+  };
+}
+
 async function mountInteractiveMarket(savedState) {
   let html = "";
   let initialLoad;
@@ -59,6 +162,7 @@ async function mountInteractiveMarket(savedState) {
   let checkoutButton;
   let leaveButton;
   let modifierButton;
+  let deploymentConfirmButton;
   let continueButton;
   let cardButtons = [];
   let marketSections = [];
@@ -123,6 +227,7 @@ async function mountInteractiveMarket(savedState) {
       const sectionMatch = selector.match(/^\[data-market-section="([^"]+)"\]$/);
       if (sectionMatch) return marketSections.find(section => section.dataset.marketSection === sectionMatch[1]) || null;
       if (selector === "[data-modifier]" && html.includes("data-modifier")) return modifierButton = button();
+      if (selector === "[data-deployment-confirm]") return deploymentConfirmButton = bareButton("data-deployment-confirm");
       if (selector === "[data-continue]") return continueButton = bareButton("data-continue");
       return null;
     },
@@ -177,6 +282,7 @@ async function mountInteractiveMarket(savedState) {
     startNew(seed) { assert.ok(initialStart, "missing new game control"); const originalNow = Date.now; Date.now = () => seed; try { initialStart.click(); } finally { Date.now = originalNow; } },
     openTitleModifier(seed) { assert.ok(startModifier, "missing title modifier control"); const originalNow = Date.now; Date.now = () => seed; try { startModifier.click(); } finally { Date.now = originalNow; } },
     closeModifier() { assert.ok(modifierButton, "missing modifier close control"); modifierButton.click(); },
+    confirmDeployment() { assert.ok(deploymentConfirmButton, "missing deployment confirmation control"); deploymentConfirmButton.click(); },
     continue() { assert.ok(continueButton, "missing continue control"); continueButton.click(); },
     chooseCard(id) { const control = cardButtons.find(item => item.dataset.card === id); assert.ok(control, `missing card ${id}`); control.click(); },
     load(state) { storage.set(SAVE_KEY, JSON.stringify(state)); initialLoad.click(); },
@@ -219,6 +325,63 @@ function deploymentResultCardsState() {
   confirmed.candidates = ["night_shelter"];
   return confirmed;
 }
+
+test("deployment view shows roster readiness, assignments, and a sticky morning confirmation", async () => {
+  const html = await renderSavedState(newGame("test", 40));
+
+  assert.match(html, /data-deployment-member="difei"/);
+  assert.match(html, /備戰度 100\/100/);
+  assert.match(html, /data-deployment-type="difei"/);
+  assert.match(html, /data-deployment-recommend/);
+  assert.match(html, /data-deployment-confirm/);
+  assert.match(html, /deployment-controls/);
+});
+
+test("deployment controls update task targets, reserve removal, and Difei recommendations through real change handlers", async () => {
+  const state = newGame("test", 42);
+  state.assets.industries.push(
+    { id: "industry_first", name: "第一產業", dailyIncome: 2 },
+    { id: "industry_second", name: "第二產業", dailyIncome: 3 },
+  );
+  const game = await mountInteractiveDeployment(state);
+
+  game.selectMember("difei", "manage");
+  assert.deepEqual(game.savedState.team.deployment.assignments.difei, { type: "manage", targetId: "industry_first" });
+  game.selectTarget("difei", "industry_second");
+  assert.deepEqual(game.savedState.team.deployment.assignments.difei, { type: "manage", targetId: "industry_second" });
+  game.selectMember("difei", "reserve");
+  assert.equal("difei" in game.savedState.team.deployment.assignments, false);
+  game.recommend();
+  assert.ok(game.savedState.team.deployment.assignments.difei, "Difei should restore a valid recommendation");
+  assert.equal(game.savedState.team.deployment.source, "difei");
+});
+
+test("deployment confirmation enters cards while a pending attack blocks cards until acknowledgement starts battle", async () => {
+  const normal = await mountInteractiveDeployment(newGame("test", 43));
+  normal.confirm();
+  assert.equal(normal.savedState.phase, "cards");
+
+  const threatened = newGame("test", 44);
+  threatened.territories.south_docks.owner = "player";
+  threatened.pendingRetaliation = { territoryId: "south_docks", factionId: "red_tide", sinceDay: 1 };
+  const alert = await mountInteractiveDeployment(beginDeployment(threatened));
+  alert.confirm();
+  assert.equal(alert.savedState.phase, "attackAlert");
+  assert.match(alert.html, /遭遇敵方反攻/);
+  assert.match(alert.html, /data-attack-acknowledge/);
+  assert.doesNotMatch(alert.html, /data-card=/);
+  alert.acknowledge();
+  assert.equal(alert.savedState.phase, "battle");
+});
+
+test("team board has no mid-day active toggle controls", async () => {
+  const state = generateCards(newGame("test", 45));
+  state.phase = "factionBoard";
+  const html = await renderSavedState(state);
+
+  assert.doesNotMatch(html, /data-team-toggle=/);
+  assert.match(html, /每日派遣/);
+});
 
 test("commit persists a settled deployment result exactly once", async () => {
   const game = await mountInteractiveMarket(deploymentResultCardsState());
@@ -396,6 +559,7 @@ test("new game clears the cart before a public market re-entry", async () => {
   const market = await mountInteractiveMarket(openMarketRenderState());
   market.purchase("stun_baton");
   market.startNew(2);
+  market.confirmDeployment();
   market.chooseCard("life_purchase");
   assert.match(market.html, /data-market-purchase="stun_baton"[^>]*aria-pressed="false"/);
   assert.match(market.html, /0 項／總計 0/);
@@ -415,6 +579,7 @@ test("title modifier entry clears the cart before a public market re-entry", asy
   market.purchase("stun_baton");
   market.openTitleModifier(2);
   market.closeModifier();
+  market.confirmDeployment();
   market.chooseCard("life_purchase");
   assert.match(market.html, /data-market-purchase="stun_baton"[^>]*aria-pressed="false"/);
   assert.match(market.html, /0 項／總計 0/);
