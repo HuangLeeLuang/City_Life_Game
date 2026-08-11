@@ -567,6 +567,26 @@ function assistantRecoveryOption(state){
 function assistantDirectActivity(input,kind,optionId){
   const state=clone(input);state.phase="activity";state.selected=kind==="training"?"life_training":"life_leisure";state.activityKind=kind;state.activityOptions=[optionId];return resolveActivity(state,optionId);
 }
+export function autoOperationChoice(state,selection){
+  if(state.phase!=="cards")throw new GameError("WRONG_PHASE","自動運作只能從卡牌階段開始");
+  if(state.pendingRetaliation)throw new GameError("AUTOMATION_INTERRUPTED","敵人正在進攻，請由玩家決定如何應對。");
+  const selected=new Set(normalizeAssistantActions(selection));
+  const choices=[
+    ...TRAINING_CARDS.filter(option=>selected.has(`train:${option.id}`)&&(option.cost||0)<=state.player.resource).map(option=>({id:`train:${option.id}`,kind:"training",optionId:option.id})),
+    ...LEISURE_CARDS.filter(option=>selected.has(`recover:${option.id}`)&&(option.cost||0)<=state.player.resource).map(option=>({id:`recover:${option.id}`,kind:"leisure",optionId:option.id})),
+    ...(selected.has("work:cash")?[{id:"work:cash",kind:"work",optionId:null}]:[]),
+  ];
+  if(choices.length)return choices[assistantPickIndex(state,choices.length,`auto:${[...selected].sort().join("|")}`)];
+  const rest=LEISURE_CARDS.find(option=>option.id==="leisure_free_rest");
+  return state.player.health<70||state.player.fatigue>45||state.player.stress>45
+    ?{id:`recover:${rest.id}`,kind:"leisure",optionId:rest.id}
+    :{id:"work:cash",kind:"work",optionId:null};
+}
+export function resolveAutoOperation(input,selection){
+  const choice=autoOperationChoice(input,selection);
+  if(choice.kind==="training"||choice.kind==="leisure")return markAssistantAction(assistantDirectActivity(input,choice.kind,choice.optionId));
+  const state=clone(input);state.selected="life_work";return markAssistantAction(resolveWork(state));
+}
 function assistantAdviceObject(id,tone,title,message,actionLabel=null){return {id,tone,title,message,actionLabel,actionable:!!actionLabel};}
 function assistantGeneralAdvice(state,selection){
   const selected=normalizeAssistantActions(selection),selectedSet=new Set(selected),choices=[
