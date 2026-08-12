@@ -1,6 +1,23 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { battleAnimationAftermath, battleAnimationFor, battleAnimationResult } from "../src/battle-animation.mjs";
+
+async function webpCanvasSize(source) {
+  const data = await readFile(new URL(`../${source}`, import.meta.url));
+  assert.equal(data.toString("ascii", 0, 4), "RIFF");
+  assert.equal(data.toString("ascii", 8, 12), "WEBP");
+  for (let offset = 12; offset + 8 <= data.length;) {
+    const type = data.toString("ascii", offset, offset + 4);
+    const size = data.readUInt32LE(offset + 4);
+    if (type === "VP8X") {
+      const payload = offset + 8;
+      return [data.readUIntLE(payload + 4, 3) + 1, data.readUIntLE(payload + 7, 3) + 1];
+    }
+    offset += 8 + size + (size % 2);
+  }
+  assert.fail(`${source} must use an extended WebP canvas`);
+}
 
 test("approved shooting and brawl actions expose playable frame timelines", () => {
   const attack = battleAnimationFor("attack");
@@ -45,6 +62,21 @@ test("a finishing blow displays zero enemy HP without inventing player damage", 
     enemyHp: 0,
     playerHp: 42,
   });
+});
+
+test("Difei brawl frames share one portrait canvas for a stable ground line", async () => {
+  const frames = Object.values(battleAnimationFor("brawl").frames);
+  const sizes = await Promise.all(frames.map(webpCanvasSize));
+
+  assert.deepEqual(sizes, frames.map(() => [750, 1000]));
+});
+
+test("battle character transforms pivot on the shared ground line", async () => {
+  const styles = await readFile(new URL("../styles.css", import.meta.url), "utf8");
+
+  assert.match(styles, /\.battle-animation-frame\{[^}]*transform-origin:48% 97\.4%/);
+  assert.match(styles, /\.battle-enemy-frame\{[^}]*transform-origin:55% 97\.4%/);
+  assert.match(styles, /\.battle-team-support-frame\{[^}]*transform-origin:45% 97\.4%/);
 });
 
 test("enemy counterattack and player hit follow a non-finishing action", () => {
