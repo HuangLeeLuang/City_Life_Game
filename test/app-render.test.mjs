@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { choiceArt } from "../src/art-content.mjs";
-import { beginDeployment, checkoutMarket, confirmDeployment, generateCards, newGame, getEvent, resolveChoice } from "../src/engine.mjs";
+import { beginDeployment, checkoutMarket, confirmDeployment, generateCards, newGame, getEvent, resolveChoice, startFactionFight } from "../src/engine.mjs";
 import { FACTIONS, TERRITORIES } from "../src/faction-content.mjs";
 
 const SAVE_KEY = "crime-five-roads-save-v2";
@@ -935,6 +935,22 @@ test("five-card and battle choices are text-only while enemy intent is visible",
   assert.match(battleHtml, /戰術目標/);
   assert.match(battleHtml, /assets\/images\/animations\/difei\/shoot-ready\.webp/);
   assert.match(battleHtml, /assets\/images\/animations\/difei\/brawl-kick\.webp/);
+  assert.match(battleHtml, /data-battle-enemy-frame="ready"/);
+  assert.match(battleHtml, /assets\/images\/animations\/enemy\/gunner-ready\.webp/);
+  assert.match(battleHtml, /assets\/images\/animations\/enemy\/gunner-action\.webp/);
+  assert.match(battleHtml, /assets\/images\/animations\/enemy\/gunner-hit\.webp/);
+  assert.match(battleHtml, /assets\/images\/animations\/enemy\/gunner-exit\.webp/);
+  assert.doesNotMatch(battleHtml, /battle-animation-target/);
+
+  let factionBattle = newGame("test", 41);
+  factionBattle.phase = "factionBoard";
+  factionBattle.selected = "life_conflict";
+  factionBattle.player.resource = 100;
+  factionBattle = startFactionFight(factionBattle, "red_tide");
+  const factionBattleHtml = await renderSavedState(factionBattle);
+  assert.match(factionBattleHtml, /data-enemy-archetype="bruiser"/);
+  assert.match(factionBattleHtml, /assets\/images\/animations\/enemy\/bruiser-ready\.webp/);
+  assert.match(factionBattleHtml, /style="--enemy-accent:#dc575f"/);
 });
 
 test("non-Difei team support renders its role cutout without replacing Difei frames", async () => {
