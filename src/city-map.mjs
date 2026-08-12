@@ -7,7 +7,7 @@ export const TERRITORY_MAP_POSITIONS = Object.freeze({
   north_tenements:{x:38,y:25,mx:75,my:16},
   river_casino:{x:44,y:44,mx:45,my:48},
   chip_logistics:{x:77,y:34,mx:82,my:34},
-  finance_tower:{x:54,y:36,mx:50,my:30},
+  finance_tower:{x:49,y:51,mx:50,my:30},
   west_rail_yard:{x:14,y:52,mx:18,my:32},
   construction_depot:{x:23,y:65,mx:20,my:52},
   pirate_station:{x:23,y:26,mx:50,my:12},

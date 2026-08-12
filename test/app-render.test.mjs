@@ -306,8 +306,6 @@ async function mountInteractiveMarket(savedState) {
     set innerHTML(value) {
       html = value;
       activeElement = null;
-      viewport.x = 0;
-      viewport.y = 0;
       marketSections = [...html.matchAll(/<details class="market-section"[^>]*data-market-section="([^"]+)"[^>]*>/g)].map(([, key]) => ({ dataset: { marketSection: key }, open: false }));
       marketScroll = html.includes("data-market-scroll") ? { scrollTop: 0, scrollLeft: 0 } : null;
       marketFocusControls = new Map([...html.matchAll(/data-market-focus="([^"]+)"/g)].map(([, key]) => [key, button({ marketFocus: key })]));
@@ -760,7 +758,7 @@ test("market checkout and confirmed leave do not restore market viewport onto re
   checkoutMarket.checkout.click();
 
   assert.match(checkoutMarket.html, /phase-result/);
-  assert.deepEqual(checkoutMarket.viewport, { x: 0, y: 0, calls: [] });
+  assert.deepEqual(checkoutMarket.viewport, { x: 0, y: 0, calls: [[0, 0]] });
 
   const leaveMarket = await mountInteractiveMarket(openMarketRenderState());
   leaveMarket.purchase("stun_baton");
@@ -768,7 +766,17 @@ test("market checkout and confirmed leave do not restore market viewport onto re
   leaveMarket.leave();
 
   assert.match(leaveMarket.html, /phase-result/);
-  assert.deepEqual(leaveMarket.viewport, { x: 0, y: 0, calls: [] });
+  assert.deepEqual(leaveMarket.viewport, { x: 0, y: 0, calls: [[0, 0]] });
+});
+
+test("entering a new view resets the real page viewport", async () => {
+  const cards = marketOpeningCardsState();
+  cards.candidates = ["life_purchase", "life_leisure", "life_training", "life_social", "life_conflict"];
+  const app = await mountInteractiveMarket(cards);
+
+  app.setViewport(0, 1519);
+  app.chooseCard("life_purchase");
+  assert.deepEqual(app.viewport, { x: 0, y: 0, calls: [[0, 0]] });
 });
 
 test("market result renders the exact applied effect summary for each line", async () => {
@@ -945,6 +953,11 @@ test("five-card and battle choices are text-only while enemy intent is visible",
   assert.match(battleHtml, /assets\/images\/animations\/enemy\/gunner-hit\.webp/);
   assert.match(battleHtml, /assets\/images\/animations\/enemy\/gunner-exit\.webp/);
   assert.doesNotMatch(battleHtml, /battle-animation-target/);
+  assert.match(battleHtml, /visual-priority/);
+  assert.ok(
+    battleHtml.indexOf("data-battle-animation-stage") < battleHtml.indexOf("data-battle-tactic"),
+    "battle animation should precede supporting tactical details",
+  );
 
   let factionBattle = newGame("test", 41);
   factionBattle.phase = "factionBoard";
@@ -990,6 +1003,7 @@ test("finale ending renders its result art and prominent success, failure, and n
     state.lastResult.success = success;
     const html = await renderSavedState(state);
     assert.match(html, /class="result-art"[^>]+ch5_finale--free\.webp/);
+    assert.ok(html.indexOf('class="result-art"') < html.indexOf('class="result-status'), "result art should be the first result content");
     assert.match(html, new RegExp(`class="result-status ${tone}"[^>]*>${label}<`));
   }
 });
