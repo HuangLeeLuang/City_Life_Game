@@ -32,3 +32,23 @@ test("mobile battle size control scales both sides without changing desktop anim
   assert.match(mobile[1], /scale:var\(--battle-character-scale,\.75\)/);
   assert.doesNotMatch(source.slice(0, source.indexOf("@media(max-width:760px)")), /scale:var\(--battle-character-scale/);
 });
+
+test("mobile battle playback occupies the unobscured top area above Difei", async () => {
+  const source = await readFile(new URL("../styles.css", import.meta.url), "utf8");
+  const appSource = await readFile(new URL("../src/app.mjs", import.meta.url), "utf8");
+  const overlay = source.match(/\.battle-animation-shell\.is-playing\{([^}]*)\}/);
+  const stage = source.match(/\.battle-animation-shell\.is-playing \.battle-animation-stage\{([^}]*)\}/);
+
+  assert.ok(overlay, "mobile playback overlay rule exists");
+  assert.match(overlay[1], /position:fixed/);
+  assert.match(overlay[1], /top:env\(safe-area-inset-top\)/);
+  assert.match(overlay[1], /height:calc\(46dvh - env\(safe-area-inset-top\)\)/);
+  assert.match(overlay[1], /box-sizing:border-box/);
+  assert.match(overlay[1], /overflow:hidden/);
+  assert.ok(Number(overlay[1].match(/z-index:(\d+)/)?.[1]) > 80, "playback overlay sits above the ordinary assistant layer");
+  assert.ok(stage, "mobile playback stage rule exists");
+  assert.match(stage[1], /height:100%/);
+  assert.match(source, /\.battle-animation-shell\.is-playing \.battle-enemy-brief,\.battle-animation-shell\.is-playing \.battle-scale-control\{display:none\}/);
+  assert.match(appSource, /animationShell\?\.classList\.add\("is-playing"\)/);
+  assert.match(appSource, /finally\{animationShell\?\.classList\.remove\("is-playing"\)/);
+});

@@ -23,7 +23,7 @@ test("service worker publishes the replacement logo in a fresh offline cache", a
   const source = await readFile(new URL("../sw.js", import.meta.url), "utf8");
   const version = source.match(/const CACHE = "crime-five-roads-v(\d+)";/);
   assert.ok(version, "service-worker cache version must be discoverable");
-  assert.ok(Number(version[1]) >= 51, `expected cache v51 or newer, got v${version[1]}`);
+  assert.ok(Number(version[1]) >= 52, `expected cache v52 or newer, got v${version[1]}`);
 
   for (const name of [
     "icon-192.png",

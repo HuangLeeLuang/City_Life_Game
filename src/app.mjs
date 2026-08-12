@@ -193,15 +193,17 @@ async function playBattleAftermath(beforeState,afterState){
 }
 async function playBattleAction(action,resolveAction=beforeState=>battleAction(beforeState,action)){
   if(battleAnimationRunning)return;
-  document.querySelector(".battle-animation-shell")?.scrollIntoView({behavior:"auto",block:"start"});
+  const animationShell=document.querySelector(".battle-animation-shell");
+  animationShell?.scrollIntoView({behavior:"auto",block:"start"});
   const supportSkill=action==="support"?battleSupportSkill(state):null,supportAnimation=supportSkill?.sourceId&&supportSkill.sourceId!=="difei"?teamSupportAnimationFor(supportSkill.sourceId):null,animation=supportAnimation||battleAnimationFor(action);
   if(!animation&&action==="support"){commit(()=>resolveAction(state));return;}
   const beforeState=state;
   let nextState;
   try{nextState=resolveAction(beforeState);}catch(exception){commit(()=>{throw exception;});return;}
   battleAnimationRunning=true;
+  animationShell?.classList.add("is-playing");
   setBattleButtonsDisabled(true);
-  try{if(supportAnimation)await playTeamSupportTimeline(supportAnimation,beforeState,nextState);else if(animation)await playBattleTimeline(action,animation,beforeState,nextState);else await playBattleAftermath(beforeState,nextState);}catch(exception){console.error("戰鬥動畫播放失敗，改為直接結算。",exception);}finally{battleAnimationRunning=false;commit(()=>nextState);}
+  try{if(supportAnimation)await playTeamSupportTimeline(supportAnimation,beforeState,nextState);else if(animation)await playBattleTimeline(action,animation,beforeState,nextState);else await playBattleAftermath(beforeState,nextState);}catch(exception){console.error("戰鬥動畫播放失敗，改為直接結算。",exception);}finally{animationShell?.classList.remove("is-playing");battleAnimationRunning=false;commit(()=>nextState);}
 }
 function battle(){
   const b=state.battle,faction=b.factionId?factionById(b.factionId):null,territory=b.territoryId?territoryById(b.territoryId):null,intent=enemyIntentById(b.intent),mode={capture:"搶奪地盤",defend:"防守地盤",skirmish:"主動挑戰",event:"事件戰鬥"}[b.battleType]||"事件戰鬥",active=activeTeamMembers(state),team=teamBonuses(state),gear=assetBonuses(state),supportSkill=battleSupportSkill(state),supportAnimation=supportSkill.sourceId&&supportSkill.sourceId!=="difei"?teamSupportAnimationFor(supportSkill.sourceId):null,cooldown=b.supportCooldown||0,weaknessLabel={attack:"快速射擊",brawl:"近身格鬥",hack:"環境科技"}[b.weakness]||"觀察戰況";
