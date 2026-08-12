@@ -20,3 +20,15 @@ test("automation layer numerically sits between ordinary assistant and picker ba
   assert.ok(automation > assistant, "automation z-index is numerically above the ordinary assistant");
   assert.ok(automation < picker, "automation z-index is numerically below the picker backdrop");
 });
+
+test("mobile battle size control scales both sides without changing desktop animation size", async () => {
+  const source = await readFile(new URL("../styles.css", import.meta.url), "utf8");
+  const mobile = source.match(/@media\(max-width:760px\)\{([^\n]+battle-character-scale[^\n]+)\}/);
+
+  assert.ok(mobile, "mobile breakpoint contains the battle character scale rule");
+  assert.match(mobile[1], /\.battle-animation-frame/);
+  assert.match(mobile[1], /\.battle-team-support-frame/);
+  assert.match(mobile[1], /\.battle-enemy-frame/);
+  assert.match(mobile[1], /scale:var\(--battle-character-scale,\.75\)/);
+  assert.doesNotMatch(source.slice(0, source.indexOf("@media(max-width:760px)")), /scale:var\(--battle-character-scale/);
+});

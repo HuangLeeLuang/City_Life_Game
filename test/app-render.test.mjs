@@ -5,12 +5,13 @@ import { beginDeployment, checkoutMarket, confirmDeployment, generateCards, newG
 import { FACTIONS, TERRITORIES } from "../src/faction-content.mjs";
 
 const SAVE_KEY = "crime-five-roads-save-v2";
+const BATTLE_SCALE_KEY = "crime-five-roads-mobile-battle-scale-v1";
 let importSequence = 0;
 
-async function renderSavedState(savedState) {
+async function renderSavedState(savedState, preferences = {}) {
   let html = "";
   let load;
-  const storage = new Map([[SAVE_KEY, JSON.stringify(savedState)]]);
+  const storage = new Map([[SAVE_KEY, JSON.stringify(savedState)], ...Object.entries(preferences)]);
   const app = {
     addEventListener() {},
     get innerHTML() { return html; },
@@ -932,6 +933,9 @@ test("five-card and battle choices are text-only while enemy intent is visible",
   assert.match(battleHtml, /data-battle-enemy-morale/);
   assert.match(battleHtml, /data-battle-player-morale/);
   assert.match(battleHtml, /data-battle-team-skill/);
+  assert.match(battleHtml, /data-battle-scale/);
+  assert.match(battleHtml, /<option value="75" selected>縮小 25%<\/option>/);
+  assert.match(battleHtml, /--battle-character-scale:\.75/);
   assert.match(battleHtml, /戰術目標/);
   assert.match(battleHtml, /assets\/images\/animations\/difei\/shoot-ready\.webp/);
   assert.match(battleHtml, /assets\/images\/animations\/difei\/brawl-kick\.webp/);
@@ -950,7 +954,11 @@ test("five-card and battle choices are text-only while enemy intent is visible",
   const factionBattleHtml = await renderSavedState(factionBattle);
   assert.match(factionBattleHtml, /data-enemy-archetype="bruiser"/);
   assert.match(factionBattleHtml, /assets\/images\/animations\/enemy\/bruiser-ready\.webp/);
-  assert.match(factionBattleHtml, /style="--enemy-accent:#dc575f"/);
+  assert.match(factionBattleHtml, /style="--enemy-accent:#dc575f;--battle-character-scale:\.75"/);
+
+  const compactBattleHtml = await renderSavedState(factionBattle, { [BATTLE_SCALE_KEY]: "50" });
+  assert.match(compactBattleHtml, /<option value="50" selected>縮小 50%<\/option>/);
+  assert.match(compactBattleHtml, /--battle-character-scale:\.5/);
 });
 
 test("non-Difei team support renders its role cutout without replacing Difei frames", async () => {
