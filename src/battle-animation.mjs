@@ -40,6 +40,19 @@ const brawl = Object.freeze({
 
 export const BATTLE_ANIMATIONS = Object.freeze({ attack, brawl });
 
+const effectTimeline = (id, label) => Object.freeze({ id, label, timeline: Object.freeze([
+  Object.freeze({ phase: "prepare", duration: 220 }),
+  Object.freeze({ phase: "impact", duration: 360 }),
+  Object.freeze({ phase: "recover", duration: 220 }),
+]) });
+const BATTLE_EFFECT_ANIMATIONS = Object.freeze({
+  shoot: effectTimeline("shoot", "交叉射擊"), brawl: effectTimeline("brawl", "近身突破"), hack: effectTimeline("hack", "控制戰場設備"), guard: effectTimeline("guard", "建立掩護"), heal: effectTimeline("heal", "戰地急救"), morale: effectTimeline("morale", "重整士氣"), resupply: effectTimeline("resupply", "緊急補給"), flee: effectTimeline("flee", "撤離戰場"),
+});
+export function battleEffectAnimationFor(action, supportType = null) {
+  const effectId = action === "support" ? ({ attack: "shoot", brawl: "brawl", hack: "hack", guard: "guard", heal: "heal", morale: "morale", resupply: "resupply" }[supportType]) : ({ attack: "shoot", brawl: "brawl", hack: "hack", guard: "guard", flee: "flee" }[action]);
+  return BATTLE_EFFECT_ANIMATIONS[effectId] || null;
+}
+
 export function battleAnimationFor(action) {
   return BATTLE_ANIMATIONS[action] || null;
 }

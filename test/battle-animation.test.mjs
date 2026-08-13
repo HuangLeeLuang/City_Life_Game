@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { battleAnimationAftermath, battleAnimationFor, battleAnimationResult } from "../src/battle-animation.mjs";
+import { battleAnimationAftermath, battleAnimationFor, battleAnimationResult, battleEffectAnimationFor } from "../src/battle-animation.mjs";
 
 async function webpCanvasSize(source) {
   const data = await readFile(new URL(`../${source}`, import.meta.url));
@@ -38,6 +38,10 @@ test("actions without approved character frame packs expose no actor animation",
   assert.equal(battleAnimationFor("guard"), null);
   assert.equal(battleAnimationFor("flee"), null);
   assert.equal(battleAnimationFor("unknown"), null);
+});
+
+test("every selectable battle action maps to a visible effect timeline", () => {
+  for (const [action, type, expected] of [["attack", null, "shoot"], ["brawl", null, "brawl"], ["hack", null, "hack"], ["guard", null, "guard"], ["flee", null, "flee"], ["support", "attack", "shoot"], ["support", "hack", "hack"], ["support", "heal", "heal"], ["support", "guard", "guard"], ["support", "morale", "morale"], ["support", "resupply", "resupply"]]) assert.equal(battleEffectAnimationFor(action, type).id, expected);
 });
 
 test("animation damage is derived from the single precomputed battle result", () => {
@@ -77,6 +81,11 @@ test("battle character transforms pivot on the shared ground line", async () => 
   assert.match(styles, /\.battle-animation-frame\{[^}]*transform-origin:48% 97\.4%/);
   assert.match(styles, /\.battle-enemy-frame\{[^}]*transform-origin:55% 97\.4%/);
   assert.match(styles, /\.battle-team-support-frame\{[^}]*transform-origin:45% 97\.4%/);
+});
+
+test("team support effects remain visible during their impact hold", async () => {
+  const styles = await readFile(new URL("../styles.css", import.meta.url), "utf8");
+  assert.match(styles, /data-action="team-support"\]\[data-phase="hold"\] \.battle-effect/);
 });
 
 test("enemy counterattack and player hit follow a non-finishing action", () => {

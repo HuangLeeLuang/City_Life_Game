@@ -9,7 +9,7 @@ import { ASSET_CATEGORY_LABELS } from "./market-content.mjs?v=23";
 import { uiIcon, cardIconName, questIconName } from "./ui-icons.mjs?v=1";
 import { TERRITORY_MAP_POSITIONS } from "./city-map.mjs?v=1";
 import { cardArtIdentity, choiceArt, choiceArtByKey, eventArt, resultStatus, upgradeArtIdentity } from "./art-content.mjs?v=1";
-import { battleAnimationAftermath, battleAnimationFor, battleAnimationResult } from "./battle-animation.mjs?v=2";
+import { battleAnimationAftermath, battleAnimationFor, battleAnimationResult, battleEffectAnimationFor } from "./battle-animation.mjs?v=3";
 import { teamSupportAnimationFor } from "./team-battle-animation.mjs?v=1";
 import { enemyBattleAnimationFor, enemyFrameForPhase } from "./enemy-battle-animation.mjs?v=1";
 import { GameError, newGame, generateCards, getEvent, selectCard, resolveChoice, resolveActivity, resolveNightOption, acceptSideQuest, declineSideQuests, resolveSideQuestChoice, abandonSideQuest, startFactionFight, startTerritoryFight, fortifyTerritory, recruitCrew, recruitTeamMember, teamRecruitCost, teamTrainingCost, characterLevelChance, pendingCharacterEvent, startCharacterEvent, resolveCharacterEventChoice, activeTeamMembers, teamBonuses, assetBonuses, contactBonuses, factionFightCost, territoryFortifyCost, controlledTerritories, territoryIncome, crewPower, battleAction, battleSupportSkill, assistantAdvice, acceptAssistantAdvice, continueStage, continueChapterTransition, continueFreePlay, validateSave, endingText, modifyValue, saveCardDefinition, deleteCustomCard, cityStatusById, enemyIntentById, checkoutMarket, quoteMarketCart, marketUpgradeQuote, finalizeStageResult, beginDeployment, updateDeploymentAssignment, confirmDeployment, acknowledgeAttack, resolveAutoOperation } from "./engine.mjs?v=31";
@@ -129,16 +129,16 @@ function battleAnimationView(b,intent,supportAnimation=null){
   const enemyMax=Math.max(1,b.enemyMaxHp||b.enemyHp),enemyWidth=Math.max(0,Math.min(100,b.enemyHp/enemyMax*100)),morale=Math.max(0,b.enemyMorale??100);
   const scaleValue=String(battleScale/100).replace(/^0/,"");
   const scaleControl=`<label class="battle-scale-control">手機人物大小<select data-battle-scale aria-label="手機戰鬥人物大小">${BATTLE_SCALE_CHOICES.map(value=>`<option value="${value}" ${battleScale===value?"selected":""}>${value===100?"標準 100%":`縮小 ${100-value}%`}</option>`).join("")}</select></label>`;
-  return `<section class="battle-animation-shell"><header class="battle-enemy-brief"><div class="battle-enemy-identity"><small>敵方單位／${esc(enemyAnimation.label)}</small><strong>${esc(b.enemy)}</strong><span>${esc(intent.name)}／${esc(intent.description)}</span></div><div class="battle-animation-report"><small>戰鬥通報</small><p data-battle-report aria-live="polite">${esc(b.message)}</p></div><div class="battle-enemy-vitals"><small>敵方戰力與士氣</small><div><span>HP</span><strong data-battle-enemy-hp>${Math.max(0,b.enemyHp)} / ${enemyMax}</strong></div><span class="battle-enemy-meter"><i data-battle-enemy-fill style="width:${enemyWidth}%"></i></span><div><span>士氣</span><strong data-battle-enemy-morale>${morale} / 100</strong></div><span class="battle-enemy-meter morale"><i data-battle-enemy-morale-fill style="width:${morale}%"></i></span></div></header>${scaleControl}<div class="battle-animation-stage" data-battle-animation-stage data-enemy-archetype="${enemyAnimation.id}" data-action="attack" data-phase="ready" style="--enemy-accent:${esc(enemyAnimation.accent)};--battle-character-scale:${scaleValue}" aria-label="我方與${esc(enemyAnimation.label)}的全身戰鬥動畫">${images}${supportImage}${enemyImages}<div class="battle-team-support-wave" aria-hidden="true"></div><div class="battle-muzzle" aria-hidden="true"></div><div class="battle-tracer" aria-hidden="true"></div><div class="battle-casing" aria-hidden="true"></div><div class="battle-impact" aria-hidden="true"></div><strong class="battle-animation-damage" data-battle-damage aria-hidden="true"></strong><strong class="battle-player-damage" data-battle-player-damage aria-hidden="true"></strong></div></section>`;
+  return `<section class="battle-animation-shell"><header class="battle-enemy-brief"><div class="battle-enemy-identity"><small>敵方單位／${esc(enemyAnimation.label)}</small><strong>${esc(b.enemy)}</strong><span>${esc(intent.name)}／${esc(intent.description)}</span></div><div class="battle-animation-report"><small>戰鬥通報</small><p data-battle-report aria-live="polite">${esc(b.message)}</p></div><div class="battle-enemy-vitals"><small>敵方戰力與士氣</small><div><span>HP</span><strong data-battle-enemy-hp>${Math.max(0,b.enemyHp)} / ${enemyMax}</strong></div><span class="battle-enemy-meter"><i data-battle-enemy-fill style="width:${enemyWidth}%"></i></span><div><span>士氣</span><strong data-battle-enemy-morale>${morale} / 100</strong></div><span class="battle-enemy-meter morale"><i data-battle-enemy-morale-fill style="width:${morale}%"></i></span></div></header>${scaleControl}<div class="battle-animation-stage" data-battle-animation-stage data-enemy-archetype="${enemyAnimation.id}" data-action="attack" data-effect="shoot" data-phase="ready" style="--enemy-accent:${esc(enemyAnimation.accent)};--battle-character-scale:${scaleValue}" aria-label="我方與${esc(enemyAnimation.label)}的全身戰鬥動畫">${images}${supportImage}${enemyImages}<div class="battle-effect" aria-hidden="true"></div><div class="battle-team-support-wave" aria-hidden="true"></div><div class="battle-muzzle" aria-hidden="true"></div><div class="battle-tracer" aria-hidden="true"></div><div class="battle-casing" aria-hidden="true"></div><div class="battle-impact" aria-hidden="true"></div><strong class="battle-animation-damage" data-battle-damage aria-hidden="true"></strong><strong class="battle-player-damage" data-battle-player-damage aria-hidden="true"></strong></div></section>`;
 }
 const battleAnimationPause=duration=>new Promise(resolve=>setTimeout(resolve,globalThis.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches?Math.min(36,duration):duration));
 function setBattleButtonsDisabled(disabled){document.querySelectorAll("[data-battle]").forEach(button=>{button.disabled=disabled;button.setAttribute?.("aria-busy",disabled?"true":"false");});}
 function setBattleEnemyFrame(name){document.querySelectorAll("[data-battle-enemy-frame]").forEach(frame=>frame.classList.toggle("is-active",frame.dataset.battleEnemyFrame===name));}
-async function playBattleTimeline(action,animation,beforeState,afterState){
+async function playBattleTimeline(action,animation,effect,beforeState,afterState){
   const stage=document.querySelector("[data-battle-animation-stage]");
   if(!stage)return;
   const report=document.querySelector("[data-battle-report]"),enemyHp=document.querySelector("[data-battle-enemy-hp]"),enemyFill=document.querySelector("[data-battle-enemy-fill]"),enemyMorale=document.querySelector("[data-battle-enemy-morale]"),enemyMoraleFill=document.querySelector("[data-battle-enemy-morale-fill]"),damage=document.querySelector("[data-battle-damage]"),result=battleAnimationResult(beforeState,afterState),impactPhase=action==="attack"?"shot":"kick",enemyMax=Math.max(1,beforeState.battle.enemyMaxHp||beforeState.battle.enemyHp),nextMorale=Math.max(0,afterState.battle?.enemyMorale??0);
-  stage.dataset.action=action;
+  stage.dataset.action=action;stage.dataset.effect=effect.id;
   for(const step of animation.timeline){
     document.querySelectorAll("[data-battle-frame]").forEach(frame=>frame.classList.toggle("is-active",frame.dataset.battleFrame===`${action}:${step.frame}`));
     setBattleEnemyFrame(enemyFrameForPhase(step.phase));
@@ -155,10 +155,10 @@ async function playBattleTimeline(action,animation,beforeState,afterState){
   }
   await playBattleAftermath(beforeState,afterState);
 }
-async function playTeamSupportTimeline(animation,beforeState,afterState){
+async function playTeamSupportTimeline(animation,effect,beforeState,afterState){
   const stage=document.querySelector("[data-battle-animation-stage]"),frame=document.querySelector(`[data-team-support-animation="${animation.actorId}"]`),report=document.querySelector("[data-battle-report]"),enemyHp=document.querySelector("[data-battle-enemy-hp]"),enemyFill=document.querySelector("[data-battle-enemy-fill]"),enemyMorale=document.querySelector("[data-battle-enemy-morale]"),enemyMoraleFill=document.querySelector("[data-battle-enemy-morale-fill]"),damage=document.querySelector("[data-battle-damage]"),result=battleAnimationResult(beforeState,afterState),enemyMax=Math.max(1,beforeState.battle.enemyMaxHp||beforeState.battle.enemyHp),nextMorale=Math.max(0,afterState.battle?.enemyMorale??0);
   if(!stage||!frame)return;
-  stage.dataset.action="team-support";frame.classList.add("is-active");
+  stage.dataset.action="team-support";stage.dataset.effect=effect.id;frame.classList.add("is-active");
   for(const step of animation.timeline){
     stage.dataset.phase=step.phase;
     setBattleEnemyFrame(step.phase==="hold"&&result.enemyDamage<=0?"ready":enemyFrameForPhase(step.phase));
@@ -174,6 +174,11 @@ async function playTeamSupportTimeline(animation,beforeState,afterState){
   }
   await playBattleAftermath(beforeState,afterState);
   frame.classList.remove("is-active");
+}
+async function playBattleEffectTimeline(effect,beforeState,afterState){
+  const stage=document.querySelector("[data-battle-animation-stage]");if(!stage)return;
+  const report=document.querySelector("[data-battle-report]"),enemyHp=document.querySelector("[data-battle-enemy-hp]"),enemyFill=document.querySelector("[data-battle-enemy-fill]"),enemyMorale=document.querySelector("[data-battle-enemy-morale]"),enemyMoraleFill=document.querySelector("[data-battle-enemy-morale-fill]"),damage=document.querySelector("[data-battle-damage]"),result=battleAnimationResult(beforeState,afterState),enemyMax=Math.max(1,beforeState.battle.enemyMaxHp||beforeState.battle.enemyHp),nextMorale=Math.max(0,afterState.battle?.enemyMorale??0);
+  stage.dataset.action="effect";stage.dataset.effect=effect.id;for(const step of effect.timeline){stage.dataset.phase=step.phase;setBattleEnemyFrame(step.phase==="impact"&&result.enemyDamage>0?"hit":"ready");if(step.phase==="impact"){if(damage&&result.enemyDamage>0){damage.textContent=`-${result.enemyDamage}`;damage.setAttribute("aria-hidden","false");}if(enemyHp)enemyHp.textContent=`${result.enemyHp} / ${enemyMax}`;if(enemyFill)enemyFill.style.width=`${Math.max(0,Math.min(100,result.enemyHp/enemyMax*100))}%`;if(enemyMorale)enemyMorale.textContent=`${nextMorale} / 100`;if(enemyMoraleFill)enemyMoraleFill.style.width=`${nextMorale}%`;if(report)report.textContent=afterState.battle?.message||afterState.lastResult?.summary||effect.label;}else if(damage)damage.setAttribute("aria-hidden","true");await battleAnimationPause(step.duration);}await playBattleAftermath(beforeState,afterState);
 }
 async function playBattleAftermath(beforeState,afterState){
   const stage=document.querySelector("[data-battle-animation-stage]"),report=document.querySelector("[data-battle-report]"),playerDamage=document.querySelector("[data-battle-player-damage]"),result=battleAnimationResult(beforeState,afterState),steps=battleAnimationAftermath(beforeState,afterState);
@@ -195,7 +200,7 @@ async function playBattleAction(action,resolveAction=beforeState=>battleAction(b
   if(battleAnimationRunning)return;
   const animationShell=document.querySelector(".battle-animation-shell");
   animationShell?.scrollIntoView({behavior:"auto",block:"start"});
-  const supportSkill=action==="support"?battleSupportSkill(state):null,supportAnimation=supportSkill?.sourceId&&supportSkill.sourceId!=="difei"?teamSupportAnimationFor(supportSkill.sourceId):null,animation=supportAnimation||battleAnimationFor(action);
+  const supportSkill=action==="support"?battleSupportSkill(state):null,supportAnimation=supportSkill?.sourceId&&supportSkill.sourceId!=="difei"?teamSupportAnimationFor(supportSkill.sourceId):null,effect=battleEffectAnimationFor(action,supportSkill?.type),animation=supportAnimation||battleAnimationFor(action);
   if(!animation&&action==="support"){commit(()=>resolveAction(state));return;}
   const beforeState=state;
   let nextState;
@@ -203,7 +208,7 @@ async function playBattleAction(action,resolveAction=beforeState=>battleAction(b
   battleAnimationRunning=true;
   animationShell?.classList.add("is-playing");
   setBattleButtonsDisabled(true);
-  try{if(supportAnimation)await playTeamSupportTimeline(supportAnimation,beforeState,nextState);else if(animation)await playBattleTimeline(action,animation,beforeState,nextState);else await playBattleAftermath(beforeState,nextState);}catch(exception){console.error("戰鬥動畫播放失敗，改為直接結算。",exception);}finally{animationShell?.classList.remove("is-playing");battleAnimationRunning=false;commit(()=>nextState);}
+  try{if(supportAnimation)await playTeamSupportTimeline(supportAnimation,effect,beforeState,nextState);else if(animation)await playBattleTimeline(action,animation,effect,beforeState,nextState);else if(effect)await playBattleEffectTimeline(effect,beforeState,nextState);else await playBattleAftermath(beforeState,nextState);}catch(exception){console.error("戰鬥動畫播放失敗，改為直接結算。",exception);}finally{animationShell?.classList.remove("is-playing");battleAnimationRunning=false;commit(()=>nextState);}
 }
 function battle(){
   const b=state.battle,faction=b.factionId?factionById(b.factionId):null,territory=b.territoryId?territoryById(b.territoryId):null,intent=enemyIntentById(b.intent),mode={capture:"搶奪地盤",defend:"防守地盤",skirmish:"主動挑戰",event:"事件戰鬥"}[b.battleType]||"事件戰鬥",active=activeTeamMembers(state),team=teamBonuses(state),gear=assetBonuses(state),supportSkill=battleSupportSkill(state),supportAnimation=supportSkill.sourceId&&supportSkill.sourceId!=="difei"?teamSupportAnimationFor(supportSkill.sourceId):null,cooldown=b.supportCooldown||0,weaknessLabel={attack:"快速射擊",brawl:"近身格鬥",hack:"環境科技"}[b.weakness]||"觀察戰況";
